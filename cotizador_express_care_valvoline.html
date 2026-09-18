@@ -1931,6 +1931,69 @@ function validarCampos(){
   return errores;
 }
 
+// Arma los datos comunes de la cotización (cliente, vehículo, renglones, total) — usado
+// tanto por "Guardar en historial" como por "Generar PDF", para no repetir esta lógica dos veces.
+function armarDatosCotizacion(llantas, autoSvcs, extSvcs, tallerCart){
+  var cl=v('cli-nombre')||'Sin nombre';
+  var tel=v('cli-tel')||'';
+  var vh=getVehiculo()||'Sin vehículo';
+  var orEl=g('cli-origen'),origen=orEl?orEl.value:'';
+  var ordenSvc=v('orden-servicio');
+  if(ordenSvc) origen=origen+(ordenSvc?' #'+ordenSvc:'');
+  var asesor=v('asesor')||'';
+  var now=new Date();
+  var fecha=now.toLocaleDateString('es-MX')+' '+now.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
+
+  var items=[], tot=0;
+  var ag={};
+  for(var i=0;i<autoSvcs.length;i++){var s=autoSvcs[i];if(!ag[s.pid])ag[s.pid]=[];ag[s.pid].push(s);}
+
+  for(var i=0;i<llantas.length;i++){
+    var l=llantas[i],sub=l.precio*l.qty;tot+=sub;
+    items.push({
+      tipo:'Llantas',
+      proveedor: l.isAyala?'AYALA':(l.isVega?'VEGA':'SERV'),
+      noParte: l.cve||'',
+      producto: l.desc,
+      cant: l.qty,
+      costo: l.pb ? fmtN(l.pb) : '',
+      margen: l.isAyala ? (pago==='meses'?'20%':'25%') : (gm()+'%'),
+      precio: fmtN(l.precio),
+      subtotal: fmtN(sub)
+    });
+    if(ag[l.id]){
+      for(var j=0;j<ag[l.id].length;j++){
+        var s=ag[l.id][j],ssub=s.precio*s.qty;tot+=ssub;
+        items.push({tipo:'Llantas',proveedor:'',noParte:'',producto:s.desc,cant:s.qty,costo:'',margen:'',precio:fmtN(s.precio),subtotal:fmtN(ssub)});
+      }
+    }
+  }
+
+  for(var i=0;i<tallerCart.length;i++){
+    var it=tallerCart[i],sub=parseFloat(it.precio)*(parseFloat(it.qty)||1);
+    if(!it.opcional)tot+=sub;
+    items.push({
+      tipo: tallerTipo,
+      proveedor: it.proveedor||'',
+      noParte: it.noParte||'',
+      producto: it.concepto+(it.opcional?' (opcional)':''),
+      cant: parseFloat(it.qty)||1,
+      costo: it.mo?'':( it.costo?fmtN(parseFloat(it.costo)):'' ),
+      margen: it.mo?'M.O.':(it.margen?it.margen+'%':''),
+      precio: fmtN(parseFloat(it.precio)),
+      subtotal: it.opcional?'(opcional)':fmtN(sub)
+    });
+  }
+
+  for(var i=0;i<extSvcs.length;i++){
+    var s=extSvcs[i],sub=s.precio*s.qty;tot+=sub;
+    items.push({tipo:'Llantas',proveedor:'',noParte:'',producto:s.desc,cant:s.qty,costo:'',margen:'',precio:fmtN(s.precio),subtotal:fmtN(sub)});
+  }
+
+  return {fecha:fecha, asesor:asesor, cliente:cl, telefono:tel, vehiculo:vh, origen:origen, total:fmtN(tot), items:items};
+}
+
+// ── GUARDAR EN HISTORIAL — SIN folio, siempre (simple, directo) ──
 function guardarCotizacion(onOk, onErr){
   var tallerCart=tallerItems.filter(function(i){return i.concepto&&i.precio!==''&&parseFloat(i.precio)>0&&parseFloat(i.qty)>0;});
   var llantas=cart.filter(function(c){return c.t==='l';});
@@ -1943,122 +2006,29 @@ function guardarCotizacion(onOk, onErr){
   var btn=g('btn-guardar');
   if(btn){btn.textContent='Guardando...';btn.disabled=true;}
 
-  function continuarGuardado(){
-    var cl=v('cli-nombre')||'Sin nombre';
-    var tel=v('cli-tel')||'';
-    var vh=getVehiculo()||'Sin vehículo';
-    var orEl=g('cli-origen'),origen=orEl?orEl.value:'';
-    var ordenSvc=v('orden-servicio');
-    if(ordenSvc) origen=origen+(ordenSvc?' #'+ordenSvc:'');
-    var asesor=v('asesor')||'';
-    var now=new Date();
-    var fecha=now.toLocaleDateString('es-MX')+' '+now.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
+  var datos=armarDatosCotizacion(llantas, autoSvcs, extSvcs, tallerCart);
 
-    // Build items array - one row per product
-    var items=[];
-    var tot=0;
-
-    // Llantas
-    var ag={};
-    for(var i=0;i<autoSvcs.length;i++){var s=autoSvcs[i];if(!ag[s.pid])ag[s.pid]=[];ag[s.pid].push(s);}
-
-    for(var i=0;i<llantas.length;i++){
-      var l=llantas[i],sub=l.precio*l.qty;tot+=sub;
-      items.push({
-        tipo:'Llantas',
-        proveedor: l.isAyala?'AYALA':(l.isVega?'VEGA':'SERV'),
-        noParte: l.cve||'',
-        producto: l.desc,
-        cant: l.qty,
-        costo: l.pb ? fmtN(l.pb) : '',
-        margen: l.isAyala ? (pago==='meses'?'20%':'25%') : (gm()+'%'),
-        precio: fmtN(l.precio),
-        subtotal: fmtN(sub)
-      });
-      // Auto services (montaje, balanceo, pivote)
-      if(ag[l.id]){
-        for(var j=0;j<ag[l.id].length;j++){
-          var s=ag[l.id][j],ssub=s.precio*s.qty;tot+=ssub;
-          items.push({tipo:'Llantas',proveedor:'',noParte:'',producto:s.desc,cant:s.qty,costo:'',margen:'',precio:fmtN(s.precio),subtotal:fmtN(ssub)});
-        }
-      }
-    }
-
-    // Taller
-    for(var i=0;i<tallerCart.length;i++){
-      var it=tallerCart[i],sub=parseFloat(it.precio)*(parseFloat(it.qty)||1);
-      if(!it.opcional)tot+=sub;
-      items.push({
-        tipo: tallerTipo,
-        proveedor: it.proveedor||'',
-        noParte: it.noParte||'',
-        producto: it.concepto+(it.opcional?' (opcional)':''),
-        cant: parseFloat(it.qty)||1,
-        costo: it.mo?'':( it.costo?fmtN(parseFloat(it.costo)):'' ),
-        margen: it.mo?'M.O.':(it.margen?it.margen+'%':''),
-        precio: fmtN(parseFloat(it.precio)),
-        subtotal: it.opcional?'(opcional)':fmtN(sub)
-      });
-    }
-
-    // Servicios adicionales
-    for(var i=0;i<extSvcs.length;i++){
-      var s=extSvcs[i],sub=s.precio*s.qty;tot+=sub;
-      items.push({tipo:'Llantas',proveedor:'',noParte:'',producto:s.desc,cant:s.qty,costo:'',margen:'',precio:fmtN(s.precio),subtotal:fmtN(sub)});
-    }
-
-    if(MODO_PRUEBA){
-      yaGuardado=true;
-      if(btn){btn.textContent='Guardado (PRUEBA — no se tocó el Sheet real)';btn.style.background='#f59e0b';btn.style.color='#fff';btn.disabled=true;}
-      if(typeof onOk==='function') onOk();
-      return;
-    }
-
-    function confirmarConSheet(){
-      // Dar un momento a Apps Script para terminar de procesar antes de preguntar.
-      setTimeout(function(){
-        verificarFolioJSONP(folioActual, function(encontrado){
-          if(encontrado){
-            // Solo AHORA, con el guardado ya verificado, se consume de verdad el folio.
-            confirmarFolioJSONP(folioNumeroActual, function(){
-              yaGuardado=true;
-              if(btn){btn.textContent='Cotización guardada';btn.style.background='#1a56db';btn.style.color='#fff';btn.disabled=true;}
-              if(typeof onOk==='function') onOk();
-            });
-          } else {
-            if(btn){btn.textContent='Reintentar guardado';btn.disabled=false;}
-            alert('No se pudo confirmar el guardado. Revisa tu conexión e intenta de nuevo.');
-            if(typeof onErr==='function') onErr();
-          }
-        });
-      }, 1500);
-    }
-
-    fetch(SCRIPT_URL,{
-      method:'POST',mode:'no-cors',
-      headers:{'Content-Type':'text/plain;charset=utf-8'},
-      body:JSON.stringify({action:'saveCotizacion', folio:folioActual, fecha:fecha,asesor:asesor,cliente:cl,telefono:tel,vehiculo:vh,origen:origen,total:fmtN(tot),items:items})
-    }).then(function(){
-      // No confiamos solo en que el fetch se haya resuelto (ya vimos que es ambiguo con
-      // Apps Script) — se confirma con una lectura real y directa del Sheet.
-      confirmarConSheet();
-    }).catch(function(){
-      // Aunque el fetch reporte fallo, la petición pudo haber llegado igual antes del
-      // error del navegador — se verifica con el Sheet de todas formas antes de avisar.
-      confirmarConSheet();
-    });
+  if(MODO_PRUEBA){
+    yaGuardado=true;
+    if(btn){btn.textContent='Guardado (PRUEBA — no se tocó el Sheet real)';btn.style.background='#f59e0b';btn.style.color='#fff';btn.disabled=true;}
+    if(typeof onOk==='function') onOk();
+    return;
   }
 
-  // Un solo folio por cotización: si ya se tiene uno (de un guardado o PDF previo), se reutiliza.
-  if(folioActual){
-    continuarGuardado();
-  } else if(MODO_PRUEBA){
-    folioActual='PRUEBA-'+Date.now();
-    folioNumeroActual=null;
-    continuarGuardado();
-  } else {
-    obtenerFolioJSONP(function(folio){ folioActual=folio; continuarGuardado(); });
-  }
+  var cuerpo=Object.assign({action:'saveCotizacion', folio:''}, datos);
+  fetch(SCRIPT_URL,{
+    method:'POST',mode:'no-cors',
+    headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body: JSON.stringify(cuerpo)
+  }).then(function(){
+    yaGuardado=true;
+    if(btn){btn.textContent='Cotización guardada';btn.style.background='#1a56db';btn.style.color='#fff';btn.disabled=true;}
+    if(typeof onOk==='function') onOk();
+  }).catch(function(){
+    if(btn){btn.textContent='Error al guardar';btn.disabled=false;}
+    alert('No se pudo guardar. Verifica tu conexión.');
+    if(typeof onErr==='function') onErr();
+  });
 }
 
 
@@ -2070,7 +2040,7 @@ function toast(msg){
   setTimeout(function(){ if(t.parentNode) t.parentNode.removeChild(t); }, 4000);
 }
 
-// ── FOLIO (JSONP — evita problemas de CORS en peticiones GET) ──
+// ── FOLIO (JSONP — evita problemas de CORS en peticiones GET) — solo lo usa el PDF ──
 function obtenerFolioJSONP(cb){
   var done=false;
   var cbName='_folioCb'+Date.now();
@@ -2091,9 +2061,9 @@ function obtenerFolioJSONP(cb){
   document.body.appendChild(script);
 }
 
-// Confirma/consume de verdad el folio propuesto — SOLO se debe llamar después de que
-// verificarFolioJSONP ya confirmó que el guardado sí quedó en el Sheet. Así, un guardado
-// que falla o nunca se completa no gasta ningún número de folio.
+// Confirma/consume el folio propuesto para el PDF. Se llama justo después de proponerlo
+// (no espera a verificar el guardado — el folio es exclusivo del PDF, así que se consume
+// en cuanto se decide usarlo para generar uno).
 function confirmarFolioJSONP(numero, cb){
   if(!numero){ if(cb) cb(); return; }
   var done=false;
@@ -2114,29 +2084,8 @@ function confirmarFolioJSONP(numero, cb){
   document.body.appendChild(script);
 }
 
-// Verifica con certeza real si un folio ya quedó guardado en el Sheet — usando JSONP
-// (comprobado confiable todo el día), en vez de confiar en si el fetch() del guardado
-// se resolvió o no, que con Apps Script resultó ser ambiguo.
-function verificarFolioJSONP(folio, cb){
-  var done=false;
-  var cbName='_checkCb'+Date.now();
-  var script=document.createElement('script');
-  window[cbName]=function(data){
-    if(done) return; done=true;
-    cb(!!(data && data.found));
-    delete window[cbName];
-    if(script.parentNode) script.parentNode.removeChild(script);
-  };
-  setTimeout(function(){
-    if(done) return; done=true;
-    cb(false); // no se pudo confirmar a tiempo — se trata como no confirmado, no como error fatal
-    if(window[cbName]) delete window[cbName];
-  }, 8000);
-  script.src=SCRIPT_URL+'?action=checkFolio&folio='+encodeURIComponent(folio)+'&callback='+cbName;
-  document.body.appendChild(script);
-}
-
-// ── GENERAR PDF (membrete + tabla + folio) + copia a Drive ──
+// ── GENERAR PDF — el único que usa folio. Lo pide, lo consume, guarda la cotización CON
+// ese folio (renglón aparte, aunque ya se hubiera guardado sin folio antes), y arma el PDF.
 function generarPDF(){
   var tallerCart=tallerItems.filter(function(i){return i.concepto&&i.precio!==''&&parseFloat(i.precio)>0&&parseFloat(i.qty)>0;});
   var llantas=cart.filter(function(c){return c.t==='l';});
@@ -2159,13 +2108,30 @@ function generarPDF(){
     construirYDescargarPDF(folioActual, cl, tel, vh, asesor, fechaStr, llantas, autoSvcs, extSvcs, tallerCart, btn);
   }
 
+  function guardarConFolioYContinuar(){
+    if(MODO_PRUEBA){ continuarPDF(); return; }
+    var datos=armarDatosCotizacion(llantas, autoSvcs, extSvcs, tallerCart);
+    var cuerpo=Object.assign({action:'saveCotizacion', folio:folioActual}, datos);
+    fetch(SCRIPT_URL,{
+      method:'POST',mode:'no-cors',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body: JSON.stringify(cuerpo)
+    }).then(function(){ continuarPDF(); })
+      .catch(function(){ continuarPDF(); }); // el PDF se genera igual; riesgo aceptado de no confirmar
+  }
+
   if(folioActual){
-    // Ya se guardó antes (o ya se generó un PDF antes) para esta cotización: mismo folio, no se duplica el guardado.
+    // Ya se pidió folio antes en esta misma cotización (otro PDF ya generado en esta sesión).
+    continuarPDF();
+  } else if(MODO_PRUEBA){
+    folioActual='PRUEBA-'+Date.now();
     continuarPDF();
   } else {
-    // Primera vez: guarda en historial automáticamente (nunca debe salir un PDF sin su registro) y luego genera el PDF.
-    guardarCotizacion(continuarPDF, function(){
-      if(btn){btn.textContent='📄 Generar PDF';btn.disabled=false;}
+    obtenerFolioJSONP(function(folio){
+      folioActual=folio;
+      confirmarFolioJSONP(folioNumeroActual, function(){
+        guardarConFolioYContinuar();
+      });
     });
   }
 }
