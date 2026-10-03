@@ -468,7 +468,7 @@ input:focus,select:focus{
     </div>
     <div class="mr">
       <label>Margen llantas %</label>
-      <input type="number" id="mg" value="12" min="0" max="200" step="1" oninput="recalcPVP()" onchange="recalcPVP()">
+      <input type="number" id="mg" value="12.5" min="0" max="200" step="0.5" oninput="recalcPVP()" onchange="recalcPVP()">
       <span class="hint">sobre precio de costo</span>
     </div>
     <div class="cnt" id="cnt">43 resultados</div>
@@ -855,6 +855,7 @@ var ROTACION_DB={"ACCELERA":{"skus":1,"rotacion":"baja","emoji":"❄️"},"ADVAN
 
 
 var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwCx8opCkus9pnTYuYSv1BrYi-yljeRIy-hgnUTjUUyHpTEQoPmPyygfPzl9bQDVMzIWQ/exec';
+var GHL_WEBHOOK_URL = 'https://hpsexpresscare.app.n8n.cloud/webhook/cotizacion-enviada-ghl';
 // Modo de prueba: SOLO se activa si se agrega ?test=1 a la URL. Por default, tanto dev
 // como producción trabajan con datos reales — dev necesita comportarse real para que las
 // pruebas de cada cambio prueben algo de verdad. Usar ?test=1 únicamente cuando se quiera
@@ -872,10 +873,10 @@ var TALLER_TEMPLATES = {
   afinacion: {
     tipo: 'Taller - Afinación',
     items: [
-      {concepto:'Bujías (especificar tipo)',           costo:'', margen:25, mo:false, pend:true},
-      {concepto:'Filtro de aceite',                    costo:'', margen:30, mo:false, pend:false},
-      {concepto:'Filtro de aire',                      costo:'', margen:30, mo:false, pend:false},
-      {concepto:'Filtro de cabina',                    costo:'', margen:30, mo:false, pend:false, opcional:true},
+      {concepto:'Bujías (especificar tipo)',           costo:'', margen:28, mo:false, pend:true},
+      {concepto:'Filtro de aceite',                    costo:'', margen:32, mo:false, pend:false},
+      {concepto:'Filtro de aire',                      costo:'', margen:32, mo:false, pend:false},
+      {concepto:'Filtro de cabina',                    costo:'', margen:32, mo:false, pend:false, opcional:true},
       {concepto:'Aceite (especificar viscosidad)',     costo:'', margen:0,  mo:false, pend:false, precioFijo:true, qty:0, conQty:true},
       {concepto:'Limpieza de inyectores',              costo:'', margen:0,  mo:false, pend:false, precioFijo:true, conQty:true, qty:0},
       {concepto:'Limpieza cuerpo de aceleración',      costo:'', margen:0,  mo:false, pend:false, precioFijo:true, conQty:true, qty:0},
@@ -886,17 +887,17 @@ var TALLER_TEMPLATES = {
   aceite: {
     tipo: 'Taller - Aceite',
     items: [
-      {concepto:'Filtro de aceite',                    costo:'', margen:30, mo:false, pend:false, qty:0},
+      {concepto:'Filtro de aceite',                    costo:'', margen:32, mo:false, pend:false, qty:0},
       {concepto:'Aceite (especificar viscosidad)',     costo:'', margen:0,  mo:false, pend:false, precioFijo:true, qty:0, conQty:true},
-      {concepto:'Filtro de aire',                      costo:'', margen:30, mo:false, pend:false, opcional:true, qty:0},
-      {concepto:'Filtro de cabina',                    costo:'', margen:30, mo:false, pend:false, opcional:true, qty:0}
+      {concepto:'Filtro de aire',                      costo:'', margen:32, mo:false, pend:false, opcional:true, qty:0},
+      {concepto:'Filtro de cabina',                    costo:'', margen:32, mo:false, pend:false, opcional:true, qty:0}
     ]
   },
   frenos: {
     tipo: 'Taller - Frenos',
     items: [
-      {concepto:'Balatas delanteras',                  costo:'', margen:30, mo:false, pend:true,  qty:0},
-      {concepto:'Balatas / zapatas traseras',          costo:'', margen:30, mo:false, pend:true,  qty:0},
+      {concepto:'Balatas delanteras',                  costo:'', margen:32.5, mo:false, pend:true,  qty:0},
+      {concepto:'Balatas / zapatas traseras',          costo:'', margen:32.5, mo:false, pend:true,  qty:0},
       {concepto:'Rectificado de discos',               costo:'', margen:0,  mo:false, pend:false, precioFijo:true, qty:0, conQty:true},
       {concepto:'Rectificado de tambor',               costo:'', margen:0,  mo:false, pend:false, precioFijo:true, qty:0, conQty:true},
       {concepto:'Mano de obra balatas delanteras',     costo:'', margen:0,  mo:true,  pend:false, qty:0, descuento:0},
@@ -906,11 +907,11 @@ var TALLER_TEMPLATES = {
   suspension: {
     tipo: 'Taller - Suspensión',
     items: [
-      {concepto:'Amortiguador delantero',              costo:'', margen:30, mo:false, pend:true,  qty:0},
-      {concepto:'Amortiguador trasero',                costo:'', margen:30, mo:false, pend:true,  qty:0},
-      {concepto:'Horquilla',                           costo:'', margen:30, mo:false, pend:true,  qty:0},
-      {concepto:'Barra estabilizadora',                costo:'', margen:30, mo:false, pend:true,  qty:0},
-      {concepto:'Rótula',                              costo:'', margen:30, mo:false, pend:true,  qty:0},
+      {concepto:'Amortiguador delantero',              costo:'', margen:32, mo:false, pend:true,  qty:0},
+      {concepto:'Amortiguador trasero',                costo:'', margen:32, mo:false, pend:true,  qty:0},
+      {concepto:'Horquilla',                           costo:'', margen:32, mo:false, pend:true,  qty:0},
+      {concepto:'Barra estabilizadora',                costo:'', margen:32, mo:false, pend:true,  qty:0},
+      {concepto:'Rótula',                              costo:'', margen:32, mo:false, pend:true,  qty:0},
       {concepto:'Mano de obra amortiguador delantero', costo:'', margen:0,  mo:true,  pend:false, qty:0, conQty:true, descuento:0},
       {concepto:'Mano de obra amortiguador trasero',   costo:'', margen:0,  mo:true,  pend:false, qty:0, conQty:true, descuento:0},
       {concepto:'Mano de obra instalación horquilla',  costo:'', margen:0,  mo:true,  pend:false, qty:0, conQty:true, descuento:0},
@@ -1114,7 +1115,7 @@ function setRin(key) {
 
 function fmt(n) { return '$' + parseFloat(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
 function fmtN(n) { return parseFloat(n).toFixed(2); }
-function gm()   { var raw=v('mg'); return raw===''||raw===null?12:parseFloat(raw)||0; }
+function gm()   { var raw=v('mg'); return raw===''||raw===null?12.5:parseFloat(raw)||0; }
 function pvpLlanta(p) {
   var base = p / (1 - gm() / 100);
   return pago === 'meses' ? base * 1.05 : base;
@@ -2305,11 +2306,26 @@ function copiar(){
     setTab('cotizacion');
     return;
   }
+  notificarGHLCotizacionEnviada();
   var wt=g('wt'); if(!wt) return;
   var btn=g('bcp');
   function ok(){if(btn){btn.textContent='¡Copiado!';btn.classList.add('done');setTimeout(function(){btn.textContent='Copiar para WhatsApp';btn.classList.remove('done');},2000);}}
   if(navigator.clipboard){navigator.clipboard.writeText(wt.textContent).then(ok).catch(function(){fb(wt.textContent);ok();});}
   else{fb(wt.textContent);ok();}
+}
+// Avisa a GHL (vía n8n) que esta cotización se envió, para disparar el workflow de
+// recordatorios allá (tag "cotizacion-enviada"). Fire-and-forget: nunca bloquea ni
+// interrumpe el copiado si falla. No se envía nada en MODO_PRUEBA.
+function notificarGHLCotizacionEnviada(){
+  if(MODO_PRUEBA) return;
+  try{
+    fetch(GHL_WEBHOOK_URL,{
+      method:'POST',
+      mode:'no-cors',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({telefono:v('cli-tel'), cliente:v('cli-nombre'), folio:(folioActual||'')})
+    }).catch(function(){});
+  }catch(e){}
 }
 function fb(t){var ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);}
 
