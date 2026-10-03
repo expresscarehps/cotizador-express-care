@@ -855,6 +855,7 @@ var ROTACION_DB={"ACCELERA":{"skus":1,"rotacion":"baja","emoji":"❄️"},"ADVAN
 
 
 var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwCx8opCkus9pnTYuYSv1BrYi-yljeRIy-hgnUTjUUyHpTEQoPmPyygfPzl9bQDVMzIWQ/exec';
+var GHL_WEBHOOK_URL = 'https://hpsexpresscare.app.n8n.cloud/webhook/cotizacion-enviada-ghl';
 // Modo de prueba: SOLO se activa si se agrega ?test=1 a la URL. Por default, tanto dev
 // como producción trabajan con datos reales — dev necesita comportarse real para que las
 // pruebas de cada cambio prueben algo de verdad. Usar ?test=1 únicamente cuando se quiera
@@ -2305,11 +2306,26 @@ function copiar(){
     setTab('cotizacion');
     return;
   }
+  notificarGHLCotizacionEnviada();
   var wt=g('wt'); if(!wt) return;
   var btn=g('bcp');
   function ok(){if(btn){btn.textContent='¡Copiado!';btn.classList.add('done');setTimeout(function(){btn.textContent='Copiar para WhatsApp';btn.classList.remove('done');},2000);}}
   if(navigator.clipboard){navigator.clipboard.writeText(wt.textContent).then(ok).catch(function(){fb(wt.textContent);ok();});}
   else{fb(wt.textContent);ok();}
+}
+// Avisa a GHL (vía n8n) que esta cotización se envió, para disparar el workflow de
+// recordatorios allá (tag "cotizacion-enviada"). Fire-and-forget: nunca bloquea ni
+// interrumpe el copiado si falla. No se envía nada en MODO_PRUEBA.
+function notificarGHLCotizacionEnviada(){
+  if(MODO_PRUEBA) return;
+  try{
+    fetch(GHL_WEBHOOK_URL,{
+      method:'POST',
+      mode:'no-cors',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({telefono:v('cli-tel'), cliente:v('cli-nombre'), folio:(folioActual||'')})
+    }).catch(function(){});
+  }catch(e){}
 }
 function fb(t){var ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);}
 
