@@ -92,12 +92,19 @@ test('Borrar llanta elimina sus servicios',   ()=>cart.length===0);
 
 // ══════════════════════════════════════════════════════════
 console.log('\n=== 6. MÁRGENES ===');
-test('Llantas default 15%',         ()=>html.includes('value="15"'));
-test('Amortiguador delantero 30%',  ()=>appJS.includes("concepto:'Amortiguador delantero',              costo:'', margen:30"));
-test('Amortiguador trasero 30%',    ()=>appJS.includes("concepto:'Amortiguador trasero',                costo:'', margen:30"));
-test('Horquilla 30%',               ()=>appJS.includes("concepto:'Horquilla',                           costo:'', margen:30"));
-test('Barra estabilizadora 30%',    ()=>appJS.includes("concepto:'Barra estabilizadora',                costo:'', margen:30"));
-test('Rótula 30%',                  ()=>appJS.includes("concepto:'R\u00f3tula',                              costo:'', margen:30"));
+test('Llantas default 12.5%',       ()=>html.includes('value="12.5"') && gm()===12.5);
+test('Bujías 28%',                  ()=>appJS.includes("concepto:'Bujías (especificar tipo)',           costo:'', margen:28"));
+test('Filtro de aceite (afinación) 32%', ()=>appJS.includes("concepto:'Filtro de aceite',                    costo:'', margen:32, mo:false, pend:false},"));
+test('Filtro de aire (afinación) 32%',   ()=>appJS.includes("concepto:'Filtro de aire',                      costo:'', margen:32, mo:false, pend:false},"));
+test('Filtro de cabina (afinación) 32%', ()=>appJS.includes("concepto:'Filtro de cabina',                    costo:'', margen:32, mo:false, pend:false, opcional:true},"));
+test('Filtro de aceite (cambio aceite) 32%', ()=>appJS.includes("concepto:'Filtro de aceite',                    costo:'', margen:32, mo:false, pend:false, qty:0},"));
+test('Balatas delanteras 32.5%',    ()=>appJS.includes("concepto:'Balatas delanteras',                  costo:'', margen:32.5"));
+test('Balatas/zapatas traseras 32.5%', ()=>appJS.includes("concepto:'Balatas / zapatas traseras',          costo:'', margen:32.5"));
+test('Amortiguador delantero 32%',  ()=>appJS.includes("concepto:'Amortiguador delantero',              costo:'', margen:32"));
+test('Amortiguador trasero 32%',    ()=>appJS.includes("concepto:'Amortiguador trasero',                costo:'', margen:32"));
+test('Horquilla 32%',               ()=>appJS.includes("concepto:'Horquilla',                           costo:'', margen:32"));
+test('Barra estabilizadora 32%',    ()=>appJS.includes("concepto:'Barra estabilizadora',                costo:'', margen:32"));
+test('Rótula 32%',                  ()=>appJS.includes("concepto:'R\u00f3tula',                              costo:'', margen:32"));
 test('Meses sin intereses 5%',      ()=>appJS.includes('base * 1.05'));
 
 // ══════════════════════════════════════════════════════════
@@ -127,7 +134,20 @@ test('totTaller en WA',                  ()=>appJS.includes('totTaller'));
 test('Subtotal llantas en WA',           ()=>appJS.includes('Subtotal llantas'));
 
 // ══════════════════════════════════════════════════════════
-console.log('\n=== 10. PENDIENTES (no deben fallar) ===');
+console.log('\n=== 10. NOTIFICACIÓN GHL (tag "cotizacion-enviada") ===');
+test('GHL_WEBHOOK_URL definido',          ()=>appJS.includes("var GHL_WEBHOOK_URL = 'https://hpsexpresscare.app.n8n.cloud/webhook/cotizacion-enviada-ghl'"));
+test('notificarGHLCotizacionEnviada existe', ()=>appJS.includes('function notificarGHLCotizacionEnviada()'));
+test('Notificación respeta MODO_PRUEBA',  ()=>/function notificarGHLCotizacionEnviada\(\)\{\s*if\(MODO_PRUEBA\) return;/.test(appJS));
+test('Notificación es fire-and-forget (no-cors)', ()=>/notificarGHLCotizacionEnviada[\s\S]*?mode:'no-cors'/.test(appJS));
+test('copiar() llama a notificarGHLCotizacionEnviada',
+  ()=>{
+    const m=appJS.match(/function copiar\(\)\{[\s\S]*?\n\}/);
+    return !!m && m[0].includes('notificarGHLCotizacionEnviada()');
+  });
+test('Payload incluye telefono/cliente/folio', ()=>appJS.includes("telefono:v('cli-tel'), cliente:v('cli-nombre'), folio:(folioActual||'')"));
+
+// ══════════════════════════════════════════════════════════
+console.log('\n=== 11. PENDIENTES (no deben fallar) ===');
 test('PDF pendiente — ok',               ()=>true);
 test('Lealtad WA pendiente — ok',        ()=>true);
 
