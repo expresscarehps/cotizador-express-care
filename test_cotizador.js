@@ -139,12 +139,32 @@ test('GHL_WEBHOOK_URL definido',          ()=>appJS.includes("var GHL_WEBHOOK_UR
 test('notificarGHLCotizacionEnviada existe', ()=>appJS.includes('function notificarGHLCotizacionEnviada()'));
 test('Notificación respeta MODO_PRUEBA',  ()=>/function notificarGHLCotizacionEnviada\(\)\{\s*if\(MODO_PRUEBA\) return;/.test(appJS));
 test('Notificación es fire-and-forget (no-cors)', ()=>/notificarGHLCotizacionEnviada[\s\S]*?mode:'no-cors'/.test(appJS));
-test('copiar() llama a notificarGHLCotizacionEnviada',
+test('Payload incluye telefono/cliente/folio', ()=>appJS.includes("telefono:v('cli-tel'), cliente:v('cli-nombre'), folio:(folioActual||'')"));
+test('copiar() YA NO llama a notificarGHLCotizacionEnviada (solo copia)',
   ()=>{
     const m=appJS.match(/function copiar\(\)\{[\s\S]*?\n\}/);
+    return !!m && !m[0].includes('notificarGHLCotizacionEnviada()');
+  });
+test('Botón "Ya la envié" existe en el HTML y empieza deshabilitado',
+  ()=>/<button class="byaenvie" id="btn-ya-envie" disabled>/.test(html));
+test('copiar() habilita el botón "Ya la envié" tras copiar',
+  ()=>{
+    const m=appJS.match(/function copiar\(\)\{[\s\S]*?\n\}/);
+    return !!m && m[0].includes('habilitarYaLaEnvie()');
+  });
+test('habilitarYaLaEnvie quita disabled y agrega clase enabled',
+  ()=>/function habilitarYaLaEnvie\(\)\{[\s\S]*?bye\.disabled=false;bye\.classList\.add\('enabled'\)/.test(appJS));
+test('yaLaEnvie() es el que llama a notificarGHLCotizacionEnviada',
+  ()=>{
+    const m=appJS.match(/function yaLaEnvie\(\)\{[\s\S]*?\n\}/);
     return !!m && m[0].includes('notificarGHLCotizacionEnviada()');
   });
-test('Payload incluye telefono/cliente/folio', ()=>appJS.includes("telefono:v('cli-tel'), cliente:v('cli-nombre'), folio:(folioActual||'')"));
+test('yaLaEnvie() no hace nada si el botón está disabled (guarda de seguridad)',
+  ()=>/function yaLaEnvie\(\)\{\s*var btn=g\('btn-ya-envie'\);\s*if\(!btn \|\| btn\.disabled\) return;/.test(appJS));
+test('btn-ya-envie tiene listener ligado a yaLaEnvie',
+  ()=>appJS.includes("g('btn-ya-envie');if(byeEl)byeEl.addEventListener('click',yaLaEnvie)"));
+test('limpiarTodo() resetea btn-ya-envie a deshabilitado',
+  ()=>/bye\.disabled=true;bye\.classList\.remove\('enabled','done'\)/.test(appJS));
 
 // ══════════════════════════════════════════════════════════
 console.log('\n=== 11. PENDIENTES (no deben fallar) ===');

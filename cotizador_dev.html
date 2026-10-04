@@ -365,6 +365,28 @@ input:focus,select:focus{
 }
 .bcopy.done{background:#128C7E}
 
+/* Botón "Ya la envié" — empieza deshabilitado/gris, se activa tras Copiar */
+.byaenvie{
+  width:100%;
+  padding:13px;
+  background:#d7dbe0;
+  color:#8a8f96;
+  border:none;
+  border-radius:8px;
+  font-size:15px;
+  font-weight:700;
+  cursor:not-allowed;
+  margin-top:8px;
+  transition:all .15s;
+}
+.byaenvie.enabled{
+  background:var(--val-dark-blue);
+  color:var(--white);
+  cursor:pointer;
+}
+.byaenvie.enabled:hover{background:#00247a}
+.byaenvie.done{background:#128C7E;color:var(--white);cursor:default}
+
 .bpdf{
   width:100%;
   padding:13px;
@@ -563,6 +585,7 @@ input:focus,select:focus{
     <pre class="wa" id="wt" style="white-space:pre-wrap;font-family:inherit;margin:0">Agrega productos para generar el mensaje...</pre>
     <button id="btn-guardar">Guardar en historial</button>
     <button class="bcopy" id="bcp">Copiar para WhatsApp</button>
+    <button class="byaenvie" id="btn-ya-envie" disabled>✅ Ya la envié</button>
     <button id="btn-pdf" class="bpdf">📄 Generar PDF</button>
     <button id="btn-nueva" style="width:100%;margin-top:8px;padding:13px;background:#fff;color:#111;border:1.5px solid #111;border-radius:9px;font-size:15px;font-weight:600;cursor:pointer">Nueva cotización</button>
   </div>
@@ -1901,6 +1924,9 @@ function limpiarTodo(skipConfirm){
   // Reset botón guardar
   var btn=g('btn-guardar');
   if(btn){btn.textContent='Guardar en historial';btn.disabled=false;btn.style.background='';btn.style.color='';}
+  // Reset botón "Ya la envié" — vuelve a deshabilitado hasta que se copie de nuevo
+  var bye=g('btn-ya-envie');
+  if(bye){bye.disabled=true;bye.classList.remove('enabled','done');bye.textContent='✅ Ya la envié';}
   // Render todo
   renderTallerItems();
   renderCarrito();
@@ -2306,16 +2332,36 @@ function copiar(){
     setTab('cotizacion');
     return;
   }
-  notificarGHLCotizacionEnviada();
   var wt=g('wt'); if(!wt) return;
   var btn=g('bcp');
-  function ok(){if(btn){btn.textContent='¡Copiado!';btn.classList.add('done');setTimeout(function(){btn.textContent='Copiar para WhatsApp';btn.classList.remove('done');},2000);}}
+  function ok(){
+    if(btn){btn.textContent='¡Copiado!';btn.classList.add('done');setTimeout(function(){btn.textContent='Copiar para WhatsApp';btn.classList.remove('done');},2000);}
+    habilitarYaLaEnvie();
+  }
   if(navigator.clipboard){navigator.clipboard.writeText(wt.textContent).then(ok).catch(function(){fb(wt.textContent);ok();});}
   else{fb(wt.textContent);ok();}
 }
+// Activa el botón "Ya la envié" (visual, no bloqueante) una vez que el asesor
+// ya copió el texto. No dispara ningún aviso por sí solo.
+function habilitarYaLaEnvie(){
+  var bye=g('btn-ya-envie');
+  if(bye){bye.disabled=false;bye.classList.add('enabled');}
+}
+// Se dispara SOLO cuando el asesor confirma que sí mandó la cotización por
+// WhatsApp. Separado de "Copiar" a propósito: copiar el texto no garantiza que
+// se haya enviado (caso real: asesor copia por costumbre pero cierra el trato
+// por teléfono y nunca pega el texto — el aviso a GHL no debe dispararse ahí).
+function yaLaEnvie(){
+  var btn=g('btn-ya-envie');
+  if(!btn || btn.disabled) return;
+  notificarGHLCotizacionEnviada();
+  btn.textContent='✅ ¡Aviso enviado!';
+  btn.classList.add('done');
+  setTimeout(function(){btn.textContent='✅ Ya la envié';btn.classList.remove('done');},2500);
+}
 // Avisa a GHL (vía n8n) que esta cotización se envió, para disparar el workflow de
 // recordatorios allá (tag "cotizacion-enviada"). Fire-and-forget: nunca bloquea ni
-// interrumpe el copiado si falla. No se envía nada en MODO_PRUEBA.
+// interrumpe si falla. No se envía nada en MODO_PRUEBA.
 function notificarGHLCotizacionEnviada(){
   if(MODO_PRUEBA) return;
   try{
@@ -2379,6 +2425,7 @@ window.addEventListener('load',function(){
   var qgEl=g('qg');if(qgEl)qgEl.addEventListener('change',function(){ actualizarMarcas(v('qm').toUpperCase().replace(/\s/g,'')); buscar(); });
   var mgEl=g('mg');if(mgEl){mgEl.addEventListener('input',recalcPVP);mgEl.addEventListener('change',recalcPVP);mgEl.addEventListener('keyup',recalcPVP);}
   var bcpEl=g('bcp');if(bcpEl)bcpEl.addEventListener('click',copiar);
+  var byeEl=g('btn-ya-envie');if(byeEl)byeEl.addEventListener('click',yaLaEnvie);
   var bgEl=g('btn-guardar');if(bgEl)bgEl.addEventListener('click',guardarCotizacion);
   var bpdfEl=g('btn-pdf');if(bpdfEl)bpdfEl.addEventListener('click',generarPDF);
   var bnEl=g('btn-nueva');if(bnEl)bnEl.addEventListener('click',function(){limpiarTodo();});
