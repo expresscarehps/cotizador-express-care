@@ -166,6 +166,36 @@ test('btn-ya-envie tiene listener ligado a yaLaEnvie',
 test('limpiarTodo() resetea btn-ya-envie a deshabilitado',
   ()=>/bye\.disabled=true;bye\.classList\.remove\('enabled','done'\)/.test(appJS));
 
+// ── Candado de "Nueva cotización" ──
+test('Botón Nueva cotización usa nuevaCotizacionConCandado',
+  ()=>appJS.includes("g('btn-nueva');if(bnEl)bnEl.addEventListener('click',nuevaCotizacionConCandado)"));
+test('yaLaEnvie marca avisoGHLPresionado=true',
+  ()=>{const m=appJS.match(/function yaLaEnvie\(\)\{[\s\S]*?\n\}/);return !!m&&m[0].includes('avisoGHLPresionado=true');});
+test('limpiarTodo resetea avisoGHLPresionado=false',
+  ()=>{const m=appJS.match(/function limpiarTodo\(skipConfirm\)\{[\s\S]*?\n\}/);return !!m&&m[0].includes('avisoGHLPresionado=false');});
+(function(){
+  const realGet=document.getElementById, realConfirm=global.confirm, realLimpiar=limpiarTodo;
+  let calls, confirmMsg, confirmAns;
+  function setup(byeState, presionado, ans){
+    calls=[]; confirmMsg=null; confirmAns=ans;
+    document.getElementById=id=>id==='btn-ya-envie'?byeState:null;
+    global.confirm=m=>{confirmMsg=m;return confirmAns;};
+    limpiarTodo=function(skip){calls.push(skip?'limpiar(true)':'limpiar()');};
+    avisoGHLPresionado=presionado;
+  }
+  function restore(){document.getElementById=realGet;global.confirm=realConfirm;limpiarTodo=realLimpiar;avisoGHLPresionado=false;}
+  test('Candado: copiado y SIN presionar "Ya la envié" => pregunta',
+    ()=>{setup({disabled:false},false,false);nuevaCotizacionConCandado();const ok=confirmMsg&&confirmMsg.includes('Ya la envié');restore();return !!ok;});
+  test('Candado: si cancela => NO borra',
+    ()=>{setup({disabled:false},false,false);nuevaCotizacionConCandado();const ok=calls.length===0;restore();return ok;});
+  test('Candado: si acepta => borra una sola vez (sin segundo confirm)',
+    ()=>{setup({disabled:false},false,true);nuevaCotizacionConCandado();const ok=calls.length===1&&calls[0]==='limpiar(true)';restore();return ok;});
+  test('Candado: ya presionó "Ya la envié" => NO pregunta, flujo normal',
+    ()=>{setup({disabled:false},true,true);nuevaCotizacionConCandado();const ok=confirmMsg===null&&calls[0]==='limpiar()';restore();return ok;});
+  test('Candado: nunca copió (botón deshabilitado) => NO pregunta',
+    ()=>{setup({disabled:true},false,true);nuevaCotizacionConCandado();const ok=confirmMsg===null&&calls[0]==='limpiar()';restore();return ok;});
+})();
+
 // ══════════════════════════════════════════════════════════
 console.log('\n=== 11. PENDIENTES (no deben fallar) ===');
 test('PDF pendiente — ok',               ()=>true);

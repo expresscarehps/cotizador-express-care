@@ -1927,6 +1927,7 @@ function limpiarTodo(skipConfirm){
   // Reset botón "Ya la envié" — vuelve a deshabilitado hasta que se copie de nuevo
   var bye=g('btn-ya-envie');
   if(bye){bye.disabled=true;bye.classList.remove('enabled','done');bye.textContent='✅ Ya la envié';}
+  avisoGHLPresionado=false;
   // Render todo
   renderTallerItems();
   renderCarrito();
@@ -2351,9 +2352,26 @@ function habilitarYaLaEnvie(){
 // WhatsApp. Separado de "Copiar" a propósito: copiar el texto no garantiza que
 // se haya enviado (caso real: asesor copia por costumbre pero cierra el trato
 // por teléfono y nunca pega el texto — el aviso a GHL no debe dispararse ahí).
+var avisoGHLPresionado=false;
+// Candado de "Nueva cotización": si el asesor ya copió el texto (botón "Ya la envié"
+// habilitado) pero NO lo presionó, se le pregunta antes de borrar todo, para que no
+// pierda el aviso a GHL por olvido. Si nunca copió (trato cerrado por teléfono), no
+// pregunta nada.
+function nuevaCotizacionConCandado(){
+  var bye=g('btn-ya-envie');
+  if(bye && !bye.disabled && !avisoGHLPresionado){
+    if(!confirm('⚠️ Copiaste la cotización pero NO has presionado "✅ Ya la envié".\n\n' +
+                'Si ya se la mandaste al cliente, cancela y presiona "✅ Ya la envié" para activar su seguimiento.\n\n' +
+                'Si NO se la mandaste (por ejemplo, cerraste el trato por teléfono), acepta para iniciar una cotización nueva.')) return;
+    limpiarTodo(true);
+    return;
+  }
+  limpiarTodo();
+}
 function yaLaEnvie(){
   var btn=g('btn-ya-envie');
   if(!btn || btn.disabled) return;
+  avisoGHLPresionado=true;
   notificarGHLCotizacionEnviada();
   btn.textContent='✅ ¡Aviso enviado!';
   btn.classList.add('done');
@@ -2428,7 +2446,7 @@ window.addEventListener('load',function(){
   var byeEl=g('btn-ya-envie');if(byeEl)byeEl.addEventListener('click',yaLaEnvie);
   var bgEl=g('btn-guardar');if(bgEl)bgEl.addEventListener('click',guardarCotizacion);
   var bpdfEl=g('btn-pdf');if(bpdfEl)bpdfEl.addEventListener('click',generarPDF);
-  var bnEl=g('btn-nueva');if(bnEl)bnEl.addEventListener('click',function(){limpiarTodo();});
+  var bnEl=g('btn-nueva');if(bnEl)bnEl.addEventListener('click',nuevaCotizacionConCandado);
   var batEl=g('btn-add-tarifa');if(batEl)batEl.addEventListener('click',agregarTarifa);
   var bstEl=g('btn-save-tarifas');if(bstEl)bstEl.addEventListener('click',guardarConfigTarifas);
   renderConfigTarifas();
