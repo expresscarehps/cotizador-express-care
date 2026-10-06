@@ -430,6 +430,22 @@ input:focus,select:focus{
   transition:all .15s;
 }
 #btn-add-taller:hover{background:var(--val-light-blue);color:var(--white);border-color:var(--val-light-blue)}
+
+/* ── CAPA FIREBASE (historial + respaldo) — bloque aditivo ── */
+.fb-chip{font-size:11px;padding:5px 10px;border:1px solid #888;border-radius:6px;background:#fff;color:#444;cursor:pointer;margin-left:auto}
+.fb-chip.ok{border-color:#16a34a;color:#166534}
+.fb-chip.off{border-color:#dc2626;color:#b91c1c}
+#p-historial input[type=search],#p-historial input[type=password],#p-historial input[type=email]{width:100%;padding:9px 10px;font-size:14px;border:1.5px solid #ddd;border-radius:7px;margin:6px 0}
+#p-historial button.fb-btn{padding:8px 14px;font-size:13px;border:1.5px solid #111;border-radius:7px;background:#111;color:#fff;cursor:pointer;margin:4px 6px 4px 0}
+#p-historial button.fb-btn.sec{background:#fff;color:#444;border-color:#bbb}
+#fb-res .fb-row{border-bottom:1px solid #eee;padding:9px 2px}
+#fb-res .fb-l1{font-size:14px}
+#fb-res .fb-l2{font-size:12px;color:#555;margin-top:2px}
+#fb-res .fb-l3{font-size:12px;color:#777;margin-top:2px}
+#fb-res .fb-det{margin-top:5px;font-size:11px;padding:3px 9px;border:1px solid #1a56db;border-radius:6px;background:#fff;color:#1a56db;cursor:pointer}
+#fb-res .fb-part{margin-top:6px;overflow-x:auto}
+#fb-res .fb-part table{width:100%;border-collapse:collapse;font-size:12px}
+#fb-res .fb-part th,#fb-res .fb-part td{padding:3px 6px;border-bottom:1px solid #f0f0f0}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
@@ -454,6 +470,7 @@ input:focus,select:focus{
   <button class="tab" id="tab-taller" data-t="taller">Taller</button>
   <button class="tab" id="tab-cotizacion" data-t="cotizacion">Cotización</button>
   <button class="tab" id="tab-whatsapp" data-t="whatsapp">WhatsApp</button>
+  <button class="tab" id="tab-historial" data-t="historial">Historial</button>
   <button class="tab" id="tab-config" data-t="config">⚙ Config</button>
 </div>
 <div style="position:relative;padding:6px 12px;background:#f8f9fa;border-bottom:1px solid #eee;display:flex;gap:8px;align-items:center">
@@ -461,6 +478,7 @@ input:focus,select:focus{
   <button onclick="toggleBorradores()" style="font-size:11px;padding:5px 10px;border:1px solid #888;border-radius:6px;background:#fff;color:#444;cursor:pointer">
     📋 Borradores <span id="badge-borradores" style="background:#dc2626;color:#fff;border-radius:10px;padding:1px 6px;font-size:10px;margin-left:2px"></span>
   </button>
+  <button id="fb-chip" class="fb-chip off" type="button">☁ Firebase: iniciar sesión</button>
   <div id="borradores-dropdown" style="display:none;position:absolute;top:38px;left:12px;right:12px;z-index:200;background:#f8f9fa;border:1px solid #ddd;border-radius:8px;padding:10px;box-shadow:0 4px 12px rgba(0,0,0,0.15);max-height:400px;overflow-y:auto">
     <div id="panel-borradores"><div style="font-size:12px;color:#888;padding:8px">No hay borradores guardados</div></div>
   </div>
@@ -588,6 +606,28 @@ input:focus,select:focus{
     <button class="byaenvie" id="btn-ya-envie" disabled>✅ Ya la envié</button>
     <button id="btn-pdf" class="bpdf">📄 Generar PDF</button>
     <button id="btn-nueva" style="width:100%;margin-top:8px;padding:13px;background:#fff;color:#111;border:1.5px solid #111;border-radius:9px;font-size:15px;font-weight:600;cursor:pointer">Nueva cotización</button>
+  </div>
+</div>
+
+<!-- HISTORIAL (Firebase) -->
+<div id="p-historial" class="pnl">
+  <div class="card">
+    <p class="st">Historial de cotizaciones</p>
+    <div id="fb-sdk-error" style="display:none"><p class="hint">No se pudo cargar Firebase (revisa la conexión a internet y recarga la página). El cotizador sigue funcionando normal; solo falta el historial y el respaldo.</p></div>
+    <div id="fb-login" style="display:none">
+      <p class="hint">Entra con la cuenta compartida del cotizador para consultar el historial y respaldar cada cotización en Firebase.</p>
+      <input id="fb-email" type="email" value="citas@expresscarecuu.com" readonly>
+      <input id="fb-pass" type="password" placeholder="Contraseña" autocomplete="current-password">
+      <button id="fb-entrar" class="fb-btn" type="button">Entrar</button>
+      <p id="fb-msg" class="hint"></p>
+    </div>
+    <div id="fb-hist" style="display:none">
+      <input id="fb-q" type="search" placeholder="Buscar por nombre, teléfono, vehículo o folio" autocomplete="off">
+      <p id="fb-estado" class="hint"></p>
+      <div id="fb-res"></div>
+      <button id="fb-mas" class="fb-btn sec" type="button" style="display:none">Mostrar más</button>
+      <button id="fb-salir" class="fb-btn sec" type="button">Cerrar sesión</button>
+    </div>
   </div>
 </div>
 
@@ -2577,5 +2617,282 @@ window.addEventListener('load',function(){
 
 </script>
 
+<script>
+// ═══ CAPA FIREBASE — bloque ADITIVO ═══════════════════════════════════════════
+// No modifica ninguna función existente: la envuelve y delega. El flujo actual
+// (Apps Script → Sheet / Drive / folio) sigue igual; esta capa solo AGREGA:
+//   1) login con la cuenta compartida (Firebase Auth, correo + contraseña)
+//   2) respaldo en paralelo de cada cotización guardada en Firestore (colección "cotizaciones")
+//   3) pestaña "Historial" con búsqueda por nombre, teléfono, vehículo o folio
+// Si Firebase falla o no hay sesión, el cotizador sigue funcionando igual y solo avisa.
+// En MODO_PRUEBA (?test=1) NO escribe nada en Firestore.
+(function(){
+  var FB_CONFIG = {
+    apiKey: "AIzaSyAzmKJy-6o2VYOazxlp4_h6BSFB5ptTq28",
+    authDomain: "express-care-cotizador.firebaseapp.com",
+    projectId: "express-care-cotizador",
+    storageBucket: "express-care-cotizador.firebasestorage.app",
+    messagingSenderId: "34080775701",
+    appId: "1:34080775701:web:1d4b5a0172a0b6869df81c"
+  };
+  var FB_EMAIL = 'citas@expresscarecuu.com';
+  var FB_SDK = 'https://www.gstatic.com/firebasejs/10.14.1/';
+  var COL = 'cotizaciones';
+  var MAX_DOCS = 5000;
+  var POR_PAGINA = 50;
+
+  var api = null;          // se llena cuando carga el SDK de Firebase
+  var usuario = null;      // usuario con sesión iniciada (o null)
+  var sdkError = false;    // true si no se pudo cargar el SDK
+  var cache = [];          // historial en memoria
+  var cacheListo = false;
+  var cacheError = '';
+  var datosPend = null;    // últimos datos armados que aún no se respaldan
+  var mostrar = POR_PAGINA;
+  var detener = null;      // función para dejar de escuchar el historial
+
+  // ── utilidades puras (se prueban en test_firebase.js) ─────────────────────
+  function sinAcentos(s){ return String(s==null?'':s).normalize('NFD').replace(/[̀-ͯ]/g,''); }
+  function normBusq(s){ return sinAcentos(s).toLowerCase().replace(/\s+/g,' ').trim(); }
+  function soloDigitos(s){ return String(s==null?'':s).replace(/\D/g,''); }
+  function aNum(s){
+    if(s===''||s==null) return null;
+    var n=parseFloat(String(s).replace(/[$,]/g,''));
+    return isNaN(n)?null:n;
+  }
+  function esc(s){
+    return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+  // Hora de Chihuahua (UTC-6 todo el año) como texto ISO; ordena bien como texto.
+  function fechaISOChihuahua(d){
+    d = d || new Date();
+    return new Date(d.getTime()-6*3600000).toISOString().slice(0,19)+'-06:00';
+  }
+  function fechaLegible(iso){
+    var m=/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(iso||'');
+    return m ? (m[3]+'/'+m[2]+'/'+m[1]+' '+m[4]+':'+m[5]) : (iso||'');
+  }
+  function dinero(n){
+    if(n==null||isNaN(n)) return '—';
+    return '$'+Number(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');
+  }
+  function nuevoId(ahora, rnd){
+    var t=fechaISOChihuahua(ahora).slice(0,19).replace(/[-:T]/g,'');
+    var r=rnd||Math.random().toString(36).slice(2,6);
+    return 'web-'+t+'-'+r;
+  }
+  function fuenteApp(){
+    var p=(typeof window!=='undefined'&&window.location&&window.location.pathname)||'';
+    return /cotizador_dev/.test(p)?'dev':'prod';
+  }
+  // Convierte los datos que arma el cotizador (los mismos que van al Sheet) al documento de Firestore.
+  // Mismas reglas que la migración del historial: números reales, "M.O." → manoDeObra,
+  // "(opcional)" → opcional sin subtotal, teléfono solo dígitos.
+  function armarDocumento(datos, folio, ahora){
+    var tel=soloDigitos(datos.telefono); if(tel==='0') tel='';
+    var cliente=String(datos.cliente||'').replace(/\s+/g,' ').trim();
+    var partidas=(datos.items||[]).map(function(it){
+      var mg=String(it.margen==null?'':it.margen).trim();
+      var mo=(mg==='M.O.');
+      var sub=String(it.subtotal==null?'':it.subtotal).trim();
+      var opc=(sub==='(opcional)');
+      return {
+        tipo:String(it.tipo||'').trim(), proveedor:String(it.proveedor||'').trim(),
+        noParte:String(it.noParte||'').trim(), producto:String(it.producto||'').trim(),
+        cant:(aNum(it.cant)||1), costo:aNum(it.costo),
+        margenPct:(mo||mg==='')?null:aNum(mg), manoDeObra:mo,
+        precio:aNum(it.precio), subtotal:opc?null:aNum(sub), opcional:opc
+      };
+    });
+    return {
+      fecha:fechaISOChihuahua(ahora), asesor:String(datos.asesor||'').trim(),
+      cliente:cliente, clienteBusq:normBusq(cliente), telefono:tel,
+      vehiculo:String(datos.vehiculo||'').trim(), origen:String(datos.origen||'').trim(),
+      estatus:'', folio:folio||'', total:aNum(datos.total),
+      partidas:partidas, migrado:false, fuente:fuenteApp()
+    };
+  }
+  // Búsqueda: todas las palabras deben aparecer en nombre, vehículo, folio, asesor o teléfono.
+  function filtrar(lista, q){
+    var tokens=normBusq(q).split(' ').filter(Boolean).map(function(t){
+      return /^[\d\-().+]+$/.test(t) && soloDigitos(t).length>=3 ? soloDigitos(t) : t;
+    });
+    if(!tokens.length) return lista;
+    return lista.filter(function(d){
+      var h=d._h;
+      if(!h){ h=d._h=normBusq([d.cliente,d.vehiculo,d.folio,d.asesor].join(' '))+' '+soloDigitos(d.telefono); }
+      return tokens.every(function(t){ return h.indexOf(t)>=0; });
+    });
+  }
+
+  // ── interfaz ──────────────────────────────────────────────────────────────
+  function $(id){ return (typeof document!=='undefined'&&document.getElementById)?document.getElementById(id):null; }
+  function aviso(msg){ try{ if(typeof toast==='function') toast(msg); }catch(e){} }
+
+  function pintarEstado(){
+    var chip=$('fb-chip');
+    var texto, clase;
+    if(sdkError){ texto='☁ Firebase: sin conexión'; clase='fb-chip off'; }
+    else if(usuario){ texto='☁ Firebase: conectado'; clase='fb-chip ok'; }
+    else { texto='☁ Firebase: iniciar sesión'; clase='fb-chip off'; }
+    if(chip){ chip.textContent=texto; chip.className=clase; }
+    var login=$('fb-login'), hist=$('fb-hist'), err=$('fb-sdk-error');
+    if(login) login.style.display=(!usuario&&!sdkError)?'block':'none';
+    if(hist) hist.style.display=usuario?'block':'none';
+    if(err) err.style.display=sdkError?'block':'none';
+    if(usuario) pintarResultados();
+  }
+
+  function pintarResultados(){
+    var cont=$('fb-res'), est=$('fb-estado'), mas=$('fb-mas'), qEl=$('fb-q');
+    if(!cont) return;
+    if(cacheError){ if(est) est.textContent='No se pudo leer el historial: '+cacheError; cont.innerHTML=''; if(mas) mas.style.display='none'; return; }
+    if(!cacheListo){ if(est) est.textContent='Cargando historial…'; cont.innerHTML=''; if(mas) mas.style.display='none'; return; }
+    var q=qEl?qEl.value:'';
+    var res=filtrar(cache,q);
+    var vista=res.slice(0,mostrar);
+    if(est) est.textContent=(q.trim()?res.length+' coincidencia(s) de ':'')+cache.length+' cotizaciones en el historial'+(res.length>vista.length?' — mostrando '+vista.length:'');
+    cont.innerHTML=vista.map(function(d,i){
+      var partes=[fechaLegible(d.fecha)];
+      if(d.asesor) partes.push(esc(d.asesor));
+      if(d.folio) partes.push('<b>'+esc(d.folio)+'</b>');
+      var filas=(d.partidas||[]).map(function(p){
+        return '<tr><td>'+esc(p.producto)+(p.opcional?' <i>(opcional)</i>':'')+'</td><td style="text-align:right">'+esc(p.cant)+'</td><td style="text-align:right">'+dinero(p.precio)+'</td><td style="text-align:right">'+(p.opcional?'—':dinero(p.subtotal))+'</td></tr>';
+      }).join('');
+      return '<div class="fb-row">'+
+        '<div class="fb-l1"><b>'+esc(d.cliente||'Sin nombre')+'</b>'+(d.telefono?' · '+esc(d.telefono):' · <span style="color:#b91c1c">sin teléfono</span>')+'</div>'+
+        '<div class="fb-l2">'+esc(d.vehiculo||'')+(d.origen?' · '+esc(d.origen):'')+'</div>'+
+        '<div class="fb-l3">'+partes.join(' · ')+' · <b>'+dinero(d.total)+'</b></div>'+
+        '<button class="fb-det" data-i="'+i+'">Ver partidas</button>'+
+        '<div class="fb-part" id="fb-part-'+i+'" style="display:none"><table>'+
+        '<tr><th style="text-align:left">Producto</th><th>Cant</th><th>Precio</th><th>Subtotal</th></tr>'+filas+'</table></div>'+
+      '</div>';
+    }).join('') || '<p class="hint" style="padding:8px 0">Sin resultados.</p>';
+    if(mas) mas.style.display=(res.length>vista.length)?'inline-block':'none';
+  }
+
+  function mensajeLogin(txt){ var m=$('fb-msg'); if(m) m.textContent=txt||''; }
+  function errorLegible(e){
+    var c=(e&&e.code)||'';
+    if(/invalid-credential|wrong-password|invalid-login/.test(c)) return 'Contraseña incorrecta.';
+    if(/too-many-requests/.test(c)) return 'Demasiados intentos. Espera unos minutos e inténtalo de nuevo.';
+    if(/network/.test(c)) return 'Sin conexión a internet.';
+    if(/permission-denied/.test(c)) return 'Sin permiso (permission-denied).';
+    return 'No se pudo completar ('+(c||'error')+').';
+  }
+
+  // ── Firebase ──────────────────────────────────────────────────────────────
+  function escuchar(){
+    if(!api||detener) return;
+    cacheListo=false; cacheError='';
+    detener=api.escuchar(function(arr){ cache=arr; cacheListo=true; cacheError=''; pintarResultados(); },
+      function(e){ cacheError=errorLegible(e); pintarResultados(); });
+  }
+  function dejarDeEscuchar(){
+    if(detener){ try{detener();}catch(e){} detener=null; }
+    cache=[]; cacheListo=false; cacheError='';
+  }
+  function cargarFirebase(){
+    return Promise.all([import(FB_SDK+'firebase-app.js'),import(FB_SDK+'firebase-auth.js'),import(FB_SDK+'firebase-firestore.js')])
+    .then(function(m){
+      var app=m[0].initializeApp(FB_CONFIG), au=m[1], fs=m[2];
+      var auth=au.getAuth(app), db;
+      try{ db=fs.initializeFirestore(app,{localCache:fs.persistentLocalCache({tabManager:fs.persistentMultipleTabManager()})}); }
+      catch(e){ db=fs.getFirestore(app); }
+      api={
+        escribir:function(id,docu){ return fs.setDoc(fs.doc(db,COL,id),docu); },
+        entrar:function(pass){ return au.signInWithEmailAndPassword(auth,FB_EMAIL,pass); },
+        salir:function(){ return au.signOut(auth); },
+        escuchar:function(cb,errcb){
+          var q=fs.query(fs.collection(db,COL),fs.orderBy('fecha','desc'),fs.limit(MAX_DOCS));
+          return fs.onSnapshot(q,function(snap){
+            var arr=[]; snap.forEach(function(d){ var x=d.data(); x._id=d.id; arr.push(x); }); cb(arr);
+          },errcb);
+        }
+      };
+      au.onAuthStateChanged(auth,function(u){
+        usuario=u||null;
+        if(usuario) escuchar(); else dejarDeEscuchar();
+        pintarEstado();
+      });
+    })
+    .catch(function(e){ sdkError=true; try{console.warn('Firebase no cargó:',e);}catch(x){} pintarEstado(); });
+  }
+
+  // ── respaldo de cada cotización ───────────────────────────────────────────
+  function respaldar(folio){
+    var pend=datosPend; datosPend=null;
+    if(!pend) return null;                         // nada nuevo que respaldar
+    if(typeof MODO_PRUEBA!=='undefined' && MODO_PRUEBA){ aviso('🧪 PRUEBA — no se respaldó en Firebase'); return null; }
+    if(!api||!usuario){ aviso('⚠ No se respaldó en Firebase: inicia sesión en la pestaña Historial'); return null; }
+    var docu=armarDocumento(pend,folio), id=nuevoId();
+    return api.escribir(id,docu).then(function(){ aviso('☁ Respaldada en Firebase'); return id; })
+      .catch(function(e){ try{console.warn('Respaldo Firebase falló:',e);}catch(x){} aviso('⚠ No se pudo respaldar en Firebase ('+((e&&e.code)||'error')+')'); return null; });
+  }
+
+  // Envuelve las funciones existentes SIN tocar su código: capturan los datos que ya se
+  // arman para el Sheet y, cuando el guardado termina bien, los respaldan en Firestore.
+  function envolver(){
+    if(typeof armarDatosCotizacion==='function'){
+      var o1=armarDatosCotizacion;
+      armarDatosCotizacion=function(){ var d=o1.apply(this,arguments); datosPend=d; return d; };
+    }
+    if(typeof guardarCotizacion==='function'){
+      var o2=guardarCotizacion;
+      guardarCotizacion=function(onOk,onErr){
+        datosPend=null;
+        var ok=(typeof onOk==='function')?onOk:null, er=(typeof onErr==='function')?onErr:null;
+        return o2.call(this,
+          function(){ try{respaldar('');}catch(e){} if(ok) ok(); },
+          function(){ datosPend=null; if(er) er(); });
+      };
+    }
+    if(typeof construirYDescargarPDF==='function'){
+      var o3=construirYDescargarPDF;
+      construirYDescargarPDF=function(folio){ try{respaldar(folio||'');}catch(e){} return o3.apply(this,arguments); };
+    }
+  }
+
+  function conectarInterfaz(){
+    var chip=$('fb-chip'); if(chip) chip.addEventListener('click',function(){ if(typeof setTab==='function') setTab('historial'); });
+    var entrar=$('fb-entrar'), pass=$('fb-pass');
+    function intentar(){
+      if(!api){ mensajeLogin('Firebase aún no carga. Espera unos segundos.'); return; }
+      var p=pass?pass.value:''; if(!p){ mensajeLogin('Escribe la contraseña.'); return; }
+      mensajeLogin('Entrando…');
+      api.entrar(p).then(function(){ mensajeLogin(''); if(pass) pass.value=''; })
+        .catch(function(e){ mensajeLogin(errorLegible(e)); });
+    }
+    if(entrar) entrar.addEventListener('click',intentar);
+    if(pass) pass.addEventListener('keydown',function(e){ if(e.key==='Enter') intentar(); });
+    var salir=$('fb-salir'); if(salir) salir.addEventListener('click',function(){ if(api) api.salir(); });
+    var q=$('fb-q'); if(q) q.addEventListener('input',function(){ mostrar=POR_PAGINA; pintarResultados(); });
+    var mas=$('fb-mas'); if(mas) mas.addEventListener('click',function(){ mostrar+=POR_PAGINA; pintarResultados(); });
+    var res=$('fb-res');
+    if(res) res.addEventListener('click',function(e){
+      var b=e.target; if(!b||!b.classList||!b.classList.contains('fb-det')) return;
+      var p=$('fb-part-'+b.getAttribute('data-i'));
+      if(p){ var abierto=p.style.display!=='none'; p.style.display=abierto?'none':'block'; b.textContent=abierto?'Ver partidas':'Ocultar partidas'; }
+    });
+    pintarEstado();
+  }
+
+  envolver();
+  if(typeof window!=='undefined' && window.addEventListener){
+    window.addEventListener('load',function(){ conectarInterfaz(); cargarFirebase(); });
+  }
+
+  // Para pruebas automáticas (test_firebase.js)
+  if(typeof window!=='undefined'){
+    window.__fb={
+      armarDocumento:armarDocumento, filtrar:filtrar, normBusq:normBusq, soloDigitos:soloDigitos,
+      fechaISOChihuahua:fechaISOChihuahua, fechaLegible:fechaLegible, nuevoId:nuevoId, dinero:dinero,
+      respaldar:respaldar, errorLegible:errorLegible,
+      _t:{ setEstado:function(a,u){ api=a; usuario=u; }, getPend:function(){ return datosPend; },
+           setCache:function(c){ cache=c; cacheListo=true; } }
+    };
+  }
+})();
+</script>
 
 </body></html>
