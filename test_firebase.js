@@ -337,4 +337,40 @@ async function parteB() {
     w.document.getElementById('fb-q').dispatchEvent(new w.Event('input'));
     ok('B6 "Sin resultados" cuando no hay coincidencias', /Sin resultados/.test(res.textContent));
   }
+  // B7: puerta de acceso (login al abrir la página)
+  {
+    const vis = (w, id) => w.document.getElementById(id).style.display;
+    // Firebase no cargó (jsdom sin import dinámico) → puerta con error y salida controlada
+    const { w } = abrir('');
+    await esperar(80);
+    ok('B7 sin sesión: la puerta tapa el cotizador', vis(w, 'fb-gate') === 'flex', vis(w, 'fb-gate'));
+    ok('B7 Firebase no cargó: ofrece Reintentar / Continuar sin respaldo', vis(w, 'fb-g-err') !== 'none' && vis(w, 'fb-g-form') === 'none');
+    w.document.getElementById('fb-g-seguir').click();
+    ok('B7 "Continuar sin respaldo" abre el cotizador', vis(w, 'fb-gate') === 'none');
+    // Firebase cargó, aún sin saber la sesión → "Verificando sesión…"
+    const b = abrir(''); await esperar(80);
+    b.w.__fb._t.setPuerta({ sdkError: false, authListo: false, omitido: false, usuario: null });
+    ok('B7 verificando sesión: sin formulario todavía', vis(b.w, 'fb-gate') === 'flex' && vis(b.w, 'fb-g-estado') === 'block' && vis(b.w, 'fb-g-form') === 'none');
+    // Firebase cargó y no hay sesión → formulario de contraseña
+    b.w.__fb._t.setPuerta({ authListo: true });
+    ok('B7 sin sesión: aparece el formulario de contraseña', vis(b.w, 'fb-gate') === 'flex' && vis(b.w, 'fb-g-form') === 'block' && vis(b.w, 'fb-g-err') === 'none');
+    // login con contraseña mala y buena (API simulada)
+    const llamadas = [];
+    b.w.__fb._t.setEstado({ entrar: p => { llamadas.push(p); return p === 'buena' ? Promise.resolve() : Promise.reject({ code: 'auth/invalid-credential' }); } }, null);
+    b.w.document.getElementById('fb-g-pass').value = '';
+    b.w.document.getElementById('fb-g-entrar').click();
+    ok('B7 contraseña vacía: pide escribirla y no llama a Firebase', /Escribe la contraseña/.test(b.w.document.getElementById('fb-g-msg').textContent) && llamadas.length === 0);
+    b.w.document.getElementById('fb-g-pass').value = 'mala';
+    b.w.document.getElementById('fb-g-entrar').click();
+    await esperar(20);
+    ok('B7 contraseña incorrecta: mensaje y la puerta sigue cerrada', /Contraseña incorrecta/.test(b.w.document.getElementById('fb-g-msg').textContent) && vis(b.w, 'fb-gate') === 'flex' && llamadas[0] === 'mala');
+    // sesión iniciada → la puerta se abre; cerrar sesión → vuelve a cerrarse
+    b.w.__fb._t.setPuerta({ usuario: { uid: 'u1' } });
+    ok('B7 con sesión: la puerta se abre', vis(b.w, 'fb-gate') === 'none');
+    b.w.__fb._t.setPuerta({ usuario: null });
+    ok('B7 al cerrar sesión: la puerta vuelve a cerrarse', vis(b.w, 'fb-gate') === 'flex');
+    // modo prueba: sin puerta
+    const t = abrir('?test=1'); await esperar(80);
+    ok('B7 ?test=1: no hay puerta', vis(t.w, 'fb-gate') === 'none');
+  }
 }

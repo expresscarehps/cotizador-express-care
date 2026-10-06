@@ -432,6 +432,12 @@ input:focus,select:focus{
 #btn-add-taller:hover{background:var(--val-light-blue);color:var(--white);border-color:var(--val-light-blue)}
 
 /* ── CAPA FIREBASE (historial + respaldo) — bloque aditivo ── */
+#fb-gate{position:fixed;inset:0;z-index:99999;background:#f4f4f5;display:flex;align-items:center;justify-content:center;padding:16px}
+#fb-gate .fb-g-card{background:#fff;border:1px solid #ddd;border-radius:12px;padding:22px 20px;width:100%;max-width:360px;box-shadow:0 6px 24px rgba(0,0,0,.12)}
+#fb-gate h2{margin:0 0 4px;font-size:18px}
+#fb-gate input{width:100%;padding:10px;font-size:15px;border:1.5px solid #ddd;border-radius:7px;margin:6px 0;box-sizing:border-box}
+#fb-gate button{padding:10px 14px;font-size:14px;border:1.5px solid #111;border-radius:8px;background:#111;color:#fff;cursor:pointer;margin:6px 6px 0 0}
+#fb-gate button.sec{background:#fff;color:#444;border-color:#bbb}
 .fb-chip{font-size:11px;padding:5px 10px;border:1px solid #888;border-radius:6px;background:#fff;color:#444;cursor:pointer;margin-left:auto}
 .fb-chip.ok{border-color:#16a34a;color:#166534}
 .fb-chip.off{border-color:#dc2626;color:#b91c1c}
@@ -606,6 +612,26 @@ input:focus,select:focus{
     <button class="byaenvie" id="btn-ya-envie" disabled>✅ Ya la envié</button>
     <button id="btn-pdf" class="bpdf">📄 Generar PDF</button>
     <button id="btn-nueva" style="width:100%;margin-top:8px;padding:13px;background:#fff;color:#111;border:1.5px solid #111;border-radius:9px;font-size:15px;font-weight:600;cursor:pointer">Nueva cotización</button>
+  </div>
+</div>
+
+<!-- PUERTA DE ACCESO (Firebase): el cotizador se abre hasta iniciar sesión -->
+<div id="fb-gate">
+  <div class="fb-g-card">
+    <h2>Cotizador Express Care</h2>
+    <p id="fb-g-estado" class="hint">Verificando sesión…</p>
+    <div id="fb-g-form" style="display:none">
+      <p class="hint">Inicia sesión para abrir el cotizador.</p>
+      <input id="fb-g-email" type="email" value="citas@expresscarecuu.com" readonly>
+      <input id="fb-g-pass" type="password" placeholder="Contraseña" autocomplete="current-password">
+      <button id="fb-g-entrar" type="button">Entrar</button>
+      <p id="fb-g-msg" class="hint"></p>
+    </div>
+    <div id="fb-g-err" style="display:none">
+      <p class="hint">No se pudo conectar con Firebase (revisa tu conexión a internet).</p>
+      <button id="fb-g-reint" type="button">Reintentar</button>
+      <button id="fb-g-seguir" class="sec" type="button">Continuar sin respaldo</button>
+    </div>
   </div>
 </div>
 
@@ -2644,6 +2670,8 @@ window.addEventListener('load',function(){
   var api = null;          // se llena cuando carga el SDK de Firebase
   var usuario = null;      // usuario con sesión iniciada (o null)
   var sdkError = false;    // true si no se pudo cargar el SDK
+  var authListo = false;   // true cuando Firebase ya informó si hay sesión o no
+  var omitido = false;     // true si eligió "Continuar sin respaldo" (solo si Firebase no cargó)
   var cache = [];          // historial en memoria
   var cacheListo = false;
   var cacheError = '';
@@ -2741,6 +2769,21 @@ window.addEventListener('load',function(){
     if(hist) hist.style.display=usuario?'block':'none';
     if(err) err.style.display=sdkError?'block':'none';
     if(usuario) pintarResultados();
+    pintarPuerta();
+  }
+
+  // Puerta de acceso: tapa el cotizador hasta que haya sesión (o modo prueba / "continuar sin respaldo")
+  function pintarPuerta(){
+    var g=$('fb-gate'); if(!g) return;
+    var libre=(typeof MODO_PRUEBA!=='undefined' && MODO_PRUEBA) || !!usuario || omitido;
+    g.style.display=libre?'none':'flex';
+    if(libre) return;
+    var cargando=!sdkError && !authListo;
+    var est=$('fb-g-estado'), form=$('fb-g-form'), er=$('fb-g-err');
+    if(est) est.style.display=cargando?'block':'none';
+    if(form) form.style.display=(!cargando&&!sdkError)?'block':'none';
+    if(er) er.style.display=sdkError?'block':'none';
+    if(!cargando&&!sdkError){ var p=$('fb-g-pass'); if(p&&p.focus){ try{p.focus();}catch(e){} } }
   }
 
   function pintarResultados(){
@@ -2811,7 +2854,7 @@ window.addEventListener('load',function(){
         }
       };
       au.onAuthStateChanged(auth,function(u){
-        usuario=u||null;
+        usuario=u||null; authListo=true;
         if(usuario) escuchar(); else dejarDeEscuchar();
         pintarEstado();
       });
@@ -2865,6 +2908,20 @@ window.addEventListener('load',function(){
     }
     if(entrar) entrar.addEventListener('click',intentar);
     if(pass) pass.addEventListener('keydown',function(e){ if(e.key==='Enter') intentar(); });
+    // puerta de acceso
+    var gE=$('fb-g-entrar'), gP=$('fb-g-pass');
+    function msgPuerta(t){ var m=$('fb-g-msg'); if(m) m.textContent=t||''; }
+    function intentarPuerta(){
+      if(!api){ msgPuerta('Firebase aún no carga. Espera unos segundos.'); return; }
+      var p=gP?gP.value:''; if(!p){ msgPuerta('Escribe la contraseña.'); return; }
+      msgPuerta('Entrando…');
+      api.entrar(p).then(function(){ msgPuerta(''); if(gP) gP.value=''; })
+        .catch(function(e){ msgPuerta(errorLegible(e)); });
+    }
+    if(gE) gE.addEventListener('click',intentarPuerta);
+    if(gP) gP.addEventListener('keydown',function(e){ if(e.key==='Enter') intentarPuerta(); });
+    var gR=$('fb-g-reint'); if(gR) gR.addEventListener('click',function(){ location.reload(); });
+    var gS=$('fb-g-seguir'); if(gS) gS.addEventListener('click',function(){ omitido=true; pintarEstado(); });
     var salir=$('fb-salir'); if(salir) salir.addEventListener('click',function(){ if(api) api.salir(); });
     var q=$('fb-q'); if(q) q.addEventListener('input',function(){ mostrar=POR_PAGINA; pintarResultados(); });
     var mas=$('fb-mas'); if(mas) mas.addEventListener('click',function(){ mostrar+=POR_PAGINA; pintarResultados(); });
@@ -2888,7 +2945,8 @@ window.addEventListener('load',function(){
       armarDocumento:armarDocumento, filtrar:filtrar, normBusq:normBusq, soloDigitos:soloDigitos,
       fechaISOChihuahua:fechaISOChihuahua, fechaLegible:fechaLegible, nuevoId:nuevoId, dinero:dinero,
       respaldar:respaldar, errorLegible:errorLegible,
-      _t:{ setEstado:function(a,u){ api=a; usuario=u; }, getPend:function(){ return datosPend; },
+      _t:{ setEstado:function(a,u){ api=a; usuario=u; authListo=true; pintarPuerta(); },
+           setPuerta:function(o){ if('authListo' in o) authListo=o.authListo; if('sdkError' in o) sdkError=o.sdkError; if('omitido' in o) omitido=o.omitido; if('usuario' in o) usuario=o.usuario; pintarEstado(); }, getPend:function(){ return datosPend; },
            setCache:function(c){ cache=c; cacheListo=true; } }
     };
   }
