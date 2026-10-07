@@ -228,7 +228,7 @@ async function parteB() {
   let JSDOM, VirtualConsole;
   try { JSDOM = require('jsdom').JSDOM; VirtualConsole = require('jsdom').VirtualConsole; }
   catch (e) { console.log('  ⏭ jsdom no instalado (npm i jsdom) — Parte B omitida'); skipped++; return; }
-  process.on('unhandledRejection', () => {});
+  process.on('unhandledRejection', e => { if (process.env.DBG) console.log('UNHANDLED', e && e.stack || e); });
 
   function abrir(query) {
     const fetchCalls = [];
@@ -391,5 +391,139 @@ async function parteB() {
     // modo prueba: sin puerta
     const t = abrir('?test=1'); await esperar(80);
     ok('B7 ?test=1: no hay puerta', vis(t.w, 'fb-gate') === 'none');
+  }
+  // B8: roles (superadministrador / administrador / usuario) y pestaña Usuarios
+  {
+    const vis = (w, id) => w.document.getElementById(id).style.display;
+    const txt = (w, id) => w.document.getElementById(id).textContent;
+    const SUPER = 'carlos.mtz@expresscarecuu.com';
+    // funciones puras
+    {
+      const { w } = abrir(''); const F = w.__fb;
+      ok('B8 superadministrador se reconoce por correo (aunque venga en mayúsculas)', F.resolverPerfil({ email: 'Carlos.Mtz@ExpressCareCUU.com' }, null).rol === 'superadministrador');
+      ok('B8 cuenta compartida = usuario', F.resolverPerfil({ email: 'citas@expresscarecuu.com' }, null).rol === 'usuario');
+      ok('B8 correo sin documento en usuarios = sin acceso', F.resolverPerfil({ email: 'ana@expresscarecuu.com' }, null) === null);
+      ok('B8 documento dado de baja = sin acceso', F.resolverPerfil({ email: 'ana@expresscarecuu.com' }, { activo: false, rol: 'usuario' }) === null);
+      ok('B8 documento activo rol administrador', F.resolverPerfil({ email: 'ana@expresscarecuu.com' }, { activo: true, rol: 'administrador', nombre: 'Ana' }).rol === 'administrador');
+      ok('B8 un rol raro cae a usuario (nunca sube de nivel)', F.resolverPerfil({ email: 'ana@expresscarecuu.com' }, { activo: true, rol: 'superadministrador' }).rol === 'usuario');
+      ok('B8 solo super y administrador administran', F.puedeAdministrar({ rol: 'superadministrador' }) && F.puedeAdministrar({ rol: 'administrador' }) && !F.puedeAdministrar({ rol: 'usuario' }) && !F.puedeAdministrar(null));
+      ok('B8 super asigna usuario y administrador; administrador solo usuario', F.rolesAsignables({ rol: 'superadministrador' }).join() === 'usuario,administrador' && F.rolesAsignables({ rol: 'administrador' }).join() === 'usuario');
+      ok('B8 nadie edita al superadministrador', !F.puedeEditarUsuario({ rol: 'superadministrador' }, { correo: SUPER, rol: 'usuario' }));
+      ok('B8 administrador no edita a otro administrador', !F.puedeEditarUsuario({ rol: 'administrador' }, { correo: 'b@x.com', rol: 'administrador' }) && F.puedeEditarUsuario({ rol: 'administrador' }, { correo: 'b@x.com', rol: 'usuario' }));
+      ok('B8 correoValido', F.correoValido('a@b.co') && !F.correoValido('a@b') && !F.correoValido('a b@c.com'));
+      const d = F.armarUsuario({ correo: SUPER }, { correo: ' Ana@X.com ', nombre: ' Ana ', rol: 'usuario' }, false, new Date('2026-10-06T18:00:00Z'));
+      ok('B8 armarUsuario: correo en minúsculas, activo, creado por', d.correo === 'ana@x.com' && d.nombre === 'Ana' && d.activo === true && d.creadoPor === SUPER && d.actualizadoPor === SUPER);
+      const d2 = F.armarUsuario({ correo: SUPER }, { correo: 'ana@x.com', nombre: 'Ana', rol: 'usuario', activo: false }, true, new Date());
+      ok('B8 armarUsuario al editar no reescribe creadoPor', !('creadoPor' in d2) && d2.activo === false);
+      const c = F.conCreador({ a: 1 }, { correo: 'a@x.com', nombre: 'A', rol: 'usuario' });
+      ok('B8 conCreador agrega quién guardó', c.creadoPor.correo === 'a@x.com' && c.creadoPor.rol === 'usuario');
+    }
+    // flujo de acceso con Firebase simulado
+    async function sesion(email, doc, opciones) {
+      const b = abrir(''); await esperar(80); const F = b.w.__fb; const o = opciones || {};
+      const lecturas = [];
+      const api = {
+        leerPerfil: m => { lecturas.push(m); return o.error ? Promise.reject({ code: o.error }) : Promise.resolve(doc); },
+        escuchar: () => () => {},
+        escucharUsuarios: cb => { cb(o.usuarios || []); return () => {}; },
+        guardarUsuario: (m, d) => { (o.guardados = o.guardados || []).push({ m, d }); return Promise.resolve(); },
+        escribir: (id, d) => { (o.escritos = o.escritos || []).push({ id, d }); return Promise.resolve(); }
+      };
+      F._t.setApi(api);
+      const u = { email, displayName: o.nombre || '', emailVerified: o.verificado !== false };
+      F._t.setPuerta({ sdkError: false }); F._t.setUsuario(u);
+      return { b, F, u, lecturas, o, api };
+    }
+    {
+      const s = await sesion(SUPER, null); await esperar(20); await s.F.verificarAcceso(s.u); await esperar(20);
+      ok('B8 super: entra sin leer la colección usuarios', s.lecturas.length === 0 && s.F._t.getPerfil().estado === 'ok');
+      ok('B8 super: la puerta se abre y ve la pestaña Usuarios', vis(s.b.w, 'fb-gate') === 'none' && vis(s.b.w, 'tab-usuarios') !== 'none');
+      ok('B8 super: aparece quién inició sesión y su rol', /Superadministrador/.test(txt(s.b.w, 'fb-quien')) && txt(s.b.w, 'fb-quien').indexOf(SUPER) >= 0);
+      const opts = Array.from(s.b.w.document.getElementById('fb-u-rol').options).map(x => x.value).join();
+      ok('B8 super puede dar de alta usuario y administrador', opts === 'usuario,administrador', opts);
+    }
+    {
+      const s = await sesion('citas@expresscarecuu.com', null); await s.F.verificarAcceso(s.u); await esperar(20);
+      ok('B8 cuenta compartida: entra, no ve Usuarios', vis(s.b.w, 'fb-gate') === 'none' && vis(s.b.w, 'tab-usuarios') === 'none' && s.lecturas.length === 0);
+    }
+    {
+      const s = await sesion('ana@expresscarecuu.com', { activo: true, rol: 'usuario', nombre: 'Ana' }); await s.F.verificarAcceso(s.u); await esperar(20);
+      ok('B8 usuario dado de alta: entra, lee su propio documento y no ve Usuarios', vis(s.b.w, 'fb-gate') === 'none' && s.lecturas[0] === 'ana@expresscarecuu.com' && vis(s.b.w, 'tab-usuarios') === 'none');
+    }
+    {
+      const s = await sesion('beto@expresscarecuu.com', { activo: true, rol: 'administrador', nombre: 'Beto' }, { usuarios: [{ _id: 'x@y.com', correo: 'x@y.com', nombre: 'X', rol: 'usuario', activo: true }, { _id: 'z@y.com', correo: 'z@y.com', nombre: 'Z', rol: 'administrador', activo: true }] });
+      await s.F.verificarAcceso(s.u); await esperar(20);
+      ok('B8 administrador: ve Usuarios y solo puede asignar rol Usuario', vis(s.b.w, 'tab-usuarios') !== 'none' && Array.from(s.b.w.document.getElementById('fb-u-rol').options).map(x => x.value).join() === 'usuario');
+      const lista = s.b.w.document.getElementById('fb-u-lista');
+      ok('B8 administrador: puede dar de baja a un usuario pero no a otro administrador', lista.querySelectorAll('.fb-u-tog').length === 1 && lista.querySelector('.fb-u-tog').getAttribute('data-c') === 'x@y.com' && lista.querySelectorAll('.fb-u-rolsel').length === 0);
+    }
+    {
+      const s = await sesion('intruso@gmail.com', null); await s.F.verificarAcceso(s.u); await esperar(20);
+      ok('B8 correo no registrado: la puerta sigue cerrada con mensaje claro', vis(s.b.w, 'fb-gate') === 'flex' && vis(s.b.w, 'fb-g-acceso') === 'block' && vis(s.b.w, 'fb-g-form') === 'none' && /no tiene acceso/.test(txt(s.b.w, 'fb-g-acceso-msg')) && /intruso@gmail\.com/.test(txt(s.b.w, 'fb-g-acceso-msg')));
+      ok('B8 sin acceso: no ve historial ni Usuarios', vis(s.b.w, 'fb-hist') === 'none' && vis(s.b.w, 'tab-usuarios') === 'none');
+      ok('B8 sin acceso: el chip lo dice', /sin acceso/.test(txt(s.b.w, 'fb-chip')));
+    }
+    {
+      const s = await sesion('baja@expresscarecuu.com', { activo: false, rol: 'usuario' }); await s.F.verificarAcceso(s.u); await esperar(20);
+      ok('B8 usuario dado de baja: no entra', vis(s.b.w, 'fb-gate') === 'flex' && vis(s.b.w, 'fb-g-acceso') === 'block');
+    }
+    {
+      const s = await sesion('nuevo@gmail.com', { activo: true, rol: 'usuario' }, { verificado: false }); await s.F.verificarAcceso(s.u); await esperar(20);
+      ok('B8 correo sin verificar: no entra aunque esté en la lista', vis(s.b.w, 'fb-gate') === 'flex' && s.lecturas.length === 0);
+    }
+    {
+      const s = await sesion('ana@expresscarecuu.com', null, { error: 'permission-denied' }); await s.F.verificarAcceso(s.u); await esperar(20);
+      ok('B8 error al verificar (p. ej. reglas sin publicar): puerta cerrada y mensaje con el código', vis(s.b.w, 'fb-gate') === 'flex' && /No se pudo verificar tu acceso/.test(txt(s.b.w, 'fb-g-acceso-msg')) && /permission-denied/.test(txt(s.b.w, 'fb-g-acceso-msg')));
+    }
+    {
+      const s = await sesion('ana@expresscarecuu.com', { activo: true, rol: 'usuario' }); await s.F.verificarAcceso(s.u); await esperar(20);
+      s.b.w.__fb._t.setUsuario(null); await s.F.verificarAcceso(null); await esperar(20);
+      ok('B8 cerrar sesión: vuelve la puerta con el botón de Google', vis(s.b.w, 'fb-gate') === 'flex' && vis(s.b.w, 'fb-g-form') === 'block' && vis(s.b.w, 'fb-g-acceso') === 'none');
+    }
+    // alta de usuarios desde la pestaña
+    {
+      const s = await sesion(SUPER, null, { usuarios: [{ _id: 'x@y.com', correo: 'x@y.com', nombre: 'X', rol: 'usuario', activo: true }] });
+      await s.F.verificarAcceso(s.u); await esperar(20);
+      const w = s.b.w, set = (id, v) => { w.document.getElementById(id).value = v; };
+      set('fb-u-correo', 'malcorreo'); set('fb-u-nombre', 'N'); w.document.getElementById('fb-u-agregar').click(); await esperar(10);
+      ok('B8 alta: correo inválido se rechaza', /correo válido/.test(txt(w, 'fb-u-msg')) && !s.o.guardados);
+      set('fb-u-correo', 'x@y.com'); w.document.getElementById('fb-u-agregar').click(); await esperar(10);
+      ok('B8 alta: correo repetido se rechaza', /ya está en la lista/.test(txt(w, 'fb-u-msg')) && !s.o.guardados);
+      set('fb-u-correo', SUPER); w.document.getElementById('fb-u-agregar').click(); await esperar(10);
+      ok('B8 alta: no se puede dar de alta al superadministrador', /acceso fijo/.test(txt(w, 'fb-u-msg')) && !s.o.guardados);
+      set('fb-u-correo', 'Nueva@ExpressCareCUU.com'); set('fb-u-nombre', 'Nueva Persona'); set('fb-u-rol', 'administrador');
+      w.document.getElementById('fb-u-agregar').click(); await esperar(20);
+      const g = s.o.guardados && s.o.guardados[0];
+      ok('B8 alta válida: guarda en usuarios/{correo en minúsculas} con rol y activo', g && g.m === 'nueva@expresscarecuu.com' && g.d.rol === 'administrador' && g.d.activo === true && g.d.creadoPor === SUPER, JSON.stringify(g));
+      ok('B8 alta válida: confirma y limpia el formulario', /ya puede entrar/.test(txt(w, 'fb-u-msg')) && w.document.getElementById('fb-u-correo').value === '');
+      // baja y cambio de rol
+      w.document.querySelector('#fb-u-lista .fb-u-tog').click(); await esperar(20);
+      const b2 = s.o.guardados[1];
+      ok('B8 dar de baja: guarda activo=false sin tocar el rol', b2 && b2.m === 'x@y.com' && b2.d.activo === false && b2.d.rol === 'usuario');
+      const sel = w.document.querySelector('#fb-u-lista .fb-u-rolsel'); sel.value = 'administrador'; sel.dispatchEvent(new w.Event('change', { bubbles: true })); await esperar(20);
+      const b3 = s.o.guardados[2];
+      ok('B8 cambio de rol (solo super): guarda el nuevo rol', b3 && b3.d.rol === 'administrador' && b3.d.activo === true);
+    }
+    {
+      const s = await sesion('beto@expresscarecuu.com', { activo: true, rol: 'administrador', nombre: 'Beto' }, { usuarios: [] });
+      await s.F.verificarAcceso(s.u); await esperar(20);
+      const w = s.b.w, set = (id, v) => { w.document.getElementById(id).value = v; };
+      const opt = w.document.createElement('option'); opt.value = 'administrador'; w.document.getElementById('fb-u-rol').appendChild(opt);   // simula manipular el selector
+      set('fb-u-correo', 'otro@gmail.com'); set('fb-u-nombre', 'Otro'); set('fb-u-rol', 'administrador');
+      w.document.getElementById('fb-u-agregar').click(); await esperar(20);
+      ok('B8 administrador no puede crear otro administrador (aunque manipulen el selector)', /No puedes asignar ese rol/.test(txt(w, 'fb-u-msg')) && !s.o.guardados);
+    }
+    // el respaldo anota quién guardó la cotización
+    {
+      const s = await sesion('ana@expresscarecuu.com', { activo: true, rol: 'usuario', nombre: 'Ana' }); await s.F.verificarAcceso(s.u); await esperar(20);
+      llenarYGuardar(s.b.w, 'btn-guardar'); await esperar(60);
+      const e = s.o.escritos && s.o.escritos[0];
+      ok('B8 el respaldo guarda creadoPor con correo, nombre y rol', e && e.d.creadoPor && e.d.creadoPor.correo === 'ana@expresscarecuu.com' && e.d.creadoPor.nombre === 'Ana' && e.d.creadoPor.rol === 'usuario', e && JSON.stringify(e.d.creadoPor));
+    }
+    {
+      const s = await sesion('intruso@gmail.com', null); await s.F.verificarAcceso(s.u); await esperar(20);
+      llenarYGuardar(s.b.w, 'btn-guardar'); await esperar(60);
+      ok('B8 sin acceso: no se escribe nada en Firestore', !s.o.escritos);
+    }
   }
 }

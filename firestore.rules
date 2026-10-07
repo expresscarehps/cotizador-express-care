@@ -1,0 +1,78 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Identidad ───────────────────────────────────────────────
+    function logueado() {
+      return request.auth != null && request.auth.token.email != null;
+    }
+    function correo() {
+      return request.auth.token.email.lower();
+    }
+    // Superadministrador: fijo aquí para que nunca te quedes fuera
+    function esSuper() {
+      return logueado()
+        && request.auth.token.email_verified == true
+        && correo() == 'carlos.mtz@expresscarecuu.com';
+    }
+    // Cuenta compartida anterior (contraseña) — se quita cuando todos usen Google
+    function esCompartida() {
+      return logueado() && correo() == 'citas@expresscarecuu.com';
+    }
+    // Usuarios dados de alta en la colección "usuarios" (el ID del documento es el correo en minúsculas)
+    function perfilDoc() {
+      return get(/databases/$(database)/documents/usuarios/$(correo()));
+    }
+    function activo() {
+      return logueado()
+        && request.auth.token.email_verified == true
+        && exists(/databases/$(database)/documents/usuarios/$(correo()))
+        && perfilDoc().data.activo == true;
+    }
+    function esAdmin() {
+      return esSuper() || (activo() && perfilDoc().data.rol == 'administrador');
+    }
+    function esCotizador() {
+      return esSuper() || esCompartida() || activo();
+    }
+
+    // ── Colecciones del cotizador ───────────────────────────────
+    match /cotizaciones/{id} {
+      allow read, create, update: if esCotizador();
+      allow delete: if false;
+    }
+    match /folios/{id} {
+      allow read, write: if esCotizador();
+    }
+    match /tarifas/{id} {
+      allow read: if esCotizador();
+      allow write: if esAdmin() || esCompartida();
+    }
+
+    // ── Usuarios y roles ────────────────────────────────────────
+    // Superadministrador: administra a todos. Administrador: solo da de alta/baja
+    // a usuarios con rol "usuario". El superadministrador no se puede tocar.
+    match /usuarios/{id} {
+      allow get: if logueado() && (esAdmin() || correo() == id);
+      allow list: if esAdmin();
+      allow create: if esAdmin()
+        && request.resource.data.correo == id
+        && id == id.lower()
+        && id != 'carlos.mtz@expresscarecuu.com'
+        && (esSuper()
+              ? request.resource.data.rol in ['administrador', 'usuario']
+              : request.resource.data.rol == 'usuario');
+      allow update: if esAdmin()
+        && request.resource.data.correo == id
+        && (esSuper()
+              ? request.resource.data.rol in ['administrador', 'usuario']
+              : (resource.data.rol == 'usuario' && request.resource.data.rol == 'usuario'));
+      allow delete: if esSuper();
+    }
+
+    // Todo lo demás (catalogo_llantas, conversaciones_bot, etc.) queda cerrado al navegador
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

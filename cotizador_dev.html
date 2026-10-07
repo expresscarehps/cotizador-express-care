@@ -449,6 +449,15 @@ input:focus,select:focus{
 #fb-gate button:hover{background:#00247a}
 #fb-gate button.sec{background:var(--white);color:var(--val-dark-blue);border:1.5px solid var(--val-dark-blue)}
 #fb-gate #fb-g-msg{color:var(--val-red);min-height:18px}
+#fb-gate #fb-g-acceso-msg{color:var(--val-red)}
+#p-usuarios input[type=email],#p-usuarios input[type=text],#p-usuarios select{width:100%;padding:9px 10px;font-size:14px;border:1.5px solid #ddd;border-radius:7px;margin:6px 0;box-sizing:border-box;background:#fff}
+#p-usuarios button.fb-btn{padding:8px 14px;font-size:13px;border:1.5px solid #111;border-radius:7px;background:#111;color:#fff;cursor:pointer;margin:4px 6px 4px 0}
+#p-usuarios button.fb-btn.sec{background:#fff;color:#444;border-color:#bbb}
+#fb-u-lista .fb-u-row{border-bottom:1px solid #eee;padding:9px 2px}
+#fb-u-lista .fb-u-n{font-size:14px;font-weight:600}
+#fb-u-lista .fb-u-c{font-size:12px;color:#555}
+#fb-u-lista .fb-u-baja{color:#b91c1c;font-weight:600}
+#fb-u-lista select{width:auto;padding:4px 6px;font-size:12px;margin:4px 6px 4px 0}
 #fb-gate button.fb-g-google{background:var(--white);color:#3c4043;border:1.5px solid var(--val-light-gray);display:flex;align-items:center;justify-content:center;gap:10px;font-weight:600}
 #fb-gate button.fb-g-google:hover{background:#f7f8f8}
 #fb-gate button.fb-g-google svg{width:20px;height:20px;flex-shrink:0}
@@ -493,6 +502,7 @@ input:focus,select:focus{
   <button class="tab" id="tab-cotizacion" data-t="cotizacion">Cotización</button>
   <button class="tab" id="tab-whatsapp" data-t="whatsapp">WhatsApp</button>
   <button class="tab" id="tab-historial" data-t="historial">Historial</button>
+  <button class="tab" id="tab-usuarios" data-t="usuarios" style="display:none">Usuarios</button>
   <button class="tab" id="tab-config" data-t="config">⚙ Config</button>
 </div>
 <div style="position:relative;padding:6px 12px;background:#f8f9fa;border-bottom:1px solid #eee;display:flex;gap:8px;align-items:center">
@@ -653,6 +663,10 @@ input:focus,select:focus{
           <button id="fb-g-entrar" type="button">Entrar</button>
         </div>
       </div>
+      <div id="fb-g-acceso" style="display:none">
+        <p id="fb-g-acceso-msg" class="hint"></p>
+        <button id="fb-g-salir" class="sec" type="button">Cerrar sesión</button>
+      </div>
       <div id="fb-g-err" style="display:none">
         <p class="hint">No se pudo conectar con Firebase (revisa tu conexión a internet).</p>
         <button id="fb-g-reint" type="button">Reintentar</button>
@@ -675,12 +689,27 @@ input:focus,select:focus{
       <p id="fb-msg" class="hint"></p>
     </div>
     <div id="fb-hist" style="display:none">
+      <p id="fb-quien" class="hint"></p>
       <input id="fb-q" type="search" placeholder="Buscar por nombre, teléfono, vehículo o folio" autocomplete="off">
       <p id="fb-estado" class="hint"></p>
       <div id="fb-res"></div>
       <button id="fb-mas" class="fb-btn sec" type="button" style="display:none">Mostrar más</button>
       <button id="fb-salir" class="fb-btn sec" type="button">Cerrar sesión</button>
     </div>
+  </div>
+</div>
+
+<!-- USUARIOS (solo superadministrador / administrador) -->
+<div id="p-usuarios" class="pnl">
+  <div class="card">
+    <p class="st">Usuarios con acceso al cotizador</p>
+    <p class="hint">Cada persona entra con su cuenta de Google. Solo quien esté en esta lista puede entrar.</p>
+    <input id="fb-u-correo" type="email" placeholder="Correo de Google (ej. nombre@expresscarecuu.com)" autocomplete="off">
+    <input id="fb-u-nombre" type="text" placeholder="Nombre" autocomplete="off">
+    <select id="fb-u-rol"></select>
+    <button id="fb-u-agregar" class="fb-btn" type="button">Agregar usuario</button>
+    <p id="fb-u-msg" class="hint"></p>
+    <div id="fb-u-lista"></div>
   </div>
 </div>
 
@@ -2690,6 +2719,9 @@ window.addEventListener('load',function(){
   };
   var FB_EMAIL = 'citas@expresscarecuu.com';
   var FB_SDK = 'https://www.gstatic.com/firebasejs/10.14.1/';
+  var SUPER_EMAIL = 'carlos.mtz@expresscarecuu.com';   // superadministrador (fijo; también está fijo en las reglas de Firestore)
+  var COL_USR = 'usuarios';
+  var ROLES = { superadministrador:'Superadministrador', administrador:'Administrador', usuario:'Usuario' };
   var COL = 'cotizaciones';
   var MAX_DOCS = 5000;
   var POR_PAGINA = 50;
@@ -2698,6 +2730,10 @@ window.addEventListener('load',function(){
   var usuario = null;      // usuario con sesión iniciada (o null)
   var sdkError = false;    // true si no se pudo cargar el SDK
   var authListo = false;   // true cuando Firebase ya informó si hay sesión o no
+  var perfil = null;       // {correo,nombre,rol} cuando la cuenta SÍ tiene acceso
+  var perfilEstado = 'ninguno'; // ninguno | cargando | ok | sin-acceso | error
+  var perfilError = '';
+  var usuariosCache = [], usuariosListo = false, usuariosError = '', detenerUsuarios = null;
   var omitido = false;     // true si eligió "Continuar sin respaldo" (solo si Firebase no cargó)
   var cache = [];          // historial en memoria
   var cacheListo = false;
@@ -2743,7 +2779,32 @@ window.addEventListener('load',function(){
   // Convierte los datos que arma el cotizador (los mismos que van al Sheet) al documento de Firestore.
   // Mismas reglas que la migración del historial: números reales, "M.O." → manoDeObra,
   // "(opcional)" → opcional sin subtotal, teléfono solo dígitos.
-  function armarDocumento(datos, folio, ahora){
+  // Roles: superadministrador (fijo) · administrador · usuario. La seguridad real la ponen las reglas de Firestore.
+  function resolverPerfil(u, d){
+    var mail=String((u&&u.email)||'').trim().toLowerCase();
+    if(mail===SUPER_EMAIL) return {correo:mail,nombre:String((u&&u.displayName)||'Carlos'),rol:'superadministrador'};
+    if(mail===FB_EMAIL) return {correo:mail,nombre:'Cuenta compartida',rol:'usuario',compartida:true};
+    if(d && d.activo===true) return {correo:mail,nombre:String(d.nombre||(u&&u.displayName)||mail),rol:(d.rol==='administrador'?'administrador':'usuario')};
+    return null;
+  }
+  function puedeAdministrar(p){ return !!p && (p.rol==='superadministrador'||p.rol==='administrador'); }
+  function rolesAsignables(p){ return (p&&p.rol==='superadministrador')?['usuario','administrador']:['usuario']; }
+  function puedeEditarUsuario(p,u){
+    if(!p||!u) return false;
+    if(String(u.correo||'').toLowerCase()===SUPER_EMAIL) return false;
+    if(p.rol==='superadministrador') return true;
+    return p.rol==='administrador' && u.rol==='usuario';
+  }
+  function correoValido(c){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(c||'')); }
+  function armarUsuario(p, f, existe, ahora){
+    var correo=String(f.correo||'').trim().toLowerCase();
+    var d={ correo:correo, nombre:String(f.nombre||'').trim(), rol:f.rol, activo:(f.activo!==false),
+            actualizadoPor:(p&&p.correo)||'', actualizadoEn:fechaISOChihuahua(ahora) };
+    if(!existe){ d.creadoPor=(p&&p.correo)||''; d.creadoEn=d.actualizadoEn; }
+    return d;
+  }
+
+  function armarDocumento(datos, folio, ahora, quien){
     var tel=soloDigitos(datos.telefono); if(tel==='0') tel='';
     var cliente=String(datos.cliente||'').replace(/\s+/g,' ').trim();
     var partidas=(datos.items||[]).map(function(it){
@@ -2767,6 +2828,10 @@ window.addEventListener('load',function(){
       partidas:partidas, migrado:false, fuente:fuenteApp()
     };
   }
+  function conCreador(docu, quien){
+    if(quien) docu.creadoPor={correo:String(quien.correo||''),nombre:String(quien.nombre||''),rol:String(quien.rol||'')};
+    return docu;
+  }
   // Búsqueda: todas las palabras deben aparecer en nombre, vehículo, folio, asesor o teléfono.
   function filtrar(lista, q){
     var tokens=normBusq(q).split(' ').filter(Boolean).map(function(t){
@@ -2788,14 +2853,21 @@ window.addEventListener('load',function(){
     var chip=$('fb-chip');
     var texto, clase;
     if(sdkError){ texto='☁ Firebase: sin conexión'; clase='fb-chip off'; }
-    else if(usuario){ texto='☁ Firebase: conectado'; clase='fb-chip ok'; }
+    else if(perfil){ texto='☁ Firebase: conectado'; clase='fb-chip ok'; }
+    else if(usuario){ texto=(perfilEstado==='cargando')?'☁ Firebase: verificando acceso…':'☁ Firebase: sin acceso'; clase='fb-chip off'; }
     else { texto='☁ Firebase: iniciar sesión'; clase='fb-chip off'; }
     if(chip){ chip.textContent=texto; chip.className=clase; }
     var login=$('fb-login'), hist=$('fb-hist'), err=$('fb-sdk-error');
     if(login) login.style.display=(!usuario&&!sdkError)?'block':'none';
-    if(hist) hist.style.display=usuario?'block':'none';
+    if(hist) hist.style.display=perfil?'block':'none';
     if(err) err.style.display=sdkError?'block':'none';
-    if(usuario) pintarResultados();
+    var quien=$('fb-quien');
+    if(quien) quien.textContent=perfil?('Sesión: '+perfil.nombre+' ('+perfil.correo+') · '+(ROLES[perfil.rol]||perfil.rol)):'';
+    var tU=$('tab-usuarios'), pU=$('p-usuarios'), adm=puedeAdministrar(perfil);
+    if(tU) tU.style.display=adm?'':'none';
+    if(!adm && pU && pU.classList && pU.classList.contains('on') && typeof setTab==='function') setTab('historial');
+    if(adm) pintarUsuarios();
+    if(perfil) pintarResultados();
     pintarPuerta();
   }
 
@@ -2804,14 +2876,22 @@ window.addEventListener('load',function(){
     var g=$('fb-gate'); if(!g) return;
     var lg=$('fb-g-logo');
     if(lg && !lg.getAttribute('src')){ var orig=document.querySelector('.hdr .logo-img'); if(orig&&orig.getAttribute('src')) lg.setAttribute('src',orig.getAttribute('src')); }
-    var libre=(typeof MODO_PRUEBA!=='undefined' && MODO_PRUEBA) || !!usuario || omitido;
+    var libre=(typeof MODO_PRUEBA!=='undefined' && MODO_PRUEBA) || !!perfil || omitido;
     g.style.display=libre?'none':'flex';
     if(libre) return;
-    var cargando=!sdkError && !authListo;
-    var est=$('fb-g-estado'), form=$('fb-g-form'), er=$('fb-g-err');
+    var cargando=!sdkError && (!authListo || (!!usuario && perfilEstado==='cargando'));
+    var sinAcceso=!sdkError && authListo && !!usuario && !perfil && (perfilEstado==='sin-acceso'||perfilEstado==='error');
+    var est=$('fb-g-estado'), form=$('fb-g-form'), er=$('fb-g-err'), ac=$('fb-g-acceso'), acm=$('fb-g-acceso-msg');
     if(est) est.style.display=cargando?'block':'none';
-    if(form) form.style.display=(!cargando&&!sdkError)?'block':'none';
+    if(form) form.style.display=(!cargando&&!sdkError&&!usuario)?'block':'none';
     if(er) er.style.display=sdkError?'block':'none';
+    if(ac) ac.style.display=sinAcceso?'block':'none';
+    if(acm && sinAcceso){
+      var c=String((usuario&&usuario.email)||'');
+      acm.textContent=(perfilEstado==='error')
+        ? 'No se pudo verificar tu acceso ('+(perfilError||'error')+'). Recarga la página; si sigue igual, avisa a un administrador.'
+        : 'La cuenta '+c+' no tiene acceso al cotizador. Pide que te den de alta y vuelve a entrar.';
+    }
   }
 
   function pintarResultados(){
@@ -2867,6 +2947,95 @@ window.addEventListener('load',function(){
     if(detener){ try{detener();}catch(e){} detener=null; }
     cache=[]; cacheListo=false; cacheError='';
   }
+  // ── perfil y usuarios ─────────────────────────────────────────────────────
+  function dejarUsr(){
+    if(detenerUsuarios){ try{detenerUsuarios();}catch(e){} detenerUsuarios=null; }
+    usuariosCache=[]; usuariosListo=false; usuariosError='';
+  }
+  function escucharUsr(){
+    if(!api||detenerUsuarios||!api.escucharUsuarios) return;
+    usuariosListo=false; usuariosError='';
+    detenerUsuarios=api.escucharUsuarios(function(arr){ usuariosCache=arr; usuariosListo=true; usuariosError=''; pintarUsuarios(); },
+      function(e){ usuariosError=errorLegible(e); pintarUsuarios(); });
+  }
+  function despuesDeVerificar(){
+    if(perfil){ escuchar(); if(puedeAdministrar(perfil)) escucharUsr(); else dejarUsr(); }
+    else { dejarDeEscuchar(); dejarUsr(); }
+    pintarEstado();
+  }
+  // Decide si la cuenta con sesión tiene acceso. El superadministrador y la cuenta compartida
+  // se reconocen por correo; los demás deben estar activos en la colección "usuarios".
+  function verificarAcceso(u){
+    perfil=null; perfilError='';
+    if(!u){ perfilEstado='ninguno'; despuesDeVerificar(); return Promise.resolve(); }
+    var mail=String(u.email||'').trim().toLowerCase();
+    if(mail===SUPER_EMAIL || mail===FB_EMAIL){
+      perfil=resolverPerfil(u,null); perfilEstado=perfil?'ok':'sin-acceso'; despuesDeVerificar(); return Promise.resolve();
+    }
+    if(u.emailVerified===false){ perfilEstado='sin-acceso'; despuesDeVerificar(); return Promise.resolve(); }
+    if(!api||!api.leerPerfil){ perfilEstado='error'; perfilError='sin conexión'; despuesDeVerificar(); return Promise.resolve(); }
+    perfilEstado='cargando'; pintarEstado();
+    return api.leerPerfil(mail).then(function(d){
+      if(usuario!==u) return;                       // cambió la sesión mientras se verificaba
+      perfil=resolverPerfil(u,d); perfilEstado=perfil?'ok':'sin-acceso'; despuesDeVerificar();
+    }).catch(function(e){
+      if(usuario!==u) return;
+      perfil=null; perfilEstado='error'; perfilError=errorLegible(e); despuesDeVerificar();
+    });
+  }
+  function pintarUsuarios(){
+    var lista=$('fb-u-lista'), rol=$('fb-u-rol'); if(!lista) return;
+    if(rol){
+      var asig=rolesAsignables(perfil), act=rol.value;
+      rol.innerHTML=asig.map(function(r){ return '<option value="'+r+'">'+esc(ROLES[r])+'</option>'; }).join('');
+      if(act && asig.indexOf(act)>=0) rol.value=act;
+    }
+    var nota='<div class="fb-u-row"><div class="fb-u-n">'+esc(SUPER_EMAIL)+'</div><div class="fb-u-c">Superadministrador (fijo, no se puede modificar)</div></div>';
+    if(usuariosError){ lista.innerHTML=nota+'<p class="hint">No se pudo leer la lista: '+esc(usuariosError)+'</p>'; return; }
+    if(!usuariosListo){ lista.innerHTML=nota+'<p class="hint">Cargando usuarios…</p>'; return; }
+    var arr=usuariosCache.slice().sort(function(a,b){ return String(a.correo||a._id).localeCompare(String(b.correo||b._id)); });
+    lista.innerHTML=nota+arr.map(function(u){
+      var c=String(u.correo||u._id||'').toLowerCase(), edit=puedeEditarUsuario(perfil,u), activo=(u.activo===true);
+      var ctl='';
+      if(edit){
+        if(perfil.rol==='superadministrador'){
+          ctl+='<select data-c="'+esc(c)+'" class="fb-u-rolsel">'+['usuario','administrador'].map(function(r){ return '<option value="'+r+'"'+(u.rol===r?' selected':'')+'>'+esc(ROLES[r])+'</option>'; }).join('')+'</select>';
+        }
+        ctl+='<button type="button" class="fb-btn sec fb-u-tog" data-c="'+esc(c)+'" data-a="'+(activo?'baja':'alta')+'">'+(activo?'Dar de baja':'Reactivar')+'</button>';
+      }
+      return '<div class="fb-u-row"><div class="fb-u-n">'+esc(u.nombre||c)+(activo?'':' <span class="fb-u-baja">(de baja)</span>')+'</div>'+
+        '<div class="fb-u-c">'+esc(c)+' · '+esc(ROLES[u.rol]||u.rol||'')+'</div>'+ctl+'</div>';
+    }).join('');
+  }
+  function msgUsr(t){ var m=$('fb-u-msg'); if(m) m.textContent=t||''; }
+  function agregarUsuario(){
+    if(!puedeAdministrar(perfil)){ msgUsr('Sin permiso.'); return Promise.resolve(false); }
+    var c=String(($('fb-u-correo')||{}).value||'').trim().toLowerCase();
+    var n=String(($('fb-u-nombre')||{}).value||'').trim();
+    var r=String(($('fb-u-rol')||{}).value||'usuario');
+    if(!correoValido(c)){ msgUsr('Escribe un correo válido.'); return Promise.resolve(false); }
+    if(c===SUPER_EMAIL||c===FB_EMAIL){ msgUsr('Ese correo ya tiene acceso fijo.'); return Promise.resolve(false); }
+    if(!n){ msgUsr('Escribe el nombre.'); return Promise.resolve(false); }
+    if(rolesAsignables(perfil).indexOf(r)<0){ msgUsr('No puedes asignar ese rol.'); return Promise.resolve(false); }
+    if(!usuariosListo){ msgUsr('Espera a que cargue la lista.'); return Promise.resolve(false); }
+    if(usuariosCache.some(function(u){ return String(u.correo||u._id).toLowerCase()===c; })){ msgUsr('Ese correo ya está en la lista (usa Reactivar si está de baja).'); return Promise.resolve(false); }
+    msgUsr('Guardando…');
+    return api.guardarUsuario(c,armarUsuario(perfil,{correo:c,nombre:n,rol:r,activo:true},false)).then(function(){
+      msgUsr('Listo: '+c+' ya puede entrar con su cuenta de Google.');
+      var a=$('fb-u-correo'), b=$('fb-u-nombre'); if(a) a.value=''; if(b) b.value='';
+      return true;
+    }).catch(function(e){ msgUsr('No se pudo guardar: '+errorLegible(e)); return false; });
+  }
+  function cambiarUsuario(correo, cambios){
+    var u=usuariosCache.filter(function(x){ return String(x.correo||x._id).toLowerCase()===correo; })[0];
+    if(!u||!puedeEditarUsuario(perfil,u)){ msgUsr('Sin permiso.'); return Promise.resolve(false); }
+    var f={correo:correo,nombre:u.nombre,rol:('rol' in cambios?cambios.rol:u.rol),activo:('activo' in cambios?cambios.activo:u.activo===true)};
+    if(rolesAsignables(perfil).indexOf(f.rol)<0 && f.rol!==u.rol){ msgUsr('No puedes asignar ese rol.'); return Promise.resolve(false); }
+    msgUsr('Guardando…');
+    return api.guardarUsuario(correo,armarUsuario(perfil,f,true)).then(function(){ msgUsr('Listo.'); return true; })
+      .catch(function(e){ msgUsr('No se pudo guardar: '+errorLegible(e)); return false; });
+  }
+
   function cargarFirebase(){
     return Promise.all([import(FB_SDK+'firebase-app.js'),import(FB_SDK+'firebase-auth.js'),import(FB_SDK+'firebase-firestore.js')])
     .then(function(m){
@@ -2879,6 +3048,13 @@ window.addEventListener('load',function(){
         entrar:function(pass){ return au.signInWithEmailAndPassword(auth,FB_EMAIL,pass); },
         entrarGoogle:function(){ var pr=new au.GoogleAuthProvider(); pr.setCustomParameters({prompt:'select_account'}); return au.signInWithPopup(auth,pr); },
         salir:function(){ return au.signOut(auth); },
+        leerPerfil:function(mail){ return fs.getDoc(fs.doc(db,COL_USR,mail)).then(function(sn){ return sn.exists()?sn.data():null; }); },
+        guardarUsuario:function(mail,docu){ return fs.setDoc(fs.doc(db,COL_USR,mail),docu,{merge:true}); },
+        escucharUsuarios:function(cb,errcb){
+          return fs.onSnapshot(fs.collection(db,COL_USR),function(snap){
+            var arr=[]; snap.forEach(function(d){ var x=d.data(); x._id=d.id; arr.push(x); }); cb(arr);
+          },errcb);
+        },
         escuchar:function(cb,errcb){
           var q=fs.query(fs.collection(db,COL),fs.orderBy('fecha','desc'),fs.limit(MAX_DOCS));
           return fs.onSnapshot(q,function(snap){
@@ -2888,8 +3064,7 @@ window.addEventListener('load',function(){
       };
       au.onAuthStateChanged(auth,function(u){
         usuario=u||null; authListo=true;
-        if(usuario) escuchar(); else dejarDeEscuchar();
-        pintarEstado();
+        verificarAcceso(usuario);
       });
     })
     .catch(function(e){ sdkError=true; try{console.warn('Firebase no cargó:',e);}catch(x){} pintarEstado(); });
@@ -2900,8 +3075,8 @@ window.addEventListener('load',function(){
     var pend=datosPend; datosPend=null;
     if(!pend) return null;                         // nada nuevo que respaldar
     if(typeof MODO_PRUEBA!=='undefined' && MODO_PRUEBA){ aviso('🧪 PRUEBA — no se respaldó en Firebase'); return null; }
-    if(!api||!usuario){ aviso('⚠ No se respaldó en Firebase: inicia sesión en la pestaña Historial'); return null; }
-    var docu=armarDocumento(pend,folio), id=nuevoId();
+    if(!api||!perfil){ aviso('⚠ No se respaldó en Firebase: inicia sesión en la pestaña Historial'); return null; }
+    var docu=conCreador(armarDocumento(pend,folio),perfil), id=nuevoId();
     return api.escribir(id,docu).then(function(){ aviso('☁ Respaldada en Firebase'); return id; })
       .catch(function(e){ try{console.warn('Respaldo Firebase falló:',e);}catch(x){} aviso('⚠ No se pudo respaldar en Firebase ('+((e&&e.code)||'error')+')'); return null; });
   }
@@ -2964,6 +3139,19 @@ window.addEventListener('load',function(){
     var gR=$('fb-g-reint'); if(gR) gR.addEventListener('click',function(){ location.reload(); });
     var gS=$('fb-g-seguir'); if(gS) gS.addEventListener('click',function(){ omitido=true; pintarEstado(); });
     var salir=$('fb-salir'); if(salir) salir.addEventListener('click',function(){ if(api) api.salir(); });
+    var gSal=$('fb-g-salir'); if(gSal) gSal.addEventListener('click',function(){ if(api) api.salir(); });
+    var uAg=$('fb-u-agregar'); if(uAg) uAg.addEventListener('click',function(){ agregarUsuario(); });
+    var uLi=$('fb-u-lista');
+    if(uLi){
+      uLi.addEventListener('click',function(e){
+        var b=e.target; if(!b||!b.classList||!b.classList.contains('fb-u-tog')) return;
+        cambiarUsuario(b.getAttribute('data-c'),{activo:b.getAttribute('data-a')==='alta'});
+      });
+      uLi.addEventListener('change',function(e){
+        var b=e.target; if(!b||!b.classList||!b.classList.contains('fb-u-rolsel')) return;
+        cambiarUsuario(b.getAttribute('data-c'),{rol:b.value});
+      });
+    }
     var q=$('fb-q'); if(q) q.addEventListener('input',function(){ mostrar=POR_PAGINA; pintarResultados(); });
     var mas=$('fb-mas'); if(mas) mas.addEventListener('click',function(){ mostrar+=POR_PAGINA; pintarResultados(); });
     var res=$('fb-res');
@@ -2986,9 +3174,18 @@ window.addEventListener('load',function(){
       armarDocumento:armarDocumento, filtrar:filtrar, normBusq:normBusq, soloDigitos:soloDigitos,
       fechaISOChihuahua:fechaISOChihuahua, fechaLegible:fechaLegible, nuevoId:nuevoId, dinero:dinero,
       respaldar:respaldar, errorLegible:errorLegible,
-      _t:{ setEstado:function(a,u){ api=a; usuario=u; authListo=true; pintarPuerta(); },
-           setPuerta:function(o){ if('authListo' in o) authListo=o.authListo; if('sdkError' in o) sdkError=o.sdkError; if('omitido' in o) omitido=o.omitido; if('usuario' in o) usuario=o.usuario; pintarEstado(); }, getPend:function(){ return datosPend; },
-           setCache:function(c){ cache=c; cacheListo=true; } }
+      resolverPerfil:resolverPerfil, puedeAdministrar:puedeAdministrar, rolesAsignables:rolesAsignables,
+      puedeEditarUsuario:puedeEditarUsuario, correoValido:correoValido, armarUsuario:armarUsuario, conCreador:conCreador,
+      verificarAcceso:verificarAcceso, agregarUsuario:agregarUsuario, cambiarUsuario:cambiarUsuario,
+      _t:{ setEstado:function(a,u){ api=a; usuario=u; perfil=u?(u.perfil||{correo:String(u.email||''),nombre:String(u.nombre||''),rol:String(u.rol||'usuario')}):null; perfilEstado=u?'ok':'ninguno'; authListo=true; pintarPuerta(); },
+           setPuerta:function(o){ if('authListo' in o) authListo=o.authListo; if('sdkError' in o) sdkError=o.sdkError; if('omitido' in o) omitido=o.omitido;
+             if('usuario' in o){ usuario=o.usuario; var u=o.usuario; perfil=u?(u.perfil||{correo:String(u.email||''),nombre:String(u.nombre||''),rol:String(u.rol||'usuario')}):null; perfilEstado=u?'ok':'ninguno'; }
+             if('perfilEstado' in o) perfilEstado=o.perfilEstado; if('perfilError' in o) perfilError=o.perfilError; if('perfil' in o) perfil=o.perfil;
+             pintarEstado(); }, getPend:function(){ return datosPend; },
+           setCache:function(c){ cache=c; cacheListo=true; },
+           setApi:function(a){ api=a; }, setUsuario:function(u){ usuario=u; authListo=true; },
+           getPerfil:function(){ return {perfil:perfil,estado:perfilEstado,error:perfilError}; },
+           setUsuarios:function(arr){ usuariosCache=arr; usuariosListo=true; usuariosError=''; pintarUsuarios(); } }
     };
   }
 })();
