@@ -449,6 +449,11 @@ input:focus,select:focus{
 #fb-gate button:hover{background:#00247a}
 #fb-gate button.sec{background:var(--white);color:var(--val-dark-blue);border:1.5px solid var(--val-dark-blue)}
 #fb-gate #fb-g-msg{color:var(--val-red);min-height:18px}
+#fb-gate button.fb-g-google{background:var(--white);color:#3c4043;border:1.5px solid var(--val-light-gray);display:flex;align-items:center;justify-content:center;gap:10px;font-weight:600}
+#fb-gate button.fb-g-google:hover{background:#f7f8f8}
+#fb-gate button.fb-g-google svg{width:20px;height:20px;flex-shrink:0}
+#fb-gate .fb-g-link{background:none;border:none;color:var(--val-dark-blue);font-size:13px;font-weight:600;text-decoration:underline;width:auto;padding:8px 0;margin-top:10px;cursor:pointer}
+#fb-gate .fb-g-link:hover{background:none}
 .fb-chip{font-size:11px;padding:5px 10px;border:1px solid #888;border-radius:6px;background:#fff;color:#444;cursor:pointer;margin-left:auto}
 .fb-chip.ok{border-color:#16a34a;color:#166534}
 .fb-chip.off{border-color:#dc2626;color:#b91c1c}
@@ -635,11 +640,18 @@ input:focus,select:focus{
       <h2>Iniciar sesión</h2>
       <p id="fb-g-estado" class="hint">Verificando sesión…</p>
       <div id="fb-g-form" style="display:none">
-        <p class="hint">Entra para abrir el cotizador.</p>
-        <input id="fb-g-email" type="email" value="citas@expresscarecuu.com" readonly>
-        <input id="fb-g-pass" type="password" placeholder="Contraseña" autocomplete="current-password">
-        <button id="fb-g-entrar" type="button">Entrar</button>
+        <p class="hint">Entra con tu cuenta de Google para abrir el cotizador.</p>
+        <button id="fb-g-google" class="fb-g-google" type="button">
+          <svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+          Iniciar sesión con Google
+        </button>
         <p id="fb-g-msg" class="hint"></p>
+        <button id="fb-g-otro" class="fb-g-link" type="button">Entrar con la cuenta compartida (contraseña)</button>
+        <div id="fb-g-pwbox" style="display:none">
+          <input id="fb-g-email" type="email" value="citas@expresscarecuu.com" readonly>
+          <input id="fb-g-pass" type="password" placeholder="Contraseña" autocomplete="current-password">
+          <button id="fb-g-entrar" type="button">Entrar</button>
+        </div>
       </div>
       <div id="fb-g-err" style="display:none">
         <p class="hint">No se pudo conectar con Firebase (revisa tu conexión a internet).</p>
@@ -2800,7 +2812,6 @@ window.addEventListener('load',function(){
     if(est) est.style.display=cargando?'block':'none';
     if(form) form.style.display=(!cargando&&!sdkError)?'block':'none';
     if(er) er.style.display=sdkError?'block':'none';
-    if(!cargando&&!sdkError){ var p=$('fb-g-pass'); if(p&&p.focus){ try{p.focus();}catch(e){} } }
   }
 
   function pintarResultados(){
@@ -2836,6 +2847,10 @@ window.addEventListener('load',function(){
     var c=(e&&e.code)||'';
     if(/invalid-credential|wrong-password|invalid-login/.test(c)) return 'Contraseña incorrecta.';
     if(/too-many-requests/.test(c)) return 'Demasiados intentos. Espera unos minutos e inténtalo de nuevo.';
+    if(/popup-closed|cancelled-popup/.test(c)) return 'Cerraste la ventana de Google antes de terminar. Inténtalo de nuevo.';
+    if(/popup-blocked/.test(c)) return 'El navegador bloqueó la ventana de Google. Permite las ventanas emergentes para este sitio.';
+    if(/unauthorized-domain/.test(c)) return 'Este sitio no está autorizado en Firebase (falta agregar el dominio en Authentication).';
+    if(/operation-not-allowed/.test(c)) return 'El acceso con Google no está activado en Firebase.';
     if(/network/.test(c)) return 'Sin conexión a internet.';
     if(/permission-denied/.test(c)) return 'Sin permiso (permission-denied).';
     return 'No se pudo completar ('+(c||'error')+').';
@@ -2862,6 +2877,7 @@ window.addEventListener('load',function(){
       api={
         escribir:function(id,docu){ return fs.setDoc(fs.doc(db,COL,id),docu); },
         entrar:function(pass){ return au.signInWithEmailAndPassword(auth,FB_EMAIL,pass); },
+        entrarGoogle:function(){ var pr=new au.GoogleAuthProvider(); pr.setCustomParameters({prompt:'select_account'}); return au.signInWithPopup(auth,pr); },
         salir:function(){ return au.signOut(auth); },
         escuchar:function(cb,errcb){
           var q=fs.query(fs.collection(db,COL),fs.orderBy('fecha','desc'),fs.limit(MAX_DOCS));
@@ -2937,6 +2953,14 @@ window.addEventListener('load',function(){
     }
     if(gE) gE.addEventListener('click',intentarPuerta);
     if(gP) gP.addEventListener('keydown',function(e){ if(e.key==='Enter') intentarPuerta(); });
+    var gG=$('fb-g-google');
+    if(gG) gG.addEventListener('click',function(){
+      if(!api){ msgPuerta('Firebase aún no carga. Espera unos segundos.'); return; }
+      msgPuerta('Abriendo Google…');
+      api.entrarGoogle().then(function(){ msgPuerta(''); }).catch(function(e){ msgPuerta(errorLegible(e)); });
+    });
+    var gO=$('fb-g-otro');
+    if(gO) gO.addEventListener('click',function(){ var b=$('fb-g-pwbox'); if(b){ b.style.display=(b.style.display==='none')?'block':'none'; if(b.style.display==='block'&&gP&&gP.focus) try{gP.focus();}catch(e){} } });
     var gR=$('fb-g-reint'); if(gR) gR.addEventListener('click',function(){ location.reload(); });
     var gS=$('fb-g-seguir'); if(gS) gS.addEventListener('click',function(){ omitido=true; pintarEstado(); });
     var salir=$('fb-salir'); if(salir) salir.addEventListener('click',function(){ if(api) api.salir(); });

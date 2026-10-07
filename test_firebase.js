@@ -364,6 +364,25 @@ async function parteB() {
     b.w.document.getElementById('fb-g-entrar').click();
     await esperar(20);
     ok('B7 contraseña incorrecta: mensaje y la puerta sigue cerrada', /Contraseña incorrecta/.test(b.w.document.getElementById('fb-g-msg').textContent) && vis(b.w, 'fb-gate') === 'flex' && llamadas[0] === 'mala');
+    // acceso con Google
+    ok('B7 el botón "Iniciar sesión con Google" existe y es el principal', /Iniciar sesión con Google/.test(b.w.document.getElementById('fb-g-google').textContent));
+    ok('B7 la contraseña compartida queda como opción secundaria (oculta)', vis(b.w, 'fb-g-pwbox') === 'none');
+    b.w.document.getElementById('fb-g-otro').click();
+    ok('B7 "Entrar con la cuenta compartida" muestra la contraseña', vis(b.w, 'fb-g-pwbox') === 'block');
+    let gCalls = 0, gErr = null;
+    b.w.__fb._t.setEstado({ entrarGoogle: () => { gCalls++; return gErr ? Promise.reject(gErr) : Promise.resolve(); } }, null);
+    b.w.document.getElementById('fb-g-google').click(); await esperar(20);
+    ok('B7 clic en Google llama al acceso con Google', gCalls === 1);
+    gErr = { code: 'auth/popup-closed-by-user' };
+    b.w.document.getElementById('fb-g-google').click(); await esperar(20);
+    ok('B7 Google: ventana cerrada → mensaje claro', /Cerraste la ventana de Google/.test(b.w.document.getElementById('fb-g-msg').textContent));
+    gErr = { code: 'auth/unauthorized-domain' };
+    b.w.document.getElementById('fb-g-google').click(); await esperar(20);
+    ok('B7 Google: dominio no autorizado → mensaje claro', /no está autorizado en Firebase/.test(b.w.document.getElementById('fb-g-msg').textContent));
+    gErr = { code: 'auth/operation-not-allowed' };
+    b.w.document.getElementById('fb-g-google').click(); await esperar(20);
+    ok('B7 Google: método no activado → mensaje claro', /no está activado en Firebase/.test(b.w.document.getElementById('fb-g-msg').textContent));
+    ok('B7 con error de Google la puerta sigue cerrada', vis(b.w, 'fb-gate') === 'flex');
     // sesión iniciada → la puerta se abre; cerrar sesión → vuelve a cerrarse
     b.w.__fb._t.setPuerta({ usuario: { uid: 'u1' } });
     ok('B7 con sesión: la puerta se abre', vis(b.w, 'fb-gate') === 'none');
