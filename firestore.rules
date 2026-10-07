@@ -15,10 +15,6 @@ service cloud.firestore {
         && request.auth.token.email_verified == true
         && correo() == 'carlos.mtz@expresscarecuu.com';
     }
-    // Cuenta compartida anterior (contraseña) — se quita cuando todos usen Google
-    function esCompartida() {
-      return logueado() && correo() == 'citas@expresscarecuu.com';
-    }
     // Usuarios dados de alta en la colección "usuarios" (el ID del documento es el correo en minúsculas)
     function perfilDoc() {
       return get(/databases/$(database)/documents/usuarios/$(correo()));
@@ -33,7 +29,7 @@ service cloud.firestore {
       return esSuper() || (activo() && perfilDoc().data.rol == 'administrador');
     }
     function esCotizador() {
-      return esSuper() || esCompartida() || activo();
+      return esSuper() || activo();
     }
 
     // ── Colecciones del cotizador ───────────────────────────────
@@ -46,7 +42,7 @@ service cloud.firestore {
     }
     match /tarifas/{id} {
       allow read: if esCotizador();
-      allow write: if esAdmin() || esCompartida();
+      allow write: if esAdmin();
     }
 
     // ── Usuarios y roles ────────────────────────────────────────

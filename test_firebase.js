@@ -27,7 +27,7 @@ ok('Existe el bloque de la capa Firebase', !!bloque);
 ok('Hay 3 scripts en línea (datos, app, capa Firebase)', scripts && scripts.length === 3, scripts && scripts.length);
 ok('Pestaña Historial en el HTML', html.includes('id="tab-historial"') && html.includes('id="p-historial"'));
 ok('Botón de estado Firebase en el HTML', html.includes('id="fb-chip"'));
-ok('Cuenta compartida correcta en la config', html.includes("'citas@expresscarecuu.com'"));
+ok('Ya no existe el acceso con contraseña (cuenta compartida)', !/signInWithEmailAndPassword|fb-g-pass|fb-g-pwbox|id="fb-pass"/.test(html));
 ok('Proyecto Firebase correcto', html.includes('projectId: "express-care-cotizador"'));
 ok('No escribe en las colecciones del bot', !/catalogo_llantas|conversaciones_bot/.test(bloque || ''));
 ok('Solo usa la colección cotizaciones', /var COL = 'cotizaciones'/.test(bloque || ''));
@@ -353,22 +353,10 @@ async function parteB() {
     ok('B7 verificando sesión: sin formulario todavía', vis(b.w, 'fb-gate') === 'flex' && vis(b.w, 'fb-g-estado') === 'block' && vis(b.w, 'fb-g-form') === 'none');
     // Firebase cargó y no hay sesión → formulario de contraseña
     b.w.__fb._t.setPuerta({ authListo: true });
-    ok('B7 sin sesión: aparece el formulario de contraseña', vis(b.w, 'fb-gate') === 'flex' && vis(b.w, 'fb-g-form') === 'block' && vis(b.w, 'fb-g-err') === 'none');
-    // login con contraseña mala y buena (API simulada)
-    const llamadas = [];
-    b.w.__fb._t.setEstado({ entrar: p => { llamadas.push(p); return p === 'buena' ? Promise.resolve() : Promise.reject({ code: 'auth/invalid-credential' }); } }, null);
-    b.w.document.getElementById('fb-g-pass').value = '';
-    b.w.document.getElementById('fb-g-entrar').click();
-    ok('B7 contraseña vacía: pide escribirla y no llama a Firebase', /Escribe la contraseña/.test(b.w.document.getElementById('fb-g-msg').textContent) && llamadas.length === 0);
-    b.w.document.getElementById('fb-g-pass').value = 'mala';
-    b.w.document.getElementById('fb-g-entrar').click();
-    await esperar(20);
-    ok('B7 contraseña incorrecta: mensaje y la puerta sigue cerrada', /Contraseña incorrecta/.test(b.w.document.getElementById('fb-g-msg').textContent) && vis(b.w, 'fb-gate') === 'flex' && llamadas[0] === 'mala');
+    ok('B7 sin sesión: aparece el botón de Google', vis(b.w, 'fb-gate') === 'flex' && vis(b.w, 'fb-g-form') === 'block' && vis(b.w, 'fb-g-err') === 'none');
     // acceso con Google
     ok('B7 el botón "Iniciar sesión con Google" existe y es el principal', /Iniciar sesión con Google/.test(b.w.document.getElementById('fb-g-google').textContent));
-    ok('B7 la contraseña compartida queda como opción secundaria (oculta)', vis(b.w, 'fb-g-pwbox') === 'none');
-    b.w.document.getElementById('fb-g-otro').click();
-    ok('B7 "Entrar con la cuenta compartida" muestra la contraseña', vis(b.w, 'fb-g-pwbox') === 'block');
+    ok('B7 no hay campo de contraseña en la puerta', !b.w.document.getElementById('fb-g-pass') && !b.w.document.getElementById('fb-g-otro'));
     let gCalls = 0, gErr = null;
     b.w.__fb._t.setEstado({ entrarGoogle: () => { gCalls++; return gErr ? Promise.reject(gErr) : Promise.resolve(); } }, null);
     b.w.document.getElementById('fb-g-google').click(); await esperar(20);
@@ -401,7 +389,7 @@ async function parteB() {
     {
       const { w } = abrir(''); const F = w.__fb;
       ok('B8 superadministrador se reconoce por correo (aunque venga en mayúsculas)', F.resolverPerfil({ email: 'Carlos.Mtz@ExpressCareCUU.com' }, null).rol === 'superadministrador');
-      ok('B8 cuenta compartida = usuario', F.resolverPerfil({ email: 'citas@expresscarecuu.com' }, null).rol === 'usuario');
+      ok('B8 citas@ sin alta en usuarios = sin acceso (ya no hay cuenta compartida)', F.resolverPerfil({ email: 'citas@expresscarecuu.com' }, null) === null);
       ok('B8 correo sin documento en usuarios = sin acceso', F.resolverPerfil({ email: 'ana@expresscarecuu.com' }, null) === null);
       ok('B8 documento dado de baja = sin acceso', F.resolverPerfil({ email: 'ana@expresscarecuu.com' }, { activo: false, rol: 'usuario' }) === null);
       ok('B8 documento activo rol administrador', F.resolverPerfil({ email: 'ana@expresscarecuu.com' }, { activo: true, rol: 'administrador', nombre: 'Ana' }).rol === 'administrador');
@@ -443,8 +431,12 @@ async function parteB() {
       ok('B8 super puede dar de alta usuario y administrador', opts === 'usuario,administrador', opts);
     }
     {
+      const s = await sesion('citas@expresscarecuu.com', { activo: true, rol: 'usuario', nombre: 'Citas' }); await s.F.verificarAcceso(s.u); await esperar(20);
+      ok('B8 citas@ dada de alta como usuario (con Google): entra y no ve Usuarios', vis(s.b.w, 'fb-gate') === 'none' && vis(s.b.w, 'tab-usuarios') === 'none' && s.lecturas.length === 1);
+    }
+    {
       const s = await sesion('citas@expresscarecuu.com', null); await s.F.verificarAcceso(s.u); await esperar(20);
-      ok('B8 cuenta compartida: entra, no ve Usuarios', vis(s.b.w, 'fb-gate') === 'none' && vis(s.b.w, 'tab-usuarios') === 'none' && s.lecturas.length === 0);
+      ok('B8 citas@ sin alta: no entra', vis(s.b.w, 'fb-gate') === 'flex' && vis(s.b.w, 'fb-g-acceso') === 'block');
     }
     {
       const s = await sesion('ana@expresscarecuu.com', { activo: true, rol: 'usuario', nombre: 'Ana' }); await s.F.verificarAcceso(s.u); await esperar(20);

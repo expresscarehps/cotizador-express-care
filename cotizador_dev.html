@@ -656,12 +656,6 @@ input:focus,select:focus{
           Iniciar sesión con Google
         </button>
         <p id="fb-g-msg" class="hint"></p>
-        <button id="fb-g-otro" class="fb-g-link" type="button">Entrar con la cuenta compartida (contraseña)</button>
-        <div id="fb-g-pwbox" style="display:none">
-          <input id="fb-g-email" type="email" value="citas@expresscarecuu.com" readonly>
-          <input id="fb-g-pass" type="password" placeholder="Contraseña" autocomplete="current-password">
-          <button id="fb-g-entrar" type="button">Entrar</button>
-        </div>
       </div>
       <div id="fb-g-acceso" style="display:none">
         <p id="fb-g-acceso-msg" class="hint"></p>
@@ -681,13 +675,6 @@ input:focus,select:focus{
   <div class="card">
     <p class="st">Historial de cotizaciones</p>
     <div id="fb-sdk-error" style="display:none"><p class="hint">No se pudo cargar Firebase (revisa la conexión a internet y recarga la página). El cotizador sigue funcionando normal; solo falta el historial y el respaldo.</p></div>
-    <div id="fb-login" style="display:none">
-      <p class="hint">Entra con la cuenta compartida del cotizador para consultar el historial y respaldar cada cotización en Firebase.</p>
-      <input id="fb-email" type="email" value="citas@expresscarecuu.com" readonly>
-      <input id="fb-pass" type="password" placeholder="Contraseña" autocomplete="current-password">
-      <button id="fb-entrar" class="fb-btn" type="button">Entrar</button>
-      <p id="fb-msg" class="hint"></p>
-    </div>
     <div id="fb-hist" style="display:none">
       <p id="fb-quien" class="hint"></p>
       <input id="fb-q" type="search" placeholder="Buscar por nombre, teléfono, vehículo o folio" autocomplete="off">
@@ -2703,7 +2690,7 @@ window.addEventListener('load',function(){
 // ═══ CAPA FIREBASE — bloque ADITIVO ═══════════════════════════════════════════
 // No modifica ninguna función existente: la envuelve y delega. El flujo actual
 // (Apps Script → Sheet / Drive / folio) sigue igual; esta capa solo AGREGA:
-//   1) login con la cuenta compartida (Firebase Auth, correo + contraseña)
+//   1) login con Google (Firebase Auth) y roles: superadministrador / administrador / usuario
 //   2) respaldo en paralelo de cada cotización guardada en Firestore (colección "cotizaciones")
 //   3) pestaña "Historial" con búsqueda por nombre, teléfono, vehículo o folio
 // Si Firebase falla o no hay sesión, el cotizador sigue funcionando igual y solo avisa.
@@ -2717,7 +2704,6 @@ window.addEventListener('load',function(){
     messagingSenderId: "34080775701",
     appId: "1:34080775701:web:1d4b5a0172a0b6869df81c"
   };
-  var FB_EMAIL = 'citas@expresscarecuu.com';
   var FB_SDK = 'https://www.gstatic.com/firebasejs/10.14.1/';
   var SUPER_EMAIL = 'carlos.mtz@expresscarecuu.com';   // superadministrador (fijo; también está fijo en las reglas de Firestore)
   var COL_USR = 'usuarios';
@@ -2783,7 +2769,6 @@ window.addEventListener('load',function(){
   function resolverPerfil(u, d){
     var mail=String((u&&u.email)||'').trim().toLowerCase();
     if(mail===SUPER_EMAIL) return {correo:mail,nombre:String((u&&u.displayName)||'Carlos'),rol:'superadministrador'};
-    if(mail===FB_EMAIL) return {correo:mail,nombre:'Cuenta compartida',rol:'usuario',compartida:true};
     if(d && d.activo===true) return {correo:mail,nombre:String(d.nombre||(u&&u.displayName)||mail),rol:(d.rol==='administrador'?'administrador':'usuario')};
     return null;
   }
@@ -2857,8 +2842,7 @@ window.addEventListener('load',function(){
     else if(usuario){ texto=(perfilEstado==='cargando')?'☁ Firebase: verificando acceso…':'☁ Firebase: sin acceso'; clase='fb-chip off'; }
     else { texto='☁ Firebase: iniciar sesión'; clase='fb-chip off'; }
     if(chip){ chip.textContent=texto; chip.className=clase; }
-    var login=$('fb-login'), hist=$('fb-hist'), err=$('fb-sdk-error');
-    if(login) login.style.display=(!usuario&&!sdkError)?'block':'none';
+    var hist=$('fb-hist'), err=$('fb-sdk-error');
     if(hist) hist.style.display=perfil?'block':'none';
     if(err) err.style.display=sdkError?'block':'none';
     var quien=$('fb-quien');
@@ -2922,7 +2906,6 @@ window.addEventListener('load',function(){
     if(mas) mas.style.display=(res.length>vista.length)?'inline-block':'none';
   }
 
-  function mensajeLogin(txt){ var m=$('fb-msg'); if(m) m.textContent=txt||''; }
   function errorLegible(e){
     var c=(e&&e.code)||'';
     if(/invalid-credential|wrong-password|invalid-login/.test(c)) return 'Contraseña incorrecta.';
@@ -2963,13 +2946,13 @@ window.addEventListener('load',function(){
     else { dejarDeEscuchar(); dejarUsr(); }
     pintarEstado();
   }
-  // Decide si la cuenta con sesión tiene acceso. El superadministrador y la cuenta compartida
+  // Decide si la cuenta con sesión tiene acceso. El superadministrador
   // se reconocen por correo; los demás deben estar activos en la colección "usuarios".
   function verificarAcceso(u){
     perfil=null; perfilError='';
     if(!u){ perfilEstado='ninguno'; despuesDeVerificar(); return Promise.resolve(); }
     var mail=String(u.email||'').trim().toLowerCase();
-    if(mail===SUPER_EMAIL || mail===FB_EMAIL){
+    if(mail===SUPER_EMAIL){
       perfil=resolverPerfil(u,null); perfilEstado=perfil?'ok':'sin-acceso'; despuesDeVerificar(); return Promise.resolve();
     }
     if(u.emailVerified===false){ perfilEstado='sin-acceso'; despuesDeVerificar(); return Promise.resolve(); }
@@ -3014,7 +2997,7 @@ window.addEventListener('load',function(){
     var n=String(($('fb-u-nombre')||{}).value||'').trim();
     var r=String(($('fb-u-rol')||{}).value||'usuario');
     if(!correoValido(c)){ msgUsr('Escribe un correo válido.'); return Promise.resolve(false); }
-    if(c===SUPER_EMAIL||c===FB_EMAIL){ msgUsr('Ese correo ya tiene acceso fijo.'); return Promise.resolve(false); }
+    if(c===SUPER_EMAIL){ msgUsr('Ese correo ya tiene acceso fijo.'); return Promise.resolve(false); }
     if(!n){ msgUsr('Escribe el nombre.'); return Promise.resolve(false); }
     if(rolesAsignables(perfil).indexOf(r)<0){ msgUsr('No puedes asignar ese rol.'); return Promise.resolve(false); }
     if(!usuariosListo){ msgUsr('Espera a que cargue la lista.'); return Promise.resolve(false); }
@@ -3045,7 +3028,6 @@ window.addEventListener('load',function(){
       catch(e){ db=fs.getFirestore(app); }
       api={
         escribir:function(id,docu){ return fs.setDoc(fs.doc(db,COL,id),docu); },
-        entrar:function(pass){ return au.signInWithEmailAndPassword(auth,FB_EMAIL,pass); },
         entrarGoogle:function(){ var pr=new au.GoogleAuthProvider(); pr.setCustomParameters({prompt:'select_account'}); return au.signInWithPopup(auth,pr); },
         salir:function(){ return au.signOut(auth); },
         leerPerfil:function(mail){ return fs.getDoc(fs.doc(db,COL_USR,mail)).then(function(sn){ return sn.exists()?sn.data():null; }); },
@@ -3106,36 +3088,14 @@ window.addEventListener('load',function(){
 
   function conectarInterfaz(){
     var chip=$('fb-chip'); if(chip) chip.addEventListener('click',function(){ if(typeof setTab==='function') setTab('historial'); });
-    var entrar=$('fb-entrar'), pass=$('fb-pass');
-    function intentar(){
-      if(!api){ mensajeLogin('Firebase aún no carga. Espera unos segundos.'); return; }
-      var p=pass?pass.value:''; if(!p){ mensajeLogin('Escribe la contraseña.'); return; }
-      mensajeLogin('Entrando…');
-      api.entrar(p).then(function(){ mensajeLogin(''); if(pass) pass.value=''; })
-        .catch(function(e){ mensajeLogin(errorLegible(e)); });
-    }
-    if(entrar) entrar.addEventListener('click',intentar);
-    if(pass) pass.addEventListener('keydown',function(e){ if(e.key==='Enter') intentar(); });
     // puerta de acceso
-    var gE=$('fb-g-entrar'), gP=$('fb-g-pass');
     function msgPuerta(t){ var m=$('fb-g-msg'); if(m) m.textContent=t||''; }
-    function intentarPuerta(){
-      if(!api){ msgPuerta('Firebase aún no carga. Espera unos segundos.'); return; }
-      var p=gP?gP.value:''; if(!p){ msgPuerta('Escribe la contraseña.'); return; }
-      msgPuerta('Entrando…');
-      api.entrar(p).then(function(){ msgPuerta(''); if(gP) gP.value=''; })
-        .catch(function(e){ msgPuerta(errorLegible(e)); });
-    }
-    if(gE) gE.addEventListener('click',intentarPuerta);
-    if(gP) gP.addEventListener('keydown',function(e){ if(e.key==='Enter') intentarPuerta(); });
     var gG=$('fb-g-google');
     if(gG) gG.addEventListener('click',function(){
       if(!api){ msgPuerta('Firebase aún no carga. Espera unos segundos.'); return; }
       msgPuerta('Abriendo Google…');
       api.entrarGoogle().then(function(){ msgPuerta(''); }).catch(function(e){ msgPuerta(errorLegible(e)); });
     });
-    var gO=$('fb-g-otro');
-    if(gO) gO.addEventListener('click',function(){ var b=$('fb-g-pwbox'); if(b){ b.style.display=(b.style.display==='none')?'block':'none'; if(b.style.display==='block'&&gP&&gP.focus) try{gP.focus();}catch(e){} } });
     var gR=$('fb-g-reint'); if(gR) gR.addEventListener('click',function(){ location.reload(); });
     var gS=$('fb-g-seguir'); if(gS) gS.addEventListener('click',function(){ omitido=true; pintarEstado(); });
     var salir=$('fb-salir'); if(salir) salir.addEventListener('click',function(){ if(api) api.salir(); });

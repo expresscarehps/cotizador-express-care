@@ -67,12 +67,13 @@ async function t(name, p, esperado){ // esperado true => debe permitir
   await t('admin NO toca al superadministrador', adm.doc('usuarios/'+SUPER).set({correo:SUPER,nombre:'x',rol:'usuario',activo:false}), false);
   await t('admin NO borra usuarios', adm.doc('usuarios/nuevo2@expresscarecuu.com').delete(), false);
   await t('admin escribe tarifas', adm.doc('tarifas/t1').set({v:3}), true);
-  console.log('Cuenta compartida (contraseña, transición)');
+  console.log('Cuenta compartida citas@ (ya NO tiene acceso por contraseña)');
   const comp=as(COMP,false);
-  await t('compartida lee cotizaciones', comp.doc('cotizaciones/c1').get(), true);
-  await t('compartida escribe tarifas y folios', Promise.all([comp.doc('tarifas/t1').set({v:4}), comp.doc('folios/f2').set({n:8})]), true);
-  await t('compartida NO lista usuarios', comp.collection('usuarios').get(), false);
-  await t('compartida NO crea usuarios', comp.doc('usuarios/q@expresscarecuu.com').set({correo:'q@expresscarecuu.com',rol:'usuario',activo:true}), false);
+  await t('citas@ con contraseña NO lee cotizaciones', comp.doc('cotizaciones/c1').get(), false);
+  await t('citas@ con contraseña NO escribe tarifas ni folios', comp.doc('tarifas/t1').set({v:4}), false);
+  await t('citas@ con contraseña NO usa folios', comp.doc('folios/f2').set({n:8}), false);
+  await t('citas@ NO lista usuarios', comp.collection('usuarios').get(), false);
+  await t('citas@ NO crea usuarios', comp.doc('usuarios/q@expresscarecuu.com').set({correo:'q@expresscarecuu.com',rol:'usuario',activo:true}), false);
   console.log(`\nTOTAL: ${pass+fail} | ✅ ${pass} | ❌ ${fail}`);
   await env.cleanup(); process.exit(fail?1:0);
 })().catch(e=>{console.error(e);process.exit(2)});
