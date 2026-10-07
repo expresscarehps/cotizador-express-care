@@ -337,6 +337,56 @@ async function parteB() {
     w.document.getElementById('fb-q').dispatchEvent(new w.Event('input'));
     ok('B6 "Sin resultados" cuando no hay coincidencias', /Sin resultados/.test(res.textContent));
   }
+  // B6b: historial en carpetas por mes + proveedor y costo en las partidas
+  {
+    const { w } = abrir('');
+    await esperar(80);
+    const F = w.__fb;
+    ok('B6b claveMes y nombreMes', F.claveMes('2026-10-06T10:00:00-06:00') === '2026-10' && F.claveMes('') === 'sin-fecha' && F.nombreMes('2026-10') === 'Octubre 2026' && F.nombreMes('sin-fecha') === 'Sin fecha');
+    const mk = (n, mes, dia, extra) => Object.assign({ cliente: 'Cliente ' + n, telefono: '614000' + String(1000 + n), vehiculo: 'Auto ' + n, origen: 'WhatsApp', asesor: 'Ana', fecha: '2026-' + mes + '-' + String(dia).padStart(2, '0') + 'T10:00:00-06:00', folio: '', total: 100, partidas: [] }, extra || {});
+    const docs = [];
+    for (let i = 0; i < 60; i++) docs.push(mk(i, '10', 1 + (i % 28)));          // octubre: 60
+    for (let i = 0; i < 40; i++) docs.push(mk(100 + i, '09', 1 + (i % 28)));    // septiembre: 40
+    for (let i = 0; i < 30; i++) docs.push(mk(200 + i, '08', 1 + (i % 28)));    // agosto: 30
+    docs.push(mk(999, '07', 5, { cliente: 'Maria Buscada', telefono: '6143664406', partidas: [{ producto: 'Filtro de aire', proveedor: 'Autozone', cant: 1, costo: 296, precio: 422.86, subtotal: 422.86 }, { producto: 'Mano de obra', proveedor: '', cant: 1, costo: null, precio: 500, subtotal: 500 }] }));
+    const g = F.agruparPorMes(docs);
+    ok('B6b agrupa por mes, más reciente primero', g.map(x => x.clave).join() === '2026-10,2026-09,2026-08,2026-07', g.map(x => x.clave).join());
+    ok('B6b cada carpeta trae su conteo y total', g[0].docs.length === 60 && g[0].total === 6000 && g[3].docs.length === 1);
+    ok('B6b dentro de la carpeta va lo más nuevo primero', g[0].docs[0].fecha >= g[0].docs[1].fecha);
+    F._t.setEstado({}, { uid: 'u1' });
+    F._t.setCache(docs);
+    w.document.getElementById('fb-q').value = '';
+    w.document.getElementById('fb-q').dispatchEvent(new w.Event('input'));
+    const res = w.document.getElementById('fb-res');
+    ok('B6b sin búsqueda: 4 carpetas (una por mes), no 131 renglones', res.querySelectorAll('.fb-mes').length === 4 && res.querySelectorAll('.fb-row').length === 25, res.querySelectorAll('.fb-mes').length + ' carpetas, ' + res.querySelectorAll('.fb-row').length + ' renglones');
+    ok('B6b solo el mes más reciente viene abierto', res.querySelectorAll('.fb-mes.abierta').length === 1 && /Octubre 2026/.test(res.querySelector('.fb-mes.abierta').textContent));
+    ok('B6b la carpeta muestra conteo y total', /60 cotizaciones/.test(res.textContent) && /\$6,000\.00/.test(res.textContent), res.querySelector('.fb-mes').textContent);
+    ok('B6b "Mostrar más" dentro de la carpeta (35 restantes)', /Mostrar más \(35 restantes\)/.test(res.textContent));
+    res.querySelector('.fb-mesmas').click();
+    ok('B6b "Mostrar más" agrega 25 renglones', res.querySelectorAll('.fb-row').length === 50);
+    res.querySelectorAll('.fb-mes')[1].click();
+    ok('B6b abrir otra carpeta muestra sus renglones', res.querySelectorAll('.fb-mes.abierta').length === 2 && res.querySelectorAll('.fb-row').length === 75);
+    res.querySelectorAll('.fb-mes')[0].click();
+    ok('B6b cerrar una carpeta oculta sus renglones', res.querySelectorAll('.fb-mes.abierta').length === 1 && res.querySelectorAll('.fb-row').length === 25);
+    // búsqueda en cualquier carpeta (un mes viejo, por teléfono)
+    w.document.getElementById('fb-q').value = '614 366 4406';
+    w.document.getElementById('fb-q').dispatchEvent(new w.Event('input'));
+    ok('B6b busca por teléfono en una carpeta cerrada y la abre sola', res.querySelectorAll('.fb-row').length === 1 && /Maria Buscada/.test(res.textContent) && /Julio 2026/.test(res.textContent));
+    ok('B6b la búsqueda muestra solo las carpetas con coincidencias', res.querySelectorAll('.fb-mes').length === 1);
+    // muchas coincidencias: carpetas cerradas, no miles de renglones
+    w.document.getElementById('fb-q').value = 'cliente';
+    w.document.getElementById('fb-q').dispatchEvent(new w.Event('input'));
+    ok('B6b muchas coincidencias: carpetas cerradas con su conteo', res.querySelectorAll('.fb-mes').length === 3 && res.querySelectorAll('.fb-row').length === 0 && /130 coincidencia/.test(w.document.getElementById('fb-estado').textContent), w.document.getElementById('fb-estado').textContent);
+    // proveedor y costo en las partidas
+    w.document.getElementById('fb-q').value = 'maria';
+    w.document.getElementById('fb-q').dispatchEvent(new w.Event('input'));
+    const part = res.querySelector('.fb-part');
+    ok('B6b las partidas traen columnas Proveedor y Costo', /Proveedor/.test(part.textContent) && /Costo/.test(part.textContent) && /Autozone/.test(part.textContent) && /\$296\.00/.test(part.textContent), part.textContent);
+    ok('B6b sin proveedor o sin costo muestra "—"', (part.querySelectorAll('tr')[2].textContent.match(/—/g) || []).length >= 2, part.querySelectorAll('tr')[2].textContent);
+    w.document.getElementById('fb-q').value = 'zzzz';
+    w.document.getElementById('fb-q').dispatchEvent(new w.Event('input'));
+    ok('B6b sin coincidencias: "Sin resultados"', /Sin resultados/.test(res.textContent) && res.querySelectorAll('.fb-mes').length === 0);
+  }
   // B7: puerta de acceso (login al abrir la página)
   {
     const vis = (w, id) => w.document.getElementById(id).style.display;
@@ -426,7 +476,8 @@ async function parteB() {
       const s = await sesion(SUPER, null); await esperar(20); await s.F.verificarAcceso(s.u); await esperar(20);
       ok('B8 super: entra sin leer la colección usuarios', s.lecturas.length === 0 && s.F._t.getPerfil().estado === 'ok');
       ok('B8 super: la puerta se abre y ve la pestaña Usuarios', vis(s.b.w, 'fb-gate') === 'none' && vis(s.b.w, 'tab-usuarios') !== 'none');
-      ok('B8 super: aparece quién inició sesión y su rol', /Superadministrador/.test(txt(s.b.w, 'fb-quien')) && txt(s.b.w, 'fb-quien').indexOf(SUPER) >= 0);
+      ok('B8 hay botón "Salir" visible en la barra superior y cierra sesión', vis(s.b.w, 'fb-salir-top') !== 'none' && (() => { let salio = 0; s.F._t.setApi(Object.assign({}, s.api, { salir: () => { salio++; return Promise.resolve(); } })); s.b.w.document.getElementById('fb-salir-top').click(); return salio === 1; })());
+    ok('B8 super: aparece quién inició sesión y su rol', /Superadministrador/.test(txt(s.b.w, 'fb-quien')) && txt(s.b.w, 'fb-quien').indexOf(SUPER) >= 0);
       const opts = Array.from(s.b.w.document.getElementById('fb-u-rol').options).map(x => x.value).join();
       ok('B8 super puede dar de alta usuario y administrador', opts === 'usuario,administrador', opts);
     }

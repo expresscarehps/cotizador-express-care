@@ -475,6 +475,11 @@ input:focus,select:focus{
 #fb-res .fb-l3{font-size:12px;color:#777;margin-top:2px}
 #fb-res .fb-det{margin-top:5px;font-size:11px;padding:3px 9px;border:1px solid #1a56db;border-radius:6px;background:#fff;color:#1a56db;cursor:pointer}
 #fb-res .fb-part{margin-top:6px;overflow-x:auto}
+#fb-res .fb-mes{display:block;width:100%;text-align:left;margin:8px 0 0;padding:11px 12px;font-size:14px;font-weight:700;border:1.5px solid #d6dbe6;border-radius:8px;background:#f4f6fb;color:#0a2a7a;cursor:pointer}
+#fb-res .fb-mes.abierta{background:#e8eefc;border-color:#9db3ee}
+#fb-res .fb-mes small{font-weight:500;color:#555;margin-left:6px}
+#fb-res .fb-mesbody{padding:0 4px 6px}
+#fb-res .fb-mesmas{margin:8px 0;font-size:12px;padding:6px 12px;border:1px solid #bbb;border-radius:6px;background:#fff;color:#444;cursor:pointer}
 #fb-res .fb-part table{width:100%;border-collapse:collapse;font-size:12px}
 #fb-res .fb-part th,#fb-res .fb-part td{padding:3px 6px;border-bottom:1px solid #f0f0f0}
 </style>
@@ -511,6 +516,7 @@ input:focus,select:focus{
     📋 Borradores <span id="badge-borradores" style="background:#dc2626;color:#fff;border-radius:10px;padding:1px 6px;font-size:10px;margin-left:2px"></span>
   </button>
   <button id="fb-chip" class="fb-chip off" type="button">☁ Firebase: iniciar sesión</button>
+  <button id="fb-salir-top" class="fb-chip" type="button" style="display:none;margin-left:0">⎋ Salir</button>
   <div id="borradores-dropdown" style="display:none;position:absolute;top:38px;left:12px;right:12px;z-index:200;background:#f8f9fa;border:1px solid #ddd;border-radius:8px;padding:10px;box-shadow:0 4px 12px rgba(0,0,0,0.15);max-height:400px;overflow-y:auto">
     <div id="panel-borradores"><div style="font-size:12px;color:#888;padding:8px">No hay borradores guardados</div></div>
   </div>
@@ -2817,6 +2823,30 @@ window.addEventListener('load',function(){
     if(quien) docu.creadoPor={correo:String(quien.correo||''),nombre:String(quien.nombre||''),rol:String(quien.rol||'')};
     return docu;
   }
+  // Carpetas por mes: agrupa las cotizaciones por año-mes (la más reciente primero).
+  var MESES=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  var POR_MES=25;        // renglones que se muestran por carpeta antes de "Mostrar más"
+  var AUTO_ABRIR=30;     // al buscar, si hay hasta tantas coincidencias se abren las carpetas solas
+  var abiertos={}, verMes={};
+  function claveMes(iso){ var m=/^(\d{4})-(\d{2})/.exec(iso||''); return m?(m[1]+'-'+m[2]):'sin-fecha'; }
+  function nombreMes(k){
+    if(k==='sin-fecha') return 'Sin fecha';
+    var a=k.split('-'), n=MESES[parseInt(a[1],10)-1]||a[1];
+    return n.charAt(0).toUpperCase()+n.slice(1)+' '+a[0];
+  }
+  function agruparPorMes(lista){
+    var mapa={}, orden=[];
+    lista.forEach(function(d){
+      var k=claveMes(d.fecha);
+      if(!mapa[k]){ mapa[k]={clave:k,docs:[],total:0}; orden.push(k); }
+      mapa[k].docs.push(d); mapa[k].total+=(Number(d.total)||0);
+    });
+    orden.sort(function(a,b){ if(a==='sin-fecha') return 1; if(b==='sin-fecha') return -1; return a<b?1:(a>b?-1:0); });
+    return orden.map(function(k){
+      var g=mapa[k]; g.docs.sort(function(a,b){ return String(b.fecha||'')<String(a.fecha||'')?-1:(String(b.fecha||'')>String(a.fecha||'')?1:0); });
+      return g;
+    });
+  }
   // Búsqueda: todas las palabras deben aparecer en nombre, vehículo, folio, asesor o teléfono.
   function filtrar(lista, q){
     var tokens=normBusq(q).split(' ').filter(Boolean).map(function(t){
@@ -2845,6 +2875,7 @@ window.addEventListener('load',function(){
     var hist=$('fb-hist'), err=$('fb-sdk-error');
     if(hist) hist.style.display=perfil?'block':'none';
     if(err) err.style.display=sdkError?'block':'none';
+    var stop=$('fb-salir-top'); if(stop) stop.style.display=usuario?'':'none';
     var quien=$('fb-quien');
     if(quien) quien.textContent=perfil?('Sesión: '+perfil.nombre+' ('+perfil.correo+') · '+(ROLES[perfil.rol]||perfil.rol)):'';
     var tU=$('tab-usuarios'), pU=$('p-usuarios'), adm=puedeAdministrar(perfil);
@@ -2884,15 +2915,17 @@ window.addEventListener('load',function(){
     if(cacheError){ if(est) est.textContent='No se pudo leer el historial: '+cacheError; cont.innerHTML=''; if(mas) mas.style.display='none'; return; }
     if(!cacheListo){ if(est) est.textContent='Cargando historial…'; cont.innerHTML=''; if(mas) mas.style.display='none'; return; }
     var q=qEl?qEl.value:'';
-    var res=filtrar(cache,q);
-    var vista=res.slice(0,mostrar);
-    if(est) est.textContent=(q.trim()?res.length+' coincidencia(s) de ':'')+cache.length+' cotizaciones en el historial'+(res.length>vista.length?' — mostrando '+vista.length:'');
-    cont.innerHTML=vista.map(function(d,i){
+    var res=filtrar(cache,q), buscando=!!q.trim();
+    var grupos=agruparPorMes(res);
+    if(est) est.textContent=(buscando?res.length+' coincidencia(s) de ':'')+cache.length+' cotizaciones en el historial'+(grupos.length?' · '+grupos.length+' carpeta(s) por mes':'');
+    var cont_i=0;
+    function fila(d){
+      var i=cont_i++;
       var partes=[fechaLegible(d.fecha)];
       if(d.asesor) partes.push(esc(d.asesor));
       if(d.folio) partes.push('<b>'+esc(d.folio)+'</b>');
       var filas=(d.partidas||[]).map(function(p){
-        return '<tr><td>'+esc(p.producto)+(p.opcional?' <i>(opcional)</i>':'')+'</td><td style="text-align:right">'+esc(p.cant)+'</td><td style="text-align:right">'+dinero(p.precio)+'</td><td style="text-align:right">'+(p.opcional?'—':dinero(p.subtotal))+'</td></tr>';
+        return '<tr><td>'+esc(p.producto)+(p.opcional?' <i>(opcional)</i>':'')+'</td><td>'+(esc(p.proveedor)||'—')+'</td><td style="text-align:right">'+esc(p.cant)+'</td><td style="text-align:right">'+(p.costo==null?'—':dinero(p.costo))+'</td><td style="text-align:right">'+dinero(p.precio)+'</td><td style="text-align:right">'+(p.opcional?'—':dinero(p.subtotal))+'</td></tr>';
       }).join('');
       return '<div class="fb-row">'+
         '<div class="fb-l1"><b>'+esc(d.cliente||'Sin nombre')+'</b>'+(d.telefono?' · '+esc(d.telefono):' · <span style="color:#b91c1c">sin teléfono</span>')+'</div>'+
@@ -2900,10 +2933,21 @@ window.addEventListener('load',function(){
         '<div class="fb-l3">'+partes.join(' · ')+' · <b>'+dinero(d.total)+'</b></div>'+
         '<button class="fb-det" data-i="'+i+'">Ver partidas</button>'+
         '<div class="fb-part" id="fb-part-'+i+'" style="display:none"><table>'+
-        '<tr><th style="text-align:left">Producto</th><th>Cant</th><th>Precio</th><th>Subtotal</th></tr>'+filas+'</table></div>'+
+        '<tr><th style="text-align:left">Producto</th><th style="text-align:left">Proveedor</th><th>Cant</th><th>Costo</th><th>Precio</th><th>Subtotal</th></tr>'+filas+'</table></div>'+
       '</div>';
+    }
+    cont.innerHTML=grupos.map(function(g,gi){
+      var porDefecto=buscando?(res.length<=AUTO_ABRIR):(gi===0);
+      var abierta=(g.clave in abiertos)?abiertos[g.clave]:porDefecto;
+      var n=g.docs.length;
+      var enc='<button class="fb-mes'+(abierta?' abierta':'')+'" data-k="'+esc(g.clave)+'" data-open="'+(abierta?'1':'0')+'">'+(abierta?'▾ ':'▸ ')+'📁 '+esc(nombreMes(g.clave))+
+        ' <small>'+n+(n===1?' cotización':' cotizaciones')+' · '+dinero(g.total)+'</small></button>';
+      if(!abierta) return enc;
+      var lim=verMes[g.clave]||POR_MES, vis=g.docs.slice(0,lim);
+      return enc+'<div class="fb-mesbody">'+vis.map(fila).join('')+
+        (n>vis.length?'<button class="fb-mesmas" data-k="'+esc(g.clave)+'">Mostrar más ('+(n-vis.length)+' restantes)</button>':'')+'</div>';
     }).join('') || '<p class="hint" style="padding:8px 0">Sin resultados.</p>';
-    if(mas) mas.style.display=(res.length>vista.length)?'inline-block':'none';
+    if(mas) mas.style.display='none';
   }
 
   function errorLegible(e){
@@ -3099,6 +3143,7 @@ window.addEventListener('load',function(){
     var gR=$('fb-g-reint'); if(gR) gR.addEventListener('click',function(){ location.reload(); });
     var gS=$('fb-g-seguir'); if(gS) gS.addEventListener('click',function(){ omitido=true; pintarEstado(); });
     var salir=$('fb-salir'); if(salir) salir.addEventListener('click',function(){ if(api) api.salir(); });
+    var salirTop=$('fb-salir-top'); if(salirTop) salirTop.addEventListener('click',function(){ if(api) api.salir(); });
     var gSal=$('fb-g-salir'); if(gSal) gSal.addEventListener('click',function(){ if(api) api.salir(); });
     var uAg=$('fb-u-agregar'); if(uAg) uAg.addEventListener('click',function(){ agregarUsuario(); });
     var uLi=$('fb-u-lista');
@@ -3112,11 +3157,14 @@ window.addEventListener('load',function(){
         cambiarUsuario(b.getAttribute('data-c'),{rol:b.value});
       });
     }
-    var q=$('fb-q'); if(q) q.addEventListener('input',function(){ mostrar=POR_PAGINA; pintarResultados(); });
+    var q=$('fb-q'); if(q) q.addEventListener('input',function(){ mostrar=POR_PAGINA; abiertos={}; verMes={}; pintarResultados(); });
     var mas=$('fb-mas'); if(mas) mas.addEventListener('click',function(){ mostrar+=POR_PAGINA; pintarResultados(); });
     var res=$('fb-res');
     if(res) res.addEventListener('click',function(e){
-      var b=e.target; if(!b||!b.classList||!b.classList.contains('fb-det')) return;
+      var b=e.target; if(!b||!b.classList) return;
+      if(b.classList.contains('fb-mes')){ abiertos[b.getAttribute('data-k')]=(b.getAttribute('data-open')!=='1'); pintarResultados(); return; }
+      if(b.classList.contains('fb-mesmas')){ var k=b.getAttribute('data-k'); verMes[k]=(verMes[k]||POR_MES)+POR_MES; pintarResultados(); return; }
+      if(!b.classList.contains('fb-det')) return;
       var p=$('fb-part-'+b.getAttribute('data-i'));
       if(p){ var abierto=p.style.display!=='none'; p.style.display=abierto?'none':'block'; b.textContent=abierto?'Ver partidas':'Ocultar partidas'; }
     });
@@ -3134,6 +3182,7 @@ window.addEventListener('load',function(){
       armarDocumento:armarDocumento, filtrar:filtrar, normBusq:normBusq, soloDigitos:soloDigitos,
       fechaISOChihuahua:fechaISOChihuahua, fechaLegible:fechaLegible, nuevoId:nuevoId, dinero:dinero,
       respaldar:respaldar, errorLegible:errorLegible,
+      claveMes:claveMes, nombreMes:nombreMes, agruparPorMes:agruparPorMes,
       resolverPerfil:resolverPerfil, puedeAdministrar:puedeAdministrar, rolesAsignables:rolesAsignables,
       puedeEditarUsuario:puedeEditarUsuario, correoValido:correoValido, armarUsuario:armarUsuario, conCreador:conCreador,
       verificarAcceso:verificarAcceso, agregarUsuario:agregarUsuario, cambiarUsuario:cambiarUsuario,
