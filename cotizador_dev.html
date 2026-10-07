@@ -432,12 +432,23 @@ input:focus,select:focus{
 #btn-add-taller:hover{background:var(--val-light-blue);color:var(--white);border-color:var(--val-light-blue)}
 
 /* ── CAPA FIREBASE (historial + respaldo) — bloque aditivo ── */
-#fb-gate{position:fixed;inset:0;z-index:99999;background:#f4f4f5;display:flex;align-items:center;justify-content:center;padding:16px}
-#fb-gate .fb-g-card{background:#fff;border:1px solid #ddd;border-radius:12px;padding:22px 20px;width:100%;max-width:360px;box-shadow:0 6px 24px rgba(0,0,0,.12)}
-#fb-gate h2{margin:0 0 4px;font-size:18px}
-#fb-gate input{width:100%;padding:10px;font-size:15px;border:1.5px solid #ddd;border-radius:7px;margin:6px 0;box-sizing:border-box}
-#fb-gate button{padding:10px 14px;font-size:14px;border:1.5px solid #111;border-radius:8px;background:#111;color:#fff;cursor:pointer;margin:6px 6px 0 0}
-#fb-gate button.sec{background:#fff;color:#444;border-color:#bbb}
+#fb-gate{position:fixed;inset:0;z-index:99999;background:var(--bg);display:flex;flex-direction:column;overflow:auto}
+#fb-gate .fb-g-hdr{background:var(--val-red);color:var(--white);padding:0 16px;display:flex;align-items:center;gap:12px;min-height:58px;box-shadow:0 2px 6px rgba(0,0,0,.25);flex-shrink:0}
+#fb-gate .fb-g-hdr::before{content:'';display:block;width:5px;align-self:stretch;background:var(--val-dark-blue);margin-left:-16px;margin-right:4px;flex-shrink:0}
+#fb-gate .fb-g-hdr img{height:42px;width:auto;display:block;flex-shrink:0}
+#fb-gate .fb-g-hdr span{font-size:11px;font-weight:500;color:rgba(255,255,255,.8);letter-spacing:.3px}
+#fb-gate .fb-g-stripe{height:4px;background:linear-gradient(90deg,var(--val-dark-blue) 60%,var(--val-light-blue) 100%);flex-shrink:0}
+#fb-gate .fb-g-body{flex:1;display:flex;align-items:flex-start;justify-content:center;padding:28px 12px}
+#fb-gate .fb-g-card{background:var(--white);border-radius:var(--radius);padding:20px 16px;width:100%;max-width:380px;box-shadow:0 1px 4px rgba(0,0,0,.08);border-top:3px solid var(--val-red)}
+#fb-gate h2{margin:0 0 2px;font-size:17px;color:var(--val-dark-blue)}
+#fb-gate .hint{font-size:13px;color:var(--val-dark-gray);margin:2px 0 8px}
+#fb-gate input{width:100%;padding:11px 12px;font-size:15px;border:1.5px solid var(--val-light-gray);border-radius:var(--radius);margin:6px 0;box-sizing:border-box;font-family:inherit}
+#fb-gate input:focus{outline:none;border-color:var(--val-dark-blue)}
+#fb-gate input[readonly]{background:#f6f6f6;color:#555}
+#fb-gate button{width:100%;padding:13px;font-size:15px;font-weight:700;border:none;border-radius:var(--radius);background:var(--val-dark-blue);color:var(--white);cursor:pointer;margin-top:8px;font-family:inherit}
+#fb-gate button:hover{background:#00247a}
+#fb-gate button.sec{background:var(--white);color:var(--val-dark-blue);border:1.5px solid var(--val-dark-blue)}
+#fb-gate #fb-g-msg{color:var(--val-red);min-height:18px}
 .fb-chip{font-size:11px;padding:5px 10px;border:1px solid #888;border-radius:6px;background:#fff;color:#444;cursor:pointer;margin-left:auto}
 .fb-chip.ok{border-color:#16a34a;color:#166534}
 .fb-chip.off{border-color:#dc2626;color:#b91c1c}
@@ -617,20 +628,24 @@ input:focus,select:focus{
 
 <!-- PUERTA DE ACCESO (Firebase): el cotizador se abre hasta iniciar sesión -->
 <div id="fb-gate">
-  <div class="fb-g-card">
-    <h2>Cotizador Express Care</h2>
-    <p id="fb-g-estado" class="hint">Verificando sesión…</p>
-    <div id="fb-g-form" style="display:none">
-      <p class="hint">Inicia sesión para abrir el cotizador.</p>
-      <input id="fb-g-email" type="email" value="citas@expresscarecuu.com" readonly>
-      <input id="fb-g-pass" type="password" placeholder="Contraseña" autocomplete="current-password">
-      <button id="fb-g-entrar" type="button">Entrar</button>
-      <p id="fb-g-msg" class="hint"></p>
-    </div>
-    <div id="fb-g-err" style="display:none">
-      <p class="hint">No se pudo conectar con Firebase (revisa tu conexión a internet).</p>
-      <button id="fb-g-reint" type="button">Reintentar</button>
-      <button id="fb-g-seguir" class="sec" type="button">Continuar sin respaldo</button>
+  <div class="fb-g-hdr"><img id="fb-g-logo" alt="Express Care by Valvoline"><span>Cotizador Interno</span></div>
+  <div class="fb-g-stripe"></div>
+  <div class="fb-g-body">
+    <div class="fb-g-card">
+      <h2>Iniciar sesión</h2>
+      <p id="fb-g-estado" class="hint">Verificando sesión…</p>
+      <div id="fb-g-form" style="display:none">
+        <p class="hint">Entra para abrir el cotizador.</p>
+        <input id="fb-g-email" type="email" value="citas@expresscarecuu.com" readonly>
+        <input id="fb-g-pass" type="password" placeholder="Contraseña" autocomplete="current-password">
+        <button id="fb-g-entrar" type="button">Entrar</button>
+        <p id="fb-g-msg" class="hint"></p>
+      </div>
+      <div id="fb-g-err" style="display:none">
+        <p class="hint">No se pudo conectar con Firebase (revisa tu conexión a internet).</p>
+        <button id="fb-g-reint" type="button">Reintentar</button>
+        <button id="fb-g-seguir" class="sec" type="button">Continuar sin respaldo</button>
+      </div>
     </div>
   </div>
 </div>
@@ -2775,6 +2790,8 @@ window.addEventListener('load',function(){
   // Puerta de acceso: tapa el cotizador hasta que haya sesión (o modo prueba / "continuar sin respaldo")
   function pintarPuerta(){
     var g=$('fb-gate'); if(!g) return;
+    var lg=$('fb-g-logo');
+    if(lg && !lg.getAttribute('src')){ var orig=document.querySelector('.hdr .logo-img'); if(orig&&orig.getAttribute('src')) lg.setAttribute('src',orig.getAttribute('src')); }
     var libre=(typeof MODO_PRUEBA!=='undefined' && MODO_PRUEBA) || !!usuario || omitido;
     g.style.display=libre?'none':'flex';
     if(libre) return;
