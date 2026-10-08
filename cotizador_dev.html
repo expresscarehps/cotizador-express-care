@@ -337,7 +337,11 @@ input:focus,select:focus{
 
 /* Casilla "Sin nombre" y letrero de estado de guardado (reemplaza al botón Guardar en historial) */
 label.chk-sin-nombre{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:400;margin:6px 0 0;cursor:pointer}
-label.chk-sin-nombre input{width:auto;margin:0}
+label.chk-sin-nombre input{width:20px;height:20px;padding:0;margin:0;flex:0 0 20px;border:2px solid var(--val-dark-blue);border-radius:4px;background:#fff;-webkit-appearance:none;appearance:none;position:relative;cursor:pointer}
+label.chk-sin-nombre input:checked{background:var(--val-dark-blue)}
+label.chk-sin-nombre input:checked::after{content:"\2713";position:absolute;left:0;top:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:15px;font-weight:700;line-height:1}
+label.chk-sin-nombre input:checked + span{color:var(--val-dark-blue);font-weight:700}
+#cli-nombre:disabled{background:#eef2f9;color:#555;cursor:not-allowed}
 .estado-guardado{width:100%;box-sizing:border-box;padding:10px 12px;border-radius:8px;font-size:13px;font-weight:600;margin-bottom:8px;border:1.5px solid transparent}
 .estado-guardado.ok{background:#ecfdf5;color:#065f46;border-color:#a7f3d0}
 .estado-guardado.warn{background:#fffbeb;color:#92400e;border-color:#fde68a}
@@ -602,7 +606,7 @@ label.chk-sin-nombre input{width:auto;margin:0}
     <p class="st">Cliente</p>
     <div class="g2">
       <div><label>Nombre <span class="req">*</span></label><input type="text" id="cli-nombre" required="" placeholder="Nombre del cliente">
-        <label class="chk-sin-nombre"><input type="checkbox" id="cli-sin-nombre"> Sin nombre (solo trae teléfono)</label></div>
+        <label class="chk-sin-nombre"><input type="checkbox" id="cli-sin-nombre"><span>Sin nombre (solo trae teléfono)</span></label></div>
       <div><label>Teléfono (10 dígitos) <span class="req">*</span></label><input type="tel" id="cli-tel" required="" oninput="this.value=normalizarTelefono(this.value)" maxlength="16" placeholder="614 000 0000" inputmode="numeric" pattern="[0-9]{10}"></div>
     </div>
     <div class="g2">
