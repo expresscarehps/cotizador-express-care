@@ -335,7 +335,22 @@ input:focus,select:focus{
   overflow-y:auto;
 }
 
-/* Botón guardar en historial */
+/* Casilla "Sin nombre" y letrero de estado de guardado (reemplaza al botón Guardar en historial) */
+label.chk-sin-nombre{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:400;margin:6px 0 0;cursor:pointer}
+label.chk-sin-nombre input{width:20px;height:20px;padding:0;margin:0;flex:0 0 20px;border:2px solid var(--val-dark-blue);border-radius:4px;background:#fff;-webkit-appearance:none;appearance:none;position:relative;cursor:pointer}
+label.chk-sin-nombre input:checked{background:var(--val-dark-blue)}
+label.chk-sin-nombre input:checked::after{content:"\2713";position:absolute;left:0;top:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:15px;font-weight:700;line-height:1}
+label.chk-sin-nombre input:checked + span{color:var(--val-dark-blue);font-weight:700}
+#cli-nombre:disabled{background:#eef2f9;color:#555;cursor:not-allowed}
+.estado-guardado{width:100%;box-sizing:border-box;padding:10px 12px;border-radius:8px;font-size:13px;font-weight:600;margin-bottom:8px;border:1.5px solid transparent}
+.estado-guardado.ok{background:#ecfdf5;color:#065f46;border-color:#a7f3d0}
+.estado-guardado.warn{background:#fffbeb;color:#92400e;border-color:#fde68a}
+.estado-guardado.err{background:#fef2f2;color:#b91c1c;border-color:#fca5a5}
+.estado-guardado.wait{background:#eff6ff;color:#1e40af;border-color:#bfdbfe}
+.estado-guardado button{margin-left:8px;padding:4px 10px;border-radius:6px;border:1.5px solid #b91c1c;background:#fff;color:#b91c1c;font-weight:700;cursor:pointer}
+.bcopy:disabled{opacity:.5;cursor:not-allowed}
+
+/* Botón guardar en historial (ya no se usa en pantalla) */
 #btn-guardar{
   width:100%;
   padding:13px;
@@ -430,6 +445,58 @@ input:focus,select:focus{
   transition:all .15s;
 }
 #btn-add-taller:hover{background:var(--val-light-blue);color:var(--white);border-color:var(--val-light-blue)}
+
+/* ── CAPA FIREBASE (historial + respaldo) — bloque aditivo ── */
+#fb-gate{position:fixed;inset:0;z-index:99999;background:var(--bg);display:flex;flex-direction:column;overflow:auto}
+#fb-gate .fb-g-hdr{background:var(--val-red);color:var(--white);padding:0 16px;display:flex;align-items:center;gap:12px;min-height:58px;box-shadow:0 2px 6px rgba(0,0,0,.25);flex-shrink:0}
+#fb-gate .fb-g-hdr::before{content:'';display:block;width:5px;align-self:stretch;background:var(--val-dark-blue);margin-left:-16px;margin-right:4px;flex-shrink:0}
+#fb-gate .fb-g-hdr img{height:42px;width:auto;display:block;flex-shrink:0}
+#fb-gate .fb-g-hdr span{font-size:11px;font-weight:500;color:rgba(255,255,255,.8);letter-spacing:.3px}
+#fb-gate .fb-g-stripe{height:4px;background:linear-gradient(90deg,var(--val-dark-blue) 60%,var(--val-light-blue) 100%);flex-shrink:0}
+#fb-gate .fb-g-body{flex:1;display:flex;align-items:flex-start;justify-content:center;padding:28px 12px}
+#fb-gate .fb-g-card{background:var(--white);border-radius:var(--radius);padding:20px 16px;width:100%;max-width:380px;box-shadow:0 1px 4px rgba(0,0,0,.08);border-top:3px solid var(--val-red)}
+#fb-gate h2{margin:0 0 2px;font-size:17px;color:var(--val-dark-blue)}
+#fb-gate .hint{font-size:13px;color:var(--val-dark-gray);margin:2px 0 8px}
+#fb-gate input{width:100%;padding:11px 12px;font-size:15px;border:1.5px solid var(--val-light-gray);border-radius:var(--radius);margin:6px 0;box-sizing:border-box;font-family:inherit}
+#fb-gate input:focus{outline:none;border-color:var(--val-dark-blue)}
+#fb-gate input[readonly]{background:#f6f6f6;color:#555}
+#fb-gate button{width:100%;padding:13px;font-size:15px;font-weight:700;border:none;border-radius:var(--radius);background:var(--val-dark-blue);color:var(--white);cursor:pointer;margin-top:8px;font-family:inherit}
+#fb-gate button:hover{background:#00247a}
+#fb-gate button.sec{background:var(--white);color:var(--val-dark-blue);border:1.5px solid var(--val-dark-blue)}
+#fb-gate #fb-g-msg{color:var(--val-red);min-height:18px}
+#fb-gate #fb-g-acceso-msg{color:var(--val-red)}
+#p-usuarios input[type=email],#p-usuarios input[type=text],#p-usuarios select{width:100%;padding:9px 10px;font-size:14px;border:1.5px solid #ddd;border-radius:7px;margin:6px 0;box-sizing:border-box;background:#fff}
+#p-usuarios button.fb-btn{padding:8px 14px;font-size:13px;border:1.5px solid #111;border-radius:7px;background:#111;color:#fff;cursor:pointer;margin:4px 6px 4px 0}
+#p-usuarios button.fb-btn.sec{background:#fff;color:#444;border-color:#bbb}
+#fb-u-lista .fb-u-row{border-bottom:1px solid #eee;padding:9px 2px}
+#fb-u-lista .fb-u-n{font-size:14px;font-weight:600}
+#fb-u-lista .fb-u-c{font-size:12px;color:#555}
+#fb-u-lista .fb-u-baja{color:#b91c1c;font-weight:600}
+#fb-u-lista select{width:auto;padding:4px 6px;font-size:12px;margin:4px 6px 4px 0}
+#fb-gate button.fb-g-google{background:var(--white);color:#3c4043;border:1.5px solid var(--val-light-gray);display:flex;align-items:center;justify-content:center;gap:10px;font-weight:600}
+#fb-gate button.fb-g-google:hover{background:#f7f8f8}
+#fb-gate button.fb-g-google svg{width:20px;height:20px;flex-shrink:0}
+#fb-gate .fb-g-link{background:none;border:none;color:var(--val-dark-blue);font-size:13px;font-weight:600;text-decoration:underline;width:auto;padding:8px 0;margin-top:10px;cursor:pointer}
+#fb-gate .fb-g-link:hover{background:none}
+.fb-chip{font-size:11px;padding:5px 10px;border:1px solid #888;border-radius:6px;background:#fff;color:#444;cursor:pointer;margin-left:auto}
+.fb-chip.ok{border-color:#16a34a;color:#166534}
+.fb-chip.off{border-color:#dc2626;color:#b91c1c}
+#p-historial input[type=search],#p-historial input[type=password],#p-historial input[type=email]{width:100%;padding:9px 10px;font-size:14px;border:1.5px solid #ddd;border-radius:7px;margin:6px 0}
+#p-historial button.fb-btn{padding:8px 14px;font-size:13px;border:1.5px solid #111;border-radius:7px;background:#111;color:#fff;cursor:pointer;margin:4px 6px 4px 0}
+#p-historial button.fb-btn.sec{background:#fff;color:#444;border-color:#bbb}
+#fb-res .fb-row{border-bottom:1px solid #eee;padding:9px 2px}
+#fb-res .fb-l1{font-size:14px}
+#fb-res .fb-l2{font-size:12px;color:#555;margin-top:2px}
+#fb-res .fb-l3{font-size:12px;color:#777;margin-top:2px}
+#fb-res .fb-det{margin-top:5px;font-size:11px;padding:3px 9px;border:1px solid #1a56db;border-radius:6px;background:#fff;color:#1a56db;cursor:pointer}
+#fb-res .fb-part{margin-top:6px;overflow-x:auto}
+#fb-res .fb-mes{display:block;width:100%;text-align:left;margin:8px 0 0;padding:11px 12px;font-size:14px;font-weight:700;border:1.5px solid #d6dbe6;border-radius:8px;background:#f4f6fb;color:#0a2a7a;cursor:pointer}
+#fb-res .fb-mes.abierta{background:#e8eefc;border-color:#9db3ee}
+#fb-res .fb-mes small{font-weight:500;color:#555;margin-left:6px}
+#fb-res .fb-mesbody{padding:0 4px 6px}
+#fb-res .fb-mesmas{margin:8px 0;font-size:12px;padding:6px 12px;border:1px solid #bbb;border-radius:6px;background:#fff;color:#444;cursor:pointer}
+#fb-res .fb-part table{width:100%;border-collapse:collapse;font-size:12px}
+#fb-res .fb-part th,#fb-res .fb-part td{padding:3px 6px;border-bottom:1px solid #f0f0f0}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
@@ -454,6 +521,8 @@ input:focus,select:focus{
   <button class="tab" id="tab-taller" data-t="taller">Taller</button>
   <button class="tab" id="tab-cotizacion" data-t="cotizacion">Cotización</button>
   <button class="tab" id="tab-whatsapp" data-t="whatsapp">WhatsApp</button>
+  <button class="tab" id="tab-historial" data-t="historial">Historial</button>
+  <button class="tab" id="tab-usuarios" data-t="usuarios" style="display:none">Usuarios</button>
   <button class="tab" id="tab-config" data-t="config">⚙ Config</button>
 </div>
 <div style="position:relative;padding:6px 12px;background:#f8f9fa;border-bottom:1px solid #eee;display:flex;gap:8px;align-items:center">
@@ -461,6 +530,8 @@ input:focus,select:focus{
   <button onclick="toggleBorradores()" style="font-size:11px;padding:5px 10px;border:1px solid #888;border-radius:6px;background:#fff;color:#444;cursor:pointer">
     📋 Borradores <span id="badge-borradores" style="background:#dc2626;color:#fff;border-radius:10px;padding:1px 6px;font-size:10px;margin-left:2px"></span>
   </button>
+  <button id="fb-chip" class="fb-chip off" type="button">☁ Firebase: iniciar sesión</button>
+  <button id="fb-salir-top" class="fb-chip" type="button" style="display:none;margin-left:0">⎋ Salir</button>
   <div id="borradores-dropdown" style="display:none;position:absolute;top:38px;left:12px;right:12px;z-index:200;background:#f8f9fa;border:1px solid #ddd;border-radius:8px;padding:10px;box-shadow:0 4px 12px rgba(0,0,0,0.15);max-height:400px;overflow-y:auto">
     <div id="panel-borradores"><div style="font-size:12px;color:#888;padding:8px">No hay borradores guardados</div></div>
   </div>
@@ -534,8 +605,9 @@ input:focus,select:focus{
   <div class="card">
     <p class="st">Cliente</p>
     <div class="g2">
-      <div><label>Nombre <span class="req">*</span></label><input type="text" id="cli-nombre" required="" placeholder="Nombre del cliente"></div>
-      <div><label>Teléfono <span class="req">*</span></label><input type="tel" id="cli-tel" required="" oninput="this.value=this.value.replace(/[^0-9]/g,'')" maxlength="10" placeholder="614 000 0000" inputmode="numeric" pattern="[0-9]*" oninput="this.value=this.value.replace(/[^0-9]/g,&#39;&#39;)"></div>
+      <div><label>Nombre <span class="req">*</span></label><input type="text" id="cli-nombre" required="" placeholder="Nombre del cliente">
+        <label class="chk-sin-nombre"><input type="checkbox" id="cli-sin-nombre"><span>Sin nombre (solo trae teléfono)</span></label></div>
+      <div><label>Teléfono (10 dígitos) <span class="req">*</span></label><input type="tel" id="cli-tel" required="" oninput="this.value=normalizarTelefono(this.value)" maxlength="16" placeholder="614 000 0000" inputmode="numeric" pattern="[0-9]{10}"></div>
     </div>
     <div class="g2">
       <div>
@@ -560,9 +632,10 @@ input:focus,select:focus{
   <div class="card">
     <p class="st">Vehículo</p>
     <div class="g2">
-      <div><label>Marca <span class="req">*</span></label><input type="text" id="v-marca" required="" minlength="2" oninput="this.value=this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚüÜñÑ0-9 ]/g,'')" placeholder="Nissan"></div>
+      <div><label>Marca <span class="req">*</span></label><input type="text" id="v-marca" required="" minlength="2" oninput="this.value=this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚüÜñÑ0-9 ]/g,'')" placeholder="Nissan  ·  o SOLO LLANTAS"></div>
       <div><label>Modelo <span class="req">*</span></label><input type="text" id="v-modelo" required="" minlength="2" oninput="this.value=this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚüÜñÑ0-9 ]/g,'')" placeholder="Sentra"></div>
     </div>
+    <div style="font-size:11px;color:#b45309;margin:-2px 0 8px">Si es solo de llantas y no hay datos del vehículo, escribe SOLO LLANTAS en Marca (ya no se piden modelo, año ni cilindros).</div>
     <div class="g3">
       <div><label>Año <span class="req">*</span></label><input type="number" id="v-anio" required="" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,4)" maxlength="4" placeholder="2022"></div>
       <div>
@@ -583,11 +656,70 @@ input:focus,select:focus{
 <div id="p-whatsapp" class="pnl">
   <div class="card">
     <pre class="wa" id="wt" style="white-space:pre-wrap;font-family:inherit;margin:0">Agrega productos para generar el mensaje...</pre>
-    <button id="btn-guardar">Guardar en historial</button>
+    <div id="estado-guardado" class="estado-guardado" aria-live="polite" style="display:none"></div>
     <button class="bcopy" id="bcp">Copiar para WhatsApp</button>
     <button class="byaenvie" id="btn-ya-envie" disabled>✅ Ya la envié</button>
     <button id="btn-pdf" class="bpdf">📄 Generar PDF</button>
     <button id="btn-nueva" style="width:100%;margin-top:8px;padding:13px;background:#fff;color:#111;border:1.5px solid #111;border-radius:9px;font-size:15px;font-weight:600;cursor:pointer">Nueva cotización</button>
+  </div>
+</div>
+
+<!-- PUERTA DE ACCESO (Firebase): el cotizador se abre hasta iniciar sesión -->
+<div id="fb-gate">
+  <div class="fb-g-hdr"><img id="fb-g-logo" alt="Express Care by Valvoline"><span>Cotizador Interno</span></div>
+  <div class="fb-g-stripe"></div>
+  <div class="fb-g-body">
+    <div class="fb-g-card">
+      <h2>Iniciar sesión</h2>
+      <p id="fb-g-estado" class="hint">Verificando sesión…</p>
+      <div id="fb-g-form" style="display:none">
+        <p class="hint">Entra con tu cuenta de Google para abrir el cotizador.</p>
+        <button id="fb-g-google" class="fb-g-google" type="button">
+          <svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+          Iniciar sesión con Google
+        </button>
+        <p id="fb-g-msg" class="hint"></p>
+      </div>
+      <div id="fb-g-acceso" style="display:none">
+        <p id="fb-g-acceso-msg" class="hint"></p>
+        <button id="fb-g-salir" class="sec" type="button">Cerrar sesión</button>
+      </div>
+      <div id="fb-g-err" style="display:none">
+        <p class="hint">No se pudo conectar con Firebase (revisa tu conexión a internet).</p>
+        <button id="fb-g-reint" type="button">Reintentar</button>
+        <button id="fb-g-seguir" class="sec" type="button">Continuar sin respaldo</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- HISTORIAL (Firebase) -->
+<div id="p-historial" class="pnl">
+  <div class="card">
+    <p class="st">Historial de cotizaciones</p>
+    <div id="fb-sdk-error" style="display:none"><p class="hint">No se pudo cargar Firebase (revisa la conexión a internet y recarga la página). El cotizador sigue funcionando normal; solo falta el historial y el respaldo.</p></div>
+    <div id="fb-hist" style="display:none">
+      <p id="fb-quien" class="hint"></p>
+      <input id="fb-q" type="search" placeholder="Buscar por nombre, teléfono, vehículo o folio" autocomplete="off">
+      <p id="fb-estado" class="hint"></p>
+      <div id="fb-res"></div>
+      <button id="fb-mas" class="fb-btn sec" type="button" style="display:none">Mostrar más</button>
+      <button id="fb-salir" class="fb-btn sec" type="button">Cerrar sesión</button>
+    </div>
+  </div>
+</div>
+
+<!-- USUARIOS (solo superadministrador / administrador) -->
+<div id="p-usuarios" class="pnl">
+  <div class="card">
+    <p class="st">Usuarios con acceso al cotizador</p>
+    <p class="hint">Cada persona entra con su cuenta de Google. Solo quien esté en esta lista puede entrar.</p>
+    <input id="fb-u-correo" type="email" placeholder="Correo de Google (ej. nombre@expresscarecuu.com)" autocomplete="off">
+    <input id="fb-u-nombre" type="text" placeholder="Nombre" autocomplete="off">
+    <select id="fb-u-rol"></select>
+    <button id="fb-u-agregar" class="fb-btn" type="button">Agregar usuario</button>
+    <p id="fb-u-msg" class="hint"></p>
+    <div id="fb-u-lista"></div>
   </div>
 </div>
 
@@ -884,6 +1016,10 @@ var GHL_WEBHOOK_URL = 'https://hpsexpresscare.app.n8n.cloud/webhook/cotizacion-e
 // pruebas de cada cambio prueben algo de verdad. Usar ?test=1 únicamente cuando se quiera
 // verificar algo visual/funcional sin tocar Sheet, Drive ni el contador de folios.
 var MODO_PRUEBA = (typeof window!=='undefined' && window.location && /[?&]test=1(&|$)/.test(window.location.search||''));
+// Se detecta por el nombre del archivo: en dev, el aviso real a GHL pide confirmación explícita
+// (para no etiquetar clientes reales por accidente). También viaja en el aviso como "fuente".
+var ES_DEV = (typeof window!=='undefined' && window.location && /dev\.html?$/i.test(window.location.pathname||''));
+var VERSION_PAGINA = 'prod 2026-10-08 fase1';
 
 var RIN = {
   'a': {mon:85,  bal:80,  piv:20, h:'Montaje $85 - Balanceo $80 - Pivote $20 por llanta'},
@@ -960,6 +1096,18 @@ var yaGuardado = false;
 var folioActual = null;       // un solo folio por cotización, se reutiliza entre Guardar y PDF
 var folioNumeroActual = null; // el número (para confirmar/consumir el folio solo si el guardado se verifica)
 var pdfYaSubidoDrive = false; // evita subir el mismo PDF más de una vez a Drive
+// ── Ref de cotización y estado de guardado (Fase 1) ──
+var refVigente = '';          // Ref del contenido actual, ej. 1007-K7M2Q (mismo contenido = mismo Ref)
+var totalActualWA = 0;        // total numérico de la cotización actual (para el aviso)
+var guardadoInfo = {ref:'', conFolio:false}; // último guardado confirmado (Ref y si llevó folio)
+var grupoRef = null;          // Ref de la primera versión guardada de esta cotización
+var versionGuardada = 0;      // número de versión guardada dentro del grupo
+var camposRefPend = null;     // {ref, grupo, version} que viaja en el guardado en curso
+var estadoGuardado = '';      // '' | 'guardando'
+var errorGuardadoRef = '';    // Ref cuyo guardado falló (letrero rojo + Reintentar)
+var esperaGuardado = [];      // callbacks esperando a que termine un guardado en curso
+var refCopiado = '';          // Ref del texto que el asesor copió (es el que se avisa a GHL)
+var avisosEnviados = {};      // Refs ya avisados a GHL desde esta página (bloqueo local de duplicados)
 
 function g(id) { return document.getElementById(id); }
 function v(id) { var e = g(id); return e ? e.value.trim() : ''; }
@@ -1106,6 +1254,7 @@ function agregarTarifa() {
 
 function getVehiculo() {
   var marca = v('v-marca'), modelo = v('v-modelo'), anio = v('v-anio');
+  if(esSoloLlantas()) return 'Solo llantas';
   var cilEl = g('v-cil'), cil = cilEl ? cilEl.value.trim() : '';
   var ver = v('v-version');
   var parts = [marca, modelo, anio, cil ? cil+' cil' : '', ver].filter(function(x){return x && x.trim() && x.trim()!=='-' && x.trim()!=='0';});
@@ -1660,7 +1809,8 @@ function getTipo(){
 
 function generarWA() {
   var wt=g('wt'); if(!wt) return;
-  var cl=v('cli-nombre')||'Cliente';
+  var sinNombre=esSinNombre();
+  var cl=(sinNombre?'':v('cli-nombre'))||'Cliente';
   var vh=getVehiculo();
   var orEl=g('cli-origen'), origen=orEl?orEl.value:'';
   var tallerCart=tallerItems.filter(function(i){return i.concepto&&i.precio!==''&&parseFloat(i.precio)>0&&parseFloat(i.qty)>0;});
@@ -1668,7 +1818,9 @@ function generarWA() {
   var autoSvcs=cart.filter(function(c){return c.pid;});
   var extSvcs=cart.filter(function(c){return c.t==='s'&&!c.pid;});
   if(!llantas.length&&!tallerCart.length&&!extSvcs.length){
-    wt.textContent='Agrega productos para generar el mensaje...'; return;
+    wt.textContent='Agrega productos para generar el mensaje...';
+    refVigente=''; totalActualWA=0; actualizarEstadoCotizacion();
+    return;
   }
   var tot=0, totTaller=0, txt='';
   var ordenEl=g('orden-servicio'), orden=ordenEl?ordenEl.value.trim():'';
@@ -1676,6 +1828,7 @@ function generarWA() {
   var asesorNombre = v('asesor');
   txt += '🚗 *Cotización Express Care*\n';
   if(cl && cl!=='Cliente') txt += '👤 '+cl+(vh?' | '+vh:'')+'\n';
+  else if(sinNombre && vh) txt += '🚘 '+vh+'\n';
   if(asesorNombre) txt += '👨\u200d🔧 Asesor: '+asesorNombre+'\n';
   txt += '\n';
 
@@ -1756,12 +1909,17 @@ function generarWA() {
   }
 
   var primerNombre=cl.trim().split(' ')[0];
-  var msg='Gracias por tu paciencia, '+primerNombre+'. Aquí está tu presupuesto'+origenTxt+':\n\n';
+  var msg=(sinNombre?'Gracias por tu paciencia.':'Gracias por tu paciencia, '+primerNombre+'.')+' Aquí está tu presupuesto'+origenTxt+':\n\n';
   msg+=txt+'\n✅ *Total: '+fmt(tot)+'*';
   msg+='\n\n---\n🛠️ Precios netos (sujetos a disponibilidad de piezas y litros requeridos).\n💳 Aceptamos efectivo, transferencia y tarjetas de crédito o débito. ¡Contamos con promociones a meses sin intereses! (Con tarjetas participantes, aplican restricciones). 💳\n🚘 ¿Te apartamos espacio en el taller hoy o prefieres mañana? 📅👇';
+  // Ref: mismo contenido (+ mismo teléfono y día) = mismo Ref; si algo cambia, cambia el Ref.
+  totalActualWA=tot;
+  refVigente=calcularRef(msg, v('cli-tel'));
+  msg+='\n\nRef '+refVigente;
   wt.textContent=msg;
   var btn=g('btn-guardar');
   if(btn){btn.textContent='Guardar en historial';btn.disabled=false;btn.style.background='';btn.style.color='';}
+  actualizarEstadoCotizacion();
 }
 function resetGuardar(){
   yaGuardado=false;
@@ -1900,6 +2058,11 @@ function limpiarTodo(skipConfirm){
   folioActual=null;
   folioNumeroActual=null;
   pdfYaSubidoDrive=false;
+  // Fase 1: estado de Ref/guardado de la cotización anterior (avisosEnviados se conserva: bloquea Refs ya avisados)
+  guardadoInfo={ref:'',conFolio:false}; grupoRef=null; versionGuardada=0; camposRefPend=null;
+  estadoGuardado=''; errorGuardadoRef=''; esperaGuardado=[]; refCopiado=''; refVigente='';
+  var cbSN=g('cli-sin-nombre'); if(cbSN) cbSN.checked=false;
+  var nmSN=g('cli-nombre'); if(nmSN) nmSN.disabled=false;
   // Limpiar campos cliente
   ['cli-nombre','cli-tel','cli-origen','asesor','v-marca','v-modelo','v-anio','v-version','orden-servicio'].forEach(function(id){
     var el=g(id); if(el) el.value='';
@@ -1955,6 +2118,8 @@ function validarCampos(){
     if(el) el.classList.remove('field-error');
   });
   var vehiculoFields = ['v-marca','v-modelo','v-anio'];
+  var soloLlantas = esSoloLlantas();   // con "SOLO LLANTAS" en Marca ya no se piden modelo, año ni cilindros
+  var sinNombre = esSinNombre();
   campos.forEach(function(c){
     var el=g(c.id);
     var val=el?el.value.trim():'';
@@ -1963,8 +2128,14 @@ function validarCampos(){
     var cilNum = esCil ? parseInt(val) : 0;
     var anioNum = esAnio ? parseInt(val) : 0;
     var invalido = !val || val==='-' || val==='0' || val==='--' || /^[-\s0]+$/.test(val) || (['v-marca','v-modelo'].indexOf(c.id)>=0 && val.length<2) || (esCil && (isNaN(cilNum)||cilNum<2||cilNum>16)) || (esAnio && (isNaN(anioNum)||val.length!==4||!/^(19|20)/.test(val)));
+    var etiqueta=c.label;
+    if(soloLlantas && (c.id==='v-modelo'||c.id==='v-anio'||c.id==='v-cil')) invalido=false;
+    // Teléfono: exactamente 10 dígitos
+    if(c.id==='cli-tel' && !/^[0-9]{10}$/.test(val)){ invalido=true; if(val) etiqueta='Teléfono del cliente (deben ser exactamente 10 dígitos)'; }
+    // Nombre: no puede ser solo números (un teléfono no es un nombre). Sin nombre => casilla "Sin nombre".
+    if(c.id==='cli-nombre' && !sinNombre && val && /^[0-9\s+()\-.]+$/.test(val)){ invalido=true; etiqueta='Nombre del cliente (no puede ser solo números; si no trae nombre marca "Sin nombre")'; }
     if(invalido){
-      errores.push(c.label);
+      errores.push(etiqueta);
       if(el) el.classList.add('field-error');
     }
   });
@@ -2055,7 +2226,7 @@ function guardarCotizacion(onOk, onErr){
     return;
   }
 
-  var cuerpo=Object.assign({action:'saveCotizacion', folio:''}, datos);
+  var cuerpo=Object.assign({action:'saveCotizacion', folio:''}, datos, camposRef());
   fetch(SCRIPT_URL,{
     method:'POST',mode:'no-cors',
     headers:{'Content-Type':'text/plain;charset=utf-8'},
@@ -2135,6 +2306,7 @@ function generarPDF(){
   var errores=validarCampos();
   if(errores.length>0){alert('Faltan datos obligatorios:\n\n'+errores.join('\n'));setTab('cotizacion');return;}
 
+  generarWA();   // el Ref debe corresponder al contenido de este momento
   var btn=g('btn-pdf');
   if(btn){btn.textContent='Generando...';btn.disabled=true;}
 
@@ -2149,23 +2321,27 @@ function generarPDF(){
   }
 
   function guardarConFolioYContinuar(){
-    if(MODO_PRUEBA){ continuarPDF(); return; }
+    if(MODO_PRUEBA){ guardadoInfo={ref:refVigente, conFolio:true}; pintarEstadoGuardado(); continuarPDF(); return; }
     var datos=armarDatosCotizacion(llantas, autoSvcs, extSvcs, tallerCart);
-    var cuerpo=Object.assign({action:'saveCotizacion', folio:folioActual}, datos);
+    nuevaVersionParaGuardar();   // el PDF queda como una versión nueva del mismo Ref, ahora con folio
+    var refEnviada=refVigente;
+    var cuerpo=Object.assign({action:'saveCotizacion', folio:folioActual}, datos, camposRef());
     fetch(SCRIPT_URL,{
       method:'POST',mode:'no-cors',
       headers:{'Content-Type':'text/plain;charset=utf-8'},
       body: JSON.stringify(cuerpo)
-    }).then(function(){ continuarPDF(); })
-      .catch(function(){ continuarPDF(); }); // el PDF se genera igual; riesgo aceptado de no confirmar
+    }).then(function(){ guardadoInfo={ref:refEnviada, conFolio:true}; if(errorGuardadoRef===refEnviada) errorGuardadoRef=''; pintarEstadoGuardado(); continuarPDF(); },
+      function(){ errorGuardadoRef=refEnviada; versionGuardada=Math.max(0,versionGuardada-1); pintarEstadoGuardado(); continuarPDF(); }); // si no se pudo guardar, el PDF se genera igual y el letrero rojo lo avisa (el error al armar el PDF ya no se confunde con un guardado fallido)
   }
 
   if(folioActual){
     // Ya se pidió folio antes en esta misma cotización (otro PDF ya generado en esta sesión).
-    continuarPDF();
+    // Si el contenido cambió desde el último guardado con folio, se guarda esa versión nueva.
+    if(guardadoInfo.ref===refVigente && guardadoInfo.conFolio) continuarPDF();
+    else guardarConFolioYContinuar();
   } else if(MODO_PRUEBA){
     folioActual='PRUEBA-'+Date.now();
-    continuarPDF();
+    guardarConFolioYContinuar();   // en modo prueba solo marca el letrero; no toca el Sheet
   } else {
     obtenerFolioJSONP(function(folio){
       folioActual=folio;
@@ -2327,26 +2503,39 @@ function construirYDescargarPDF(folio, cl, tel, vh, asesor, fechaStr, llantas, a
   img.src='membrete_compressed.jpg';
 }
 function copiar(){
+  // Sin productos no hay nada que copiar (antes copiaba el texto "Agrega productos..." y activaba el aviso)
+  if(!hayProductos()){
+    alert('Agrega al menos un producto antes de copiar la cotización.');
+    return;
+  }
   var errores=validarCampos();
   if(errores.length>0){
     alert('Faltan datos obligatorios:\n\n' + errores.join('\n'));
     setTab('cotizacion');
     return;
   }
+  generarWA();   // asegura que el texto y su Ref estén al día en este instante
   var wt=g('wt'); if(!wt) return;
   var btn=g('bcp');
   function ok(){
     if(btn){btn.textContent='¡Copiado!';btn.classList.add('done');setTimeout(function(){btn.textContent='Copiar para WhatsApp';btn.classList.remove('done');},2000);}
     habilitarYaLaEnvie();
+    registrarCotizacion();   // copiar = guardar: la cotización queda registrada en Hoja1
   }
   if(navigator.clipboard){navigator.clipboard.writeText(wt.textContent).then(ok).catch(function(){fb(wt.textContent);ok();});}
   else{fb(wt.textContent);ok();}
 }
 // Activa el botón "Ya la envié" (visual, no bloqueante) una vez que el asesor
-// ya copió el texto. No dispara ningún aviso por sí solo.
+// ya copió el texto. No dispara ningún aviso por sí solo. Si ya se avisó este mismo Ref
+// (mismo contenido), queda bloqueado para no reiniciar los recordatorios.
 function habilitarYaLaEnvie(){
   var bye=g('btn-ya-envie');
-  if(bye){bye.disabled=false;bye.classList.add('enabled');}
+  refCopiado=refVigente||'';
+  if(bye && refCopiado && avisosEnviados[refCopiado]){
+    bye.disabled=true;bye.classList.remove('enabled');bye.classList.add('done');bye.textContent='✅ Aviso ya enviado';
+    return;
+  }
+  if(bye){bye.disabled=false;bye.classList.add('enabled');bye.classList.remove('done');bye.textContent='✅ Ya la envié';}
 }
 // Se dispara SOLO cuando el asesor confirma que sí mandó la cotización por
 // WhatsApp. Separado de "Copiar" a propósito: copiar el texto no garantiza que
@@ -2358,6 +2547,24 @@ var avisoGHLPresionado=false;
 // pierda el aviso a GHL por olvido. Si nunca copió (trato cerrado por teléfono), no
 // pregunta nada.
 function nuevaCotizacionConCandado(){
+  // Antes de borrar: si la cotización actual no está guardada, se guarda; si no se puede, se pregunta.
+  generarWA();
+  if(hayProductos() && guardadoInfo.ref!==refVigente){
+    if(estadoGuardado==='guardando') return;   // ya hay un guardado en curso; esperar a que termine
+    var errores=validarCampos();
+    if(errores.length>0){
+      if(!confirm('⚠️ Esta cotización NO está guardada y le faltan datos:\n\n'+errores.join('\n')+'\n\nAceptar = borrarla sin guardar.\nCancelar = volver a completarla.')){ setTab('cotizacion'); return; }
+    } else {
+      registrarCotizacion(function(exito){
+        if(!exito && !confirm('⚠️ No se pudo guardar esta cotización en el historial.\n\n¿Borrarla de todos modos?\n\nAceptar = borrar.\nCancelar = conservarla para reintentar.')) return;
+        continuarNuevaCotizacion();
+      });
+      return;
+    }
+  }
+  continuarNuevaCotizacion();
+}
+function continuarNuevaCotizacion(){
   var bye=g('btn-ya-envie');
   if(bye && !bye.disabled && !avisoGHLPresionado){
     if(!confirm('⚠️ Copiaste la cotización pero NO has presionado "✅ Ya la envié".\n\n' +
@@ -2371,11 +2578,31 @@ function nuevaCotizacionConCandado(){
 function yaLaEnvie(){
   var btn=g('btn-ya-envie');
   if(!btn || btn.disabled) return;
+  // El aviso lleva el Ref del texto que se copió; si la cotización cambió después, hay que copiar de nuevo.
+  if(refCopiado && refCopiado!==refVigente){
+    alert('La cotización cambió después de copiarla.\n\nPresiona "Copiar para WhatsApp" otra vez y después "Ya la envié".');
+    return;
+  }
+  var refAviso=refCopiado||refVigente||'';
+  if(refAviso && avisosEnviados[refAviso]) return;   // ya se avisó este mismo Ref: no se repite
+  var nombreAviso=esSinNombre()?'(sin nombre)':v('cli-nombre'), telAviso=v('cli-tel');
+  var simular=false;
+  if(!MODO_PRUEBA){
+    if(ES_DEV){
+      // Dev usa datos reales: el aviso REAL etiqueta al contacto real en GHL y arranca sus recordatorios.
+      simular=!confirm('🧪 ESTÁS EN LA VERSIÓN DE PRUEBA (dev)\n\nCliente: '+nombreAviso+' · '+telAviso+'\n\nAceptar = enviar el aviso REAL (etiqueta al contacto real en GHL y arranca sus recordatorios).\nCancelar = solo simular (no se envía nada).');
+    } else if(!confirm('¿Ya le mandaste esta cotización a '+nombreAviso+' ('+telAviso+')?\n\nAl aceptar se activa su seguimiento automático con recordatorios.')){
+      return;
+    }
+  }
+  if(simular){ toast('🧪 Aviso simulado: no se envió nada a GHL'); return; }
   avisoGHLPresionado=true;
+  if(refAviso) avisosEnviados[refAviso]=true;
   notificarGHLCotizacionEnviada();
-  btn.textContent='✅ ¡Aviso enviado!';
+  btn.disabled=true;
+  btn.classList.remove('enabled');
   btn.classList.add('done');
-  setTimeout(function(){btn.textContent='✅ Ya la envié';btn.classList.remove('done');},2500);
+  btn.textContent=MODO_PRUEBA?'🧪 Aviso simulado (modo prueba)':'✅ Aviso enviado';
 }
 // Avisa a GHL (vía n8n) que esta cotización se envió, para disparar el workflow de
 // recordatorios allá (tag "cotizacion-enviada"). Fire-and-forget: nunca bloquea ni
@@ -2387,15 +2614,161 @@ function notificarGHLCotizacionEnviada(){
       method:'POST',
       mode:'no-cors',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({telefono:v('cli-tel'), cliente:v('cli-nombre'), folio:(folioActual||'')})
+      body:JSON.stringify(armarPayloadAviso())
     }).catch(function(){});
   }catch(e){}
 }
+// Datos del aviso. telefono/cliente/folio son los de siempre (el n8n actual solo lee esos tres);
+// el resto son campos nuevos OPCIONALES que el n8n actual ignora.
+function armarPayloadAviso(){
+  return {
+    telefono:v('cli-tel'),
+    cliente:(esSinNombre()?'':v('cli-nombre')),
+    folio:(folioActual||''),
+    asesor:v('asesor'),
+    total:totalActualWA,
+    ref:(refCopiado||refVigente||''),
+    grupo:(grupoRef||refCopiado||refVigente||''),
+    versionCotizacion:versionGuardada,
+    fuente:(ES_DEV?'dev':'prod'),
+    version:VERSION_PAGINA
+  };
+}
+// ═══════════════════════════════════════════════════════════════════════
+// FASE 1 — Teléfono, "Sin nombre", "SOLO LLANTAS", Ref y guardado automático
+// ═══════════════════════════════════════════════════════════════════════
+
+// Teléfono: solo dígitos, exactamente 10. Acepta pegar con 52 / +52 / +521 y lo limpia.
+function normalizarTelefono(txt){
+  var d=String(txt||'').replace(/[^0-9]/g,'');
+  if(d.length>=13 && d.indexOf('521')===0) d=d.slice(3);
+  else if(d.length>=12 && d.indexOf('52')===0) d=d.slice(2);
+  return d.slice(0,10);
+}
+
+// "Sin nombre": casilla debajo del campo Nombre (o el texto "Sin nombre" escrito/restaurado).
+function esSinNombre(){
+  var cb=g('cli-sin-nombre');
+  if(cb && cb.checked) return true;
+  return v('cli-nombre').toLowerCase()==='sin nombre';
+}
+function alternarSinNombre(){
+  var cb=g('cli-sin-nombre'), nm=g('cli-nombre');
+  if(!cb || !nm) return;
+  if(cb.checked){ nm.value='Sin nombre'; nm.disabled=true; nm.classList.remove('field-error'); }
+  else { nm.disabled=false; if(nm.value.trim().toLowerCase()==='sin nombre') nm.value=''; }
+  generarWA();
+}
+
+// "SOLO LLANTAS" en Marca: sin datos del vehículo (ya no se piden modelo, año ni cilindros).
+function esSoloLlantas(){
+  return v('v-marca').toUpperCase().replace(/\s+/g,' ')==='SOLO LLANTAS';
+}
+
+// ¿Hay algo que cotizar? (mismos filtros que usan generarWA, guardar y PDF)
+function hayProductos(){
+  var tallerCart=tallerItems.filter(function(i){return i.concepto&&i.precio!==''&&parseFloat(i.precio)>0&&parseFloat(i.qty)>0;});
+  var llantas=cart.filter(function(c){return c.t==='l';});
+  var extSvcs=cart.filter(function(c){return c.t==='s'&&!c.pid;});
+  return !!(llantas.length||tallerCart.length||extSvcs.length);
+}
+
+// ── Ref: MMDD-XXXXX (5 caracteres sin 0/O/1/I/L). Se deriva del contenido, así que el mismo
+// contenido (mismo teléfono y mismo día) da siempre el mismo Ref, y cualquier cambio da otro.
+var ALFABETO_REF='23456789ABCDEFGHJKMNPQRSTUVWXYZ';
+function hashTexto(str){
+  var h=0x811c9dc5;
+  for(var i=0;i<str.length;i++){ h^=str.charCodeAt(i); h=Math.imul(h,0x01000193)>>>0; }
+  return h>>>0;
+}
+function fechaMMDD(){
+  try{
+    var partes=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Chihuahua',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
+    var m='',d='';
+    partes.forEach(function(p){ if(p.type==='month') m=p.value; if(p.type==='day') d=p.value; });
+    if(m&&d) return m+d;
+  }catch(e){}
+  var n=new Date();
+  return ('0'+(n.getMonth()+1)).slice(-2)+('0'+n.getDate()).slice(-2);
+}
+function calcularRef(texto, tel){
+  var mmdd=fechaMMDD();
+  var n=hashTexto(mmdd+'|'+(tel||'')+'|'+texto), code='';
+  for(var i=0;i<5;i++){ code=ALFABETO_REF.charAt(n%31)+code; n=Math.floor(n/31); }
+  return mmdd+'-'+code;
+}
+
+// ── Guardado automático ──
+function nuevaVersionParaGuardar(){
+  if(!grupoRef) grupoRef=refVigente;
+  versionGuardada++;
+  camposRefPend={ref:refVigente, grupo:grupoRef, version:versionGuardada};
+}
+function camposRef(){ return camposRefPend||{}; }
+
+// Guarda en Hoja1 la cotización actual si todavía no está guardada con su Ref actual.
+// alTerminar(exito, motivo) es opcional. Nunca bloquea el copiado (copiar ya ocurrió).
+function registrarCotizacion(alTerminar){
+  function fin(exito,motivo){ if(typeof alTerminar==='function') alTerminar(exito,motivo); }
+  generarWA();   // el Ref debe corresponder al contenido de este momento
+  if(!hayProductos()){ fin(true); return; }
+  if(guardadoInfo.ref===refVigente){ pintarEstadoGuardado(); fin(true); return; }
+  if(estadoGuardado==='guardando'){ esperaGuardado.push(fin); return; }   // ya hay uno en curso
+  var errores=validarCampos();
+  if(errores.length>0){ pintarEstadoGuardado(); fin(false,'incompleta'); return; }
+  var refEnviada=refVigente;
+  estadoGuardado='guardando'; errorGuardadoRef='';
+  pintarEstadoGuardado();
+  nuevaVersionParaGuardar();
+  yaGuardado=false;   // es una versión nueva: guardarCotizacion no debe bloquearla
+  function terminar(exito){
+    estadoGuardado='';
+    if(exito){ guardadoInfo={ref:refEnviada, conFolio:false}; errorGuardadoRef=''; }
+    else { errorGuardadoRef=refEnviada; versionGuardada=Math.max(0,versionGuardada-1); }
+    pintarEstadoGuardado();
+    var cbs=esperaGuardado; esperaGuardado=[];
+    fin(exito,exito?'':'error');
+    cbs.forEach(function(cb){ cb(exito,exito?'':'error'); });
+  }
+  guardarCotizacion(function(){ terminar(true); }, function(){ terminar(false); });
+}
+
+// Letrero de estado (reemplaza al botón "Guardar en historial").
+function pintarEstadoGuardado(){
+  var el=g('estado-guardado'); if(!el) return;
+  if(!hayProductos()){ el.style.display='none'; el.innerHTML=''; return; }
+  var clase, html;
+  if(estadoGuardado==='guardando'){
+    clase='wait'; html='⏳ Guardando en el historial…';
+  } else if(errorGuardadoRef && errorGuardadoRef===refVigente){
+    clase='err'; html='❌ NO se guardó en el historial (revisa tu conexión). <button type="button" id="btn-reintentar-guardado">Reintentar</button>';
+  } else if(guardadoInfo.ref && guardadoInfo.ref===refVigente){
+    clase='ok'; html=(MODO_PRUEBA?'🧪 PRUEBA — no se tocó el Sheet real':'✅ Guardada')+' · Ref '+refVigente+(guardadoInfo.conFolio?' · con folio':'');
+  } else {
+    clase='warn'; html='⚠️ Sin guardar — se guarda al copiar o al generar el PDF';
+  }
+  el.className='estado-guardado '+clase;
+  el.innerHTML=html;
+  el.style.display='block';
+}
+
+// Se llama al final de generarWA (cada vez que cambia algo de la cotización).
+function actualizarEstadoCotizacion(){
+  var bcp=g('bcp'); if(bcp) bcp.disabled=!hayProductos();
+  // Si cambió la cotización después de copiarla, "Ya la envié" se apaga: el aviso debe llevar el Ref del texto copiado.
+  var bye=g('btn-ya-envie');
+  if(bye && refCopiado && refCopiado!==refVigente && !bye.disabled){
+    bye.disabled=true; bye.classList.remove('enabled');
+  }
+  pintarEstadoGuardado();
+}
+
 function fb(t){var ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);}
 
 // ── INIT ─────────────────────────────────────────────────
 window.addEventListener('load',function(){
   actualizarMarcas('');
+  actualizarEstadoCotizacion();   // sin productos: "Copiar" arranca deshabilitado
   renderSvc();
   // Event delegation for cart - prevents listener accumulation on re-render
   var coEl = g('ci');
@@ -2421,7 +2794,7 @@ window.addEventListener('load',function(){
     cargarPlantilla('afinacion');
     renderTallerItems();
   });
-  var watchIds=['cli-nombre','v-marca','v-modelo','v-anio','v-cil','v-version','cli-origen','asesor','orden-servicio'];
+  var watchIds=['cli-nombre','cli-tel','v-marca','v-modelo','v-anio','v-cil','v-version','cli-origen','asesor','orden-servicio'];
   for(var i=0;i<watchIds.length;i++){
     var el=g(watchIds[i]);
     if(el){el.addEventListener('input',generarWA);el.addEventListener('change',generarWA);}
@@ -2444,7 +2817,11 @@ window.addEventListener('load',function(){
   var mgEl=g('mg');if(mgEl){mgEl.addEventListener('input',recalcPVP);mgEl.addEventListener('change',recalcPVP);mgEl.addEventListener('keyup',recalcPVP);}
   var bcpEl=g('bcp');if(bcpEl)bcpEl.addEventListener('click',copiar);
   var byeEl=g('btn-ya-envie');if(byeEl)byeEl.addEventListener('click',yaLaEnvie);
-  var bgEl=g('btn-guardar');if(bgEl)bgEl.addEventListener('click',guardarCotizacion);
+  var sinNomEl=g('cli-sin-nombre');if(sinNomEl)sinNomEl.addEventListener('change',alternarSinNombre);
+  var estGuardadoEl=g('estado-guardado');
+  if(estGuardadoEl)estGuardadoEl.addEventListener('click',function(e){
+    if(e.target && e.target.id==='btn-reintentar-guardado') registrarCotizacion();
+  });
   var bpdfEl=g('btn-pdf');if(bpdfEl)bpdfEl.addEventListener('click',generarPDF);
   var bnEl=g('btn-nueva');if(bnEl)bnEl.addEventListener('click',nuevaCotizacionConCandado);
   var batEl=g('btn-add-tarifa');if(batEl)batEl.addEventListener('click',agregarTarifa);
@@ -2577,5 +2954,512 @@ window.addEventListener('load',function(){
 
 </script>
 
+<script>
+// ═══ CAPA FIREBASE — bloque ADITIVO ═══════════════════════════════════════════
+// No modifica ninguna función existente: la envuelve y delega. El flujo actual
+// (Apps Script → Sheet / Drive / folio) sigue igual; esta capa solo AGREGA:
+//   1) login con Google (Firebase Auth) y roles: superadministrador / administrador / usuario
+//   2) respaldo en paralelo de cada cotización guardada en Firestore (colección "cotizaciones")
+//   3) pestaña "Historial" con búsqueda por nombre, teléfono, vehículo o folio
+// Si Firebase falla o no hay sesión, el cotizador sigue funcionando igual y solo avisa.
+// En MODO_PRUEBA (?test=1) NO escribe nada en Firestore.
+(function(){
+  var FB_CONFIG = {
+    apiKey: "AIzaSyAzmKJy-6o2VYOazxlp4_h6BSFB5ptTq28",
+    authDomain: "express-care-cotizador.firebaseapp.com",
+    projectId: "express-care-cotizador",
+    storageBucket: "express-care-cotizador.firebasestorage.app",
+    messagingSenderId: "34080775701",
+    appId: "1:34080775701:web:1d4b5a0172a0b6869df81c"
+  };
+  var FB_SDK = 'https://www.gstatic.com/firebasejs/10.14.1/';
+  var SUPER_EMAIL = 'carlos.mtz@expresscarecuu.com';   // superadministrador (fijo; también está fijo en las reglas de Firestore)
+  var COL_USR = 'usuarios';
+  var ROLES = { superadministrador:'Superadministrador', administrador:'Administrador', usuario:'Usuario' };
+  var COL = 'cotizaciones';
+  var MAX_DOCS = 5000;
+  var POR_PAGINA = 50;
+
+  var api = null;          // se llena cuando carga el SDK de Firebase
+  var usuario = null;      // usuario con sesión iniciada (o null)
+  var sdkError = false;    // true si no se pudo cargar el SDK
+  var authListo = false;   // true cuando Firebase ya informó si hay sesión o no
+  var perfil = null;       // {correo,nombre,rol} cuando la cuenta SÍ tiene acceso
+  var perfilEstado = 'ninguno'; // ninguno | cargando | ok | sin-acceso | error
+  var perfilError = '';
+  var usuariosCache = [], usuariosListo = false, usuariosError = '', detenerUsuarios = null;
+  var omitido = false;     // true si eligió "Continuar sin respaldo" (solo si Firebase no cargó)
+  var cache = [];          // historial en memoria
+  var cacheListo = false;
+  var cacheError = '';
+  var datosPend = null;    // últimos datos armados que aún no se respaldan
+  var mostrar = POR_PAGINA;
+  var detener = null;      // función para dejar de escuchar el historial
+
+  // ── utilidades puras (se prueban en test_firebase.js) ─────────────────────
+  function sinAcentos(s){ return String(s==null?'':s).normalize('NFD').replace(/[̀-ͯ]/g,''); }
+  function normBusq(s){ return sinAcentos(s).toLowerCase().replace(/\s+/g,' ').trim(); }
+  function soloDigitos(s){ return String(s==null?'':s).replace(/\D/g,''); }
+  function aNum(s){
+    if(s===''||s==null) return null;
+    var n=parseFloat(String(s).replace(/[$,]/g,''));
+    return isNaN(n)?null:n;
+  }
+  function esc(s){
+    return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+  // Hora de Chihuahua (UTC-6 todo el año) como texto ISO; ordena bien como texto.
+  function fechaISOChihuahua(d){
+    d = d || new Date();
+    return new Date(d.getTime()-6*3600000).toISOString().slice(0,19)+'-06:00';
+  }
+  function fechaLegible(iso){
+    var m=/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/.exec(iso||'');
+    return m ? (m[3]+'/'+m[2]+'/'+m[1]+' '+m[4]+':'+m[5]) : (iso||'');
+  }
+  function dinero(n){
+    if(n==null||isNaN(n)) return '—';
+    return '$'+Number(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');
+  }
+  function nuevoId(ahora, rnd){
+    var t=fechaISOChihuahua(ahora).slice(0,19).replace(/[-:T]/g,'');
+    var r=rnd||Math.random().toString(36).slice(2,6);
+    return 'web-'+t+'-'+r;
+  }
+  function fuenteApp(){
+    var p=(typeof window!=='undefined'&&window.location&&window.location.pathname)||'';
+    return /cotizador_dev/.test(p)?'dev':'prod';
+  }
+  // Convierte los datos que arma el cotizador (los mismos que van al Sheet) al documento de Firestore.
+  // Mismas reglas que la migración del historial: números reales, "M.O." → manoDeObra,
+  // "(opcional)" → opcional sin subtotal, teléfono solo dígitos.
+  // Roles: superadministrador (fijo) · administrador · usuario. La seguridad real la ponen las reglas de Firestore.
+  function resolverPerfil(u, d){
+    var mail=String((u&&u.email)||'').trim().toLowerCase();
+    if(mail===SUPER_EMAIL) return {correo:mail,nombre:String((u&&u.displayName)||'Carlos'),rol:'superadministrador'};
+    if(d && d.activo===true) return {correo:mail,nombre:String(d.nombre||(u&&u.displayName)||mail),rol:(d.rol==='administrador'?'administrador':'usuario')};
+    return null;
+  }
+  function puedeAdministrar(p){ return !!p && (p.rol==='superadministrador'||p.rol==='administrador'); }
+  function rolesAsignables(p){ return (p&&p.rol==='superadministrador')?['usuario','administrador']:['usuario']; }
+  function puedeEditarUsuario(p,u){
+    if(!p||!u) return false;
+    if(String(u.correo||'').toLowerCase()===SUPER_EMAIL) return false;
+    if(p.rol==='superadministrador') return true;
+    return p.rol==='administrador' && u.rol==='usuario';
+  }
+  function correoValido(c){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(c||'')); }
+  function armarUsuario(p, f, existe, ahora){
+    var correo=String(f.correo||'').trim().toLowerCase();
+    var d={ correo:correo, nombre:String(f.nombre||'').trim(), rol:f.rol, activo:(f.activo!==false),
+            actualizadoPor:(p&&p.correo)||'', actualizadoEn:fechaISOChihuahua(ahora) };
+    if(!existe){ d.creadoPor=(p&&p.correo)||''; d.creadoEn=d.actualizadoEn; }
+    return d;
+  }
+
+  function armarDocumento(datos, folio, ahora, quien){
+    var tel=soloDigitos(datos.telefono); if(tel==='0') tel='';
+    var cliente=String(datos.cliente||'').replace(/\s+/g,' ').trim();
+    var partidas=(datos.items||[]).map(function(it){
+      var mg=String(it.margen==null?'':it.margen).trim();
+      var mo=(mg==='M.O.');
+      var sub=String(it.subtotal==null?'':it.subtotal).trim();
+      var opc=(sub==='(opcional)');
+      return {
+        tipo:String(it.tipo||'').trim(), proveedor:String(it.proveedor||'').trim(),
+        noParte:String(it.noParte||'').trim(), producto:String(it.producto||'').trim(),
+        cant:(aNum(it.cant)||1), costo:aNum(it.costo),
+        margenPct:(mo||mg==='')?null:aNum(mg), manoDeObra:mo,
+        precio:aNum(it.precio), subtotal:opc?null:aNum(sub), opcional:opc
+      };
+    });
+    return {
+      fecha:fechaISOChihuahua(ahora), asesor:String(datos.asesor||'').trim(),
+      cliente:cliente, clienteBusq:normBusq(cliente), telefono:tel,
+      vehiculo:String(datos.vehiculo||'').trim(), origen:String(datos.origen||'').trim(),
+      estatus:'', folio:folio||'', total:aNum(datos.total),
+      partidas:partidas, migrado:false, fuente:fuenteApp()
+    };
+  }
+  function conCreador(docu, quien){
+    if(quien) docu.creadoPor={correo:String(quien.correo||''),nombre:String(quien.nombre||''),rol:String(quien.rol||'')};
+    return docu;
+  }
+  // Carpetas por mes: agrupa las cotizaciones por año-mes (la más reciente primero).
+  var MESES=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  var POR_MES=25;        // renglones que se muestran por carpeta antes de "Mostrar más"
+  var AUTO_ABRIR=30;     // al buscar, si hay hasta tantas coincidencias se abren las carpetas solas
+  var abiertos={}, verMes={};
+  function claveMes(iso){ var m=/^(\d{4})-(\d{2})/.exec(iso||''); return m?(m[1]+'-'+m[2]):'sin-fecha'; }
+  function nombreMes(k){
+    if(k==='sin-fecha') return 'Sin fecha';
+    var a=k.split('-'), n=MESES[parseInt(a[1],10)-1]||a[1];
+    return n.charAt(0).toUpperCase()+n.slice(1)+' '+a[0];
+  }
+  function agruparPorMes(lista){
+    var mapa={}, orden=[];
+    lista.forEach(function(d){
+      var k=claveMes(d.fecha);
+      if(!mapa[k]){ mapa[k]={clave:k,docs:[],total:0}; orden.push(k); }
+      mapa[k].docs.push(d); mapa[k].total+=(Number(d.total)||0);
+    });
+    orden.sort(function(a,b){ if(a==='sin-fecha') return 1; if(b==='sin-fecha') return -1; return a<b?1:(a>b?-1:0); });
+    return orden.map(function(k){
+      var g=mapa[k]; g.docs.sort(function(a,b){ return String(b.fecha||'')<String(a.fecha||'')?-1:(String(b.fecha||'')>String(a.fecha||'')?1:0); });
+      return g;
+    });
+  }
+  // Búsqueda: todas las palabras deben aparecer en nombre, vehículo, folio, asesor o teléfono.
+  function filtrar(lista, q){
+    var tokens=normBusq(q).split(' ').filter(Boolean).map(function(t){
+      return /^[\d\-().+]+$/.test(t) && soloDigitos(t).length>=3 ? soloDigitos(t) : t;
+    });
+    if(!tokens.length) return lista;
+    return lista.filter(function(d){
+      var h=d._h;
+      if(!h){ h=d._h=normBusq([d.cliente,d.vehiculo,d.folio,d.asesor].join(' '))+' '+soloDigitos(d.telefono); }
+      return tokens.every(function(t){ return h.indexOf(t)>=0; });
+    });
+  }
+
+  // ── interfaz ──────────────────────────────────────────────────────────────
+  function $(id){ return (typeof document!=='undefined'&&document.getElementById)?document.getElementById(id):null; }
+  function aviso(msg){ try{ if(typeof toast==='function') toast(msg); }catch(e){} }
+
+  function pintarEstado(){
+    var chip=$('fb-chip');
+    var texto, clase;
+    if(sdkError){ texto='☁ Firebase: sin conexión'; clase='fb-chip off'; }
+    else if(perfil){ texto='☁ Firebase: conectado'; clase='fb-chip ok'; }
+    else if(usuario){ texto=(perfilEstado==='cargando')?'☁ Firebase: verificando acceso…':'☁ Firebase: sin acceso'; clase='fb-chip off'; }
+    else { texto='☁ Firebase: iniciar sesión'; clase='fb-chip off'; }
+    if(chip){ chip.textContent=texto; chip.className=clase; }
+    var hist=$('fb-hist'), err=$('fb-sdk-error');
+    if(hist) hist.style.display=perfil?'block':'none';
+    if(err) err.style.display=sdkError?'block':'none';
+    var stop=$('fb-salir-top'); if(stop) stop.style.display=usuario?'':'none';
+    var quien=$('fb-quien');
+    if(quien) quien.textContent=perfil?('Sesión: '+perfil.nombre+' ('+perfil.correo+') · '+(ROLES[perfil.rol]||perfil.rol)):'';
+    var tU=$('tab-usuarios'), pU=$('p-usuarios'), adm=puedeAdministrar(perfil);
+    if(tU) tU.style.display=adm?'':'none';
+    if(!adm && pU && pU.classList && pU.classList.contains('on') && typeof setTab==='function') setTab('historial');
+    if(adm) pintarUsuarios();
+    if(perfil) pintarResultados();
+    pintarPuerta();
+  }
+
+  // Puerta de acceso: tapa el cotizador hasta que haya sesión (o modo prueba / "continuar sin respaldo")
+  function pintarPuerta(){
+    var g=$('fb-gate'); if(!g) return;
+    var lg=$('fb-g-logo');
+    if(lg && !lg.getAttribute('src')){ var orig=document.querySelector('.hdr .logo-img'); if(orig&&orig.getAttribute('src')) lg.setAttribute('src',orig.getAttribute('src')); }
+    var libre=(typeof MODO_PRUEBA!=='undefined' && MODO_PRUEBA) || !!perfil || omitido;
+    g.style.display=libre?'none':'flex';
+    if(libre) return;
+    var cargando=!sdkError && (!authListo || (!!usuario && perfilEstado==='cargando'));
+    var sinAcceso=!sdkError && authListo && !!usuario && !perfil && (perfilEstado==='sin-acceso'||perfilEstado==='error');
+    var est=$('fb-g-estado'), form=$('fb-g-form'), er=$('fb-g-err'), ac=$('fb-g-acceso'), acm=$('fb-g-acceso-msg');
+    if(est) est.style.display=cargando?'block':'none';
+    if(form) form.style.display=(!cargando&&!sdkError&&!usuario)?'block':'none';
+    if(er) er.style.display=sdkError?'block':'none';
+    if(ac) ac.style.display=sinAcceso?'block':'none';
+    if(acm && sinAcceso){
+      var c=String((usuario&&usuario.email)||'');
+      acm.textContent=(perfilEstado==='error')
+        ? 'No se pudo verificar tu acceso ('+(perfilError||'error')+'). Recarga la página; si sigue igual, avisa a un administrador.'
+        : 'La cuenta '+c+' no tiene acceso al cotizador. Pide que te den de alta y vuelve a entrar.';
+    }
+  }
+
+  function pintarResultados(){
+    var cont=$('fb-res'), est=$('fb-estado'), mas=$('fb-mas'), qEl=$('fb-q');
+    if(!cont) return;
+    if(cacheError){ if(est) est.textContent='No se pudo leer el historial: '+cacheError; cont.innerHTML=''; if(mas) mas.style.display='none'; return; }
+    if(!cacheListo){ if(est) est.textContent='Cargando historial…'; cont.innerHTML=''; if(mas) mas.style.display='none'; return; }
+    var q=qEl?qEl.value:'';
+    var res=filtrar(cache,q), buscando=!!q.trim();
+    var grupos=agruparPorMes(res);
+    if(est) est.textContent=(buscando?res.length+' coincidencia(s) de ':'')+cache.length+' cotizaciones en el historial'+(grupos.length?' · '+grupos.length+' carpeta(s) por mes':'');
+    var cont_i=0;
+    function fila(d){
+      var i=cont_i++;
+      var partes=[fechaLegible(d.fecha)];
+      if(d.asesor) partes.push(esc(d.asesor));
+      if(d.folio) partes.push('<b>'+esc(d.folio)+'</b>');
+      var filas=(d.partidas||[]).map(function(p){
+        return '<tr><td>'+esc(p.producto)+(p.opcional?' <i>(opcional)</i>':'')+'</td><td>'+(esc(p.proveedor)||'—')+'</td><td style="text-align:right">'+esc(p.cant)+'</td><td style="text-align:right">'+(p.costo==null?'—':dinero(p.costo))+'</td><td style="text-align:right">'+dinero(p.precio)+'</td><td style="text-align:right">'+(p.opcional?'—':dinero(p.subtotal))+'</td></tr>';
+      }).join('');
+      return '<div class="fb-row">'+
+        '<div class="fb-l1"><b>'+esc(d.cliente||'Sin nombre')+'</b>'+(d.telefono?' · '+esc(d.telefono):' · <span style="color:#b91c1c">sin teléfono</span>')+'</div>'+
+        '<div class="fb-l2">'+esc(d.vehiculo||'')+(d.origen?' · '+esc(d.origen):'')+'</div>'+
+        '<div class="fb-l3">'+partes.join(' · ')+' · <b>'+dinero(d.total)+'</b></div>'+
+        '<button class="fb-det" data-i="'+i+'">Ver partidas</button>'+
+        '<div class="fb-part" id="fb-part-'+i+'" style="display:none"><table>'+
+        '<tr><th style="text-align:left">Producto</th><th style="text-align:left">Proveedor</th><th>Cant</th><th>Costo</th><th>Precio</th><th>Subtotal</th></tr>'+filas+'</table></div>'+
+      '</div>';
+    }
+    cont.innerHTML=grupos.map(function(g,gi){
+      var porDefecto=buscando?(res.length<=AUTO_ABRIR):(gi===0);
+      var abierta=(g.clave in abiertos)?abiertos[g.clave]:porDefecto;
+      var n=g.docs.length;
+      var enc='<button class="fb-mes'+(abierta?' abierta':'')+'" data-k="'+esc(g.clave)+'" data-open="'+(abierta?'1':'0')+'">'+(abierta?'▾ ':'▸ ')+'📁 '+esc(nombreMes(g.clave))+
+        ' <small>'+n+(n===1?' cotización':' cotizaciones')+' · '+dinero(g.total)+'</small></button>';
+      if(!abierta) return enc;
+      var lim=verMes[g.clave]||POR_MES, vis=g.docs.slice(0,lim);
+      return enc+'<div class="fb-mesbody">'+vis.map(fila).join('')+
+        (n>vis.length?'<button class="fb-mesmas" data-k="'+esc(g.clave)+'">Mostrar más ('+(n-vis.length)+' restantes)</button>':'')+'</div>';
+    }).join('') || '<p class="hint" style="padding:8px 0">Sin resultados.</p>';
+    if(mas) mas.style.display='none';
+  }
+
+  function errorLegible(e){
+    var c=(e&&e.code)||'';
+    if(/invalid-credential|wrong-password|invalid-login/.test(c)) return 'Contraseña incorrecta.';
+    if(/too-many-requests/.test(c)) return 'Demasiados intentos. Espera unos minutos e inténtalo de nuevo.';
+    if(/popup-closed|cancelled-popup/.test(c)) return 'Cerraste la ventana de Google antes de terminar. Inténtalo de nuevo.';
+    if(/popup-blocked/.test(c)) return 'El navegador bloqueó la ventana de Google. Permite las ventanas emergentes para este sitio.';
+    if(/unauthorized-domain/.test(c)) return 'Este sitio no está autorizado en Firebase (falta agregar el dominio en Authentication).';
+    if(/operation-not-allowed/.test(c)) return 'El acceso con Google no está activado en Firebase.';
+    if(/network/.test(c)) return 'Sin conexión a internet.';
+    if(/permission-denied/.test(c)) return 'Sin permiso (permission-denied).';
+    return 'No se pudo completar ('+(c||'error')+').';
+  }
+
+  // ── Firebase ──────────────────────────────────────────────────────────────
+  function escuchar(){
+    if(!api||detener) return;
+    cacheListo=false; cacheError='';
+    detener=api.escuchar(function(arr){ cache=arr; cacheListo=true; cacheError=''; pintarResultados(); },
+      function(e){ cacheError=errorLegible(e); pintarResultados(); });
+  }
+  function dejarDeEscuchar(){
+    if(detener){ try{detener();}catch(e){} detener=null; }
+    cache=[]; cacheListo=false; cacheError='';
+  }
+  // ── perfil y usuarios ─────────────────────────────────────────────────────
+  function dejarUsr(){
+    if(detenerUsuarios){ try{detenerUsuarios();}catch(e){} detenerUsuarios=null; }
+    usuariosCache=[]; usuariosListo=false; usuariosError='';
+  }
+  function escucharUsr(){
+    if(!api||detenerUsuarios||!api.escucharUsuarios) return;
+    usuariosListo=false; usuariosError='';
+    detenerUsuarios=api.escucharUsuarios(function(arr){ usuariosCache=arr; usuariosListo=true; usuariosError=''; pintarUsuarios(); },
+      function(e){ usuariosError=errorLegible(e); pintarUsuarios(); });
+  }
+  function despuesDeVerificar(){
+    if(perfil){ escuchar(); if(puedeAdministrar(perfil)) escucharUsr(); else dejarUsr(); }
+    else { dejarDeEscuchar(); dejarUsr(); }
+    pintarEstado();
+  }
+  // Decide si la cuenta con sesión tiene acceso. El superadministrador
+  // se reconocen por correo; los demás deben estar activos en la colección "usuarios".
+  function verificarAcceso(u){
+    perfil=null; perfilError='';
+    if(!u){ perfilEstado='ninguno'; despuesDeVerificar(); return Promise.resolve(); }
+    var mail=String(u.email||'').trim().toLowerCase();
+    if(mail===SUPER_EMAIL){
+      perfil=resolverPerfil(u,null); perfilEstado=perfil?'ok':'sin-acceso'; despuesDeVerificar(); return Promise.resolve();
+    }
+    if(u.emailVerified===false){ perfilEstado='sin-acceso'; despuesDeVerificar(); return Promise.resolve(); }
+    if(!api||!api.leerPerfil){ perfilEstado='error'; perfilError='sin conexión'; despuesDeVerificar(); return Promise.resolve(); }
+    perfilEstado='cargando'; pintarEstado();
+    return api.leerPerfil(mail).then(function(d){
+      if(usuario!==u) return;                       // cambió la sesión mientras se verificaba
+      perfil=resolverPerfil(u,d); perfilEstado=perfil?'ok':'sin-acceso'; despuesDeVerificar();
+    }).catch(function(e){
+      if(usuario!==u) return;
+      perfil=null; perfilEstado='error'; perfilError=errorLegible(e); despuesDeVerificar();
+    });
+  }
+  function pintarUsuarios(){
+    var lista=$('fb-u-lista'), rol=$('fb-u-rol'); if(!lista) return;
+    if(rol){
+      var asig=rolesAsignables(perfil), act=rol.value;
+      rol.innerHTML=asig.map(function(r){ return '<option value="'+r+'">'+esc(ROLES[r])+'</option>'; }).join('');
+      if(act && asig.indexOf(act)>=0) rol.value=act;
+    }
+    var nota='<div class="fb-u-row"><div class="fb-u-n">'+esc(SUPER_EMAIL)+'</div><div class="fb-u-c">Superadministrador (fijo, no se puede modificar)</div></div>';
+    if(usuariosError){ lista.innerHTML=nota+'<p class="hint">No se pudo leer la lista: '+esc(usuariosError)+'</p>'; return; }
+    if(!usuariosListo){ lista.innerHTML=nota+'<p class="hint">Cargando usuarios…</p>'; return; }
+    var arr=usuariosCache.slice().sort(function(a,b){ return String(a.correo||a._id).localeCompare(String(b.correo||b._id)); });
+    lista.innerHTML=nota+arr.map(function(u){
+      var c=String(u.correo||u._id||'').toLowerCase(), edit=puedeEditarUsuario(perfil,u), activo=(u.activo===true);
+      var ctl='';
+      if(edit){
+        if(perfil.rol==='superadministrador'){
+          ctl+='<select data-c="'+esc(c)+'" class="fb-u-rolsel">'+['usuario','administrador'].map(function(r){ return '<option value="'+r+'"'+(u.rol===r?' selected':'')+'>'+esc(ROLES[r])+'</option>'; }).join('')+'</select>';
+        }
+        ctl+='<button type="button" class="fb-btn sec fb-u-tog" data-c="'+esc(c)+'" data-a="'+(activo?'baja':'alta')+'">'+(activo?'Dar de baja':'Reactivar')+'</button>';
+      }
+      return '<div class="fb-u-row"><div class="fb-u-n">'+esc(u.nombre||c)+(activo?'':' <span class="fb-u-baja">(de baja)</span>')+'</div>'+
+        '<div class="fb-u-c">'+esc(c)+' · '+esc(ROLES[u.rol]||u.rol||'')+'</div>'+ctl+'</div>';
+    }).join('');
+  }
+  function msgUsr(t){ var m=$('fb-u-msg'); if(m) m.textContent=t||''; }
+  function agregarUsuario(){
+    if(!puedeAdministrar(perfil)){ msgUsr('Sin permiso.'); return Promise.resolve(false); }
+    var c=String(($('fb-u-correo')||{}).value||'').trim().toLowerCase();
+    var n=String(($('fb-u-nombre')||{}).value||'').trim();
+    var r=String(($('fb-u-rol')||{}).value||'usuario');
+    if(!correoValido(c)){ msgUsr('Escribe un correo válido.'); return Promise.resolve(false); }
+    if(c===SUPER_EMAIL){ msgUsr('Ese correo ya tiene acceso fijo.'); return Promise.resolve(false); }
+    if(!n){ msgUsr('Escribe el nombre.'); return Promise.resolve(false); }
+    if(rolesAsignables(perfil).indexOf(r)<0){ msgUsr('No puedes asignar ese rol.'); return Promise.resolve(false); }
+    if(!usuariosListo){ msgUsr('Espera a que cargue la lista.'); return Promise.resolve(false); }
+    if(usuariosCache.some(function(u){ return String(u.correo||u._id).toLowerCase()===c; })){ msgUsr('Ese correo ya está en la lista (usa Reactivar si está de baja).'); return Promise.resolve(false); }
+    msgUsr('Guardando…');
+    return api.guardarUsuario(c,armarUsuario(perfil,{correo:c,nombre:n,rol:r,activo:true},false)).then(function(){
+      msgUsr('Listo: '+c+' ya puede entrar con su cuenta de Google.');
+      var a=$('fb-u-correo'), b=$('fb-u-nombre'); if(a) a.value=''; if(b) b.value='';
+      return true;
+    }).catch(function(e){ msgUsr('No se pudo guardar: '+errorLegible(e)); return false; });
+  }
+  function cambiarUsuario(correo, cambios){
+    var u=usuariosCache.filter(function(x){ return String(x.correo||x._id).toLowerCase()===correo; })[0];
+    if(!u||!puedeEditarUsuario(perfil,u)){ msgUsr('Sin permiso.'); return Promise.resolve(false); }
+    var f={correo:correo,nombre:u.nombre,rol:('rol' in cambios?cambios.rol:u.rol),activo:('activo' in cambios?cambios.activo:u.activo===true)};
+    if(rolesAsignables(perfil).indexOf(f.rol)<0 && f.rol!==u.rol){ msgUsr('No puedes asignar ese rol.'); return Promise.resolve(false); }
+    msgUsr('Guardando…');
+    return api.guardarUsuario(correo,armarUsuario(perfil,f,true)).then(function(){ msgUsr('Listo.'); return true; })
+      .catch(function(e){ msgUsr('No se pudo guardar: '+errorLegible(e)); return false; });
+  }
+
+  function cargarFirebase(){
+    return Promise.all([import(FB_SDK+'firebase-app.js'),import(FB_SDK+'firebase-auth.js'),import(FB_SDK+'firebase-firestore.js')])
+    .then(function(m){
+      var app=m[0].initializeApp(FB_CONFIG), au=m[1], fs=m[2];
+      var auth=au.getAuth(app), db;
+      try{ db=fs.initializeFirestore(app,{localCache:fs.persistentLocalCache({tabManager:fs.persistentMultipleTabManager()})}); }
+      catch(e){ db=fs.getFirestore(app); }
+      api={
+        escribir:function(id,docu){ return fs.setDoc(fs.doc(db,COL,id),docu); },
+        entrarGoogle:function(){ var pr=new au.GoogleAuthProvider(); pr.setCustomParameters({prompt:'select_account'}); return au.signInWithPopup(auth,pr); },
+        salir:function(){ return au.signOut(auth); },
+        leerPerfil:function(mail){ return fs.getDoc(fs.doc(db,COL_USR,mail)).then(function(sn){ return sn.exists()?sn.data():null; }); },
+        guardarUsuario:function(mail,docu){ return fs.setDoc(fs.doc(db,COL_USR,mail),docu,{merge:true}); },
+        escucharUsuarios:function(cb,errcb){
+          return fs.onSnapshot(fs.collection(db,COL_USR),function(snap){
+            var arr=[]; snap.forEach(function(d){ var x=d.data(); x._id=d.id; arr.push(x); }); cb(arr);
+          },errcb);
+        },
+        escuchar:function(cb,errcb){
+          var q=fs.query(fs.collection(db,COL),fs.orderBy('fecha','desc'),fs.limit(MAX_DOCS));
+          return fs.onSnapshot(q,function(snap){
+            var arr=[]; snap.forEach(function(d){ var x=d.data(); x._id=d.id; arr.push(x); }); cb(arr);
+          },errcb);
+        }
+      };
+      au.onAuthStateChanged(auth,function(u){
+        usuario=u||null; authListo=true;
+        verificarAcceso(usuario);
+      });
+    })
+    .catch(function(e){ sdkError=true; try{console.warn('Firebase no cargó:',e);}catch(x){} pintarEstado(); });
+  }
+
+  // ── respaldo de cada cotización ───────────────────────────────────────────
+  function respaldar(folio){
+    var pend=datosPend; datosPend=null;
+    if(!pend) return null;                         // nada nuevo que respaldar
+    if(typeof MODO_PRUEBA!=='undefined' && MODO_PRUEBA){ aviso('🧪 PRUEBA — no se respaldó en Firebase'); return null; }
+    if(!api||!perfil){ aviso('⚠ No se respaldó en Firebase: inicia sesión en la pestaña Historial'); return null; }
+    var docu=conCreador(armarDocumento(pend,folio),perfil), id=nuevoId();
+    return api.escribir(id,docu).then(function(){ aviso('☁ Respaldada en Firebase'); return id; })
+      .catch(function(e){ try{console.warn('Respaldo Firebase falló:',e);}catch(x){} aviso('⚠ No se pudo respaldar en Firebase ('+((e&&e.code)||'error')+')'); return null; });
+  }
+
+  // Envuelve las funciones existentes SIN tocar su código: capturan los datos que ya se
+  // arman para el Sheet y, cuando el guardado termina bien, los respaldan en Firestore.
+  function envolver(){
+    if(typeof armarDatosCotizacion==='function'){
+      var o1=armarDatosCotizacion;
+      armarDatosCotizacion=function(){ var d=o1.apply(this,arguments); datosPend=d; return d; };
+    }
+    if(typeof guardarCotizacion==='function'){
+      var o2=guardarCotizacion;
+      guardarCotizacion=function(onOk,onErr){
+        datosPend=null;
+        var ok=(typeof onOk==='function')?onOk:null, er=(typeof onErr==='function')?onErr:null;
+        return o2.call(this,
+          function(){ try{respaldar('');}catch(e){} if(ok) ok(); },
+          function(){ datosPend=null; if(er) er(); });
+      };
+    }
+    if(typeof construirYDescargarPDF==='function'){
+      var o3=construirYDescargarPDF;
+      construirYDescargarPDF=function(folio){ try{respaldar(folio||'');}catch(e){} return o3.apply(this,arguments); };
+    }
+  }
+
+  function conectarInterfaz(){
+    var chip=$('fb-chip'); if(chip) chip.addEventListener('click',function(){ if(typeof setTab==='function') setTab('historial'); });
+    // puerta de acceso
+    function msgPuerta(t){ var m=$('fb-g-msg'); if(m) m.textContent=t||''; }
+    var gG=$('fb-g-google');
+    if(gG) gG.addEventListener('click',function(){
+      if(!api){ msgPuerta('Firebase aún no carga. Espera unos segundos.'); return; }
+      msgPuerta('Abriendo Google…');
+      api.entrarGoogle().then(function(){ msgPuerta(''); }).catch(function(e){ msgPuerta(errorLegible(e)); });
+    });
+    var gR=$('fb-g-reint'); if(gR) gR.addEventListener('click',function(){ location.reload(); });
+    var gS=$('fb-g-seguir'); if(gS) gS.addEventListener('click',function(){ omitido=true; pintarEstado(); });
+    var salir=$('fb-salir'); if(salir) salir.addEventListener('click',function(){ if(api) api.salir(); });
+    var salirTop=$('fb-salir-top'); if(salirTop) salirTop.addEventListener('click',function(){ if(api) api.salir(); });
+    var gSal=$('fb-g-salir'); if(gSal) gSal.addEventListener('click',function(){ if(api) api.salir(); });
+    var uAg=$('fb-u-agregar'); if(uAg) uAg.addEventListener('click',function(){ agregarUsuario(); });
+    var uLi=$('fb-u-lista');
+    if(uLi){
+      uLi.addEventListener('click',function(e){
+        var b=e.target; if(!b||!b.classList||!b.classList.contains('fb-u-tog')) return;
+        cambiarUsuario(b.getAttribute('data-c'),{activo:b.getAttribute('data-a')==='alta'});
+      });
+      uLi.addEventListener('change',function(e){
+        var b=e.target; if(!b||!b.classList||!b.classList.contains('fb-u-rolsel')) return;
+        cambiarUsuario(b.getAttribute('data-c'),{rol:b.value});
+      });
+    }
+    var q=$('fb-q'); if(q) q.addEventListener('input',function(){ mostrar=POR_PAGINA; abiertos={}; verMes={}; pintarResultados(); });
+    var mas=$('fb-mas'); if(mas) mas.addEventListener('click',function(){ mostrar+=POR_PAGINA; pintarResultados(); });
+    var res=$('fb-res');
+    if(res) res.addEventListener('click',function(e){
+      var b=e.target; if(!b||!b.classList) return;
+      if(b.classList.contains('fb-mes')){ abiertos[b.getAttribute('data-k')]=(b.getAttribute('data-open')!=='1'); pintarResultados(); return; }
+      if(b.classList.contains('fb-mesmas')){ var k=b.getAttribute('data-k'); verMes[k]=(verMes[k]||POR_MES)+POR_MES; pintarResultados(); return; }
+      if(!b.classList.contains('fb-det')) return;
+      var p=$('fb-part-'+b.getAttribute('data-i'));
+      if(p){ var abierto=p.style.display!=='none'; p.style.display=abierto?'none':'block'; b.textContent=abierto?'Ver partidas':'Ocultar partidas'; }
+    });
+    pintarEstado();
+  }
+
+  envolver();
+  if(typeof window!=='undefined' && window.addEventListener){
+    window.addEventListener('load',function(){ conectarInterfaz(); cargarFirebase(); });
+  }
+
+  // Para pruebas automáticas (test_firebase.js)
+  if(typeof window!=='undefined'){
+    window.__fb={
+      armarDocumento:armarDocumento, filtrar:filtrar, normBusq:normBusq, soloDigitos:soloDigitos,
+      fechaISOChihuahua:fechaISOChihuahua, fechaLegible:fechaLegible, nuevoId:nuevoId, dinero:dinero,
+      respaldar:respaldar, errorLegible:errorLegible,
+      claveMes:claveMes, nombreMes:nombreMes, agruparPorMes:agruparPorMes,
+      resolverPerfil:resolverPerfil, puedeAdministrar:puedeAdministrar, rolesAsignables:rolesAsignables,
+      puedeEditarUsuario:puedeEditarUsuario, correoValido:correoValido, armarUsuario:armarUsuario, conCreador:conCreador,
+      verificarAcceso:verificarAcceso, agregarUsuario:agregarUsuario, cambiarUsuario:cambiarUsuario,
+      _t:{ setEstado:function(a,u){ api=a; usuario=u; perfil=u?(u.perfil||{correo:String(u.email||''),nombre:String(u.nombre||''),rol:String(u.rol||'usuario')}):null; perfilEstado=u?'ok':'ninguno'; authListo=true; pintarPuerta(); },
+           setPuerta:function(o){ if('authListo' in o) authListo=o.authListo; if('sdkError' in o) sdkError=o.sdkError; if('omitido' in o) omitido=o.omitido;
+             if('usuario' in o){ usuario=o.usuario; var u=o.usuario; perfil=u?(u.perfil||{correo:String(u.email||''),nombre:String(u.nombre||''),rol:String(u.rol||'usuario')}):null; perfilEstado=u?'ok':'ninguno'; }
+             if('perfilEstado' in o) perfilEstado=o.perfilEstado; if('perfilError' in o) perfilError=o.perfilError; if('perfil' in o) perfil=o.perfil;
+             pintarEstado(); }, getPend:function(){ return datosPend; },
+           setCache:function(c){ cache=c; cacheListo=true; },
+           setApi:function(a){ api=a; }, setUsuario:function(u){ usuario=u; authListo=true; },
+           getPerfil:function(){ return {perfil:perfil,estado:perfilEstado,error:perfilError}; },
+           setUsuarios:function(arr){ usuariosCache=arr; usuariosListo=true; usuariosError=''; pintarUsuarios(); } }
+    };
+  }
+})();
+</script>
 
 </body></html>
