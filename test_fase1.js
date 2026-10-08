@@ -318,6 +318,53 @@ const textoLetrero = r => $(r, 'estado-guardado').textContent;
   }
 
   // ══════════════════════════════════════════════════════════
+  console.log('\n=== L. CAMPO "origen" EN EL AVISO (idéntico a la columna Origen del Sheet) ===');
+  {
+    const opciones = ['WhatsApp', 'Facebook', 'Llamada', 'Visita', 'Cliente de casa', 'Auto en servicio'];
+    for (const op of opciones) {
+      const r = abrir({ confirm: true }); await esperar(80);
+      llenar(r, { origen: op }); conProducto(r); await copiar(r);
+      $(r, 'btn-ya-envie').click(); await esperar(40);
+      const sheetOrigen = r.sheet()[0] && r.sheet()[0].body.origen, avisoOrigen = r.aviso()[0] && r.aviso()[0].body.origen;
+      ok('L1 "' + op + '": el aviso lleva origen igual al del Sheet', avisoOrigen === op && sheetOrigen === op, { sheetOrigen, avisoOrigen });
+    }
+  }
+  {
+    const r = abrir({ confirm: true }); await esperar(80);
+    llenar(r, { origen: 'Auto en servicio' }); $(r, 'orden-servicio').value = '2319';
+    conProducto(r); await copiar(r);
+    $(r, 'btn-ya-envie').click(); await esperar(40);
+    const so = r.sheet()[0].body.origen, ao = r.aviso()[0].body.origen;
+    ok('L2 con No. de orden: el aviso lleva "Auto en servicio #2319", igual que el Sheet', so === 'Auto en servicio #2319' && ao === so, { so, ao });
+    const p = r.aviso()[0].body;
+    ok('L3 el resto del aviso no cambió (mismos 10 campos + origen)', ['telefono','cliente','folio','asesor','total','ref','grupo','versionCotizacion','fuente','version','origen'].every(k => k in p) && Object.keys(p).length === 11, Object.keys(p));
+    ok('L4 la versión de la página es nueva (no "fase1")', /origen/.test(p.version) && !/fase1/.test(p.version), p.version);
+  }
+  {
+    const r = abrir({ confirm: true }); await esperar(80);
+    llenar(r, { origen: 'Llamada' }); conProducto(r);
+    ok('L5 armarPayloadAviso con origen vacío manda "" (no falla)', (() => { $(r, 'cli-origen').value = ''; const p = r.w.armarPayloadAviso(); return p.origen === ''; })());
+  }
+  {
+    const r = abrir({ confirm: true, query: '?test=1' }); await esperar(80);
+    llenar(r, { origen: 'Llamada' }); conProducto(r); await copiar(r);
+    $(r, 'btn-ya-envie').click(); await esperar(40);
+    ok('L6 ?test=1: sigue sin mandar nada a GHL', r.aviso().length === 0);
+  }
+  {
+    const r = abrir({ confirm: false }); await esperar(80);
+    llenar(r, { origen: 'Llamada' }); conProducto(r); await copiar(r);
+    $(r, 'btn-ya-envie').click(); await esperar(40);
+    ok('L7 dev + Cancelar (simular): no manda nada a GHL', r.aviso().length === 0);
+  }
+  {
+    const r = abrir({ confirm: true, url: URL_PROD }); await esperar(80);
+    llenar(r, { origen: 'Visita' }); conProducto(r); await copiar(r);
+    $(r, 'btn-ya-envie').click(); await esperar(40);
+    ok('L8 en producción: origen igual al del Sheet y fuente "prod"', r.aviso()[0] && r.aviso()[0].body.origen === 'Visita' && r.aviso()[0].body.fuente === 'prod' && r.sheet()[0].body.origen === 'Visita', r.aviso()[0] && r.aviso()[0].body);
+  }
+
+  // ══════════════════════════════════════════════════════════
   console.log(`\n${'='.repeat(45)}`);
   console.log(`TOTAL: ${passed + failed} | ✅ ${passed} OK | ❌ ${failed} FALLIDAS`);
   if (failed === 0) console.log('🎉 Fase 1: comportamiento verificado'); else console.log('⚠️  Revisar antes de entregar');

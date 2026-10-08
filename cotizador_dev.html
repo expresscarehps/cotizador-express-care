@@ -1019,7 +1019,7 @@ var MODO_PRUEBA = (typeof window!=='undefined' && window.location && /[?&]test=1
 // Se detecta por el nombre del archivo: en dev, el aviso real a GHL pide confirmación explícita
 // (para no etiquetar clientes reales por accidente). También viaja en el aviso como "fuente".
 var ES_DEV = (typeof window!=='undefined' && window.location && /dev\.html?$/i.test(window.location.pathname||''));
-var VERSION_PAGINA = 'dev 2026-10-07 fase1';
+var VERSION_PAGINA = 'dev 2026-10-08 origen';
 
 var RIN = {
   'a': {mon:85,  bal:80,  piv:20, h:'Montaje $85 - Balanceo $80 - Pivote $20 por llanta'},
@@ -2618,6 +2618,15 @@ function notificarGHLCotizacionEnviada(){
     }).catch(function(){});
   }catch(e){}
 }
+// Valor de "Origen" EXACTAMENTE como se guarda en la columna Origen de Hoja1:
+// la opción elegida (Llamada, Visita, WhatsApp…) y, si se capturó No. de orden, " #<orden>".
+// Misma regla que armarDatosCotizacion. Si no hay nada, ''.
+function valorOrigen(){
+  var orEl=g('cli-origen'), o=orEl?orEl.value:'';
+  var os=v('orden-servicio');
+  if(os) o=o+' #'+os;
+  return o;
+}
 // Datos del aviso. telefono/cliente/folio son los de siempre (el n8n actual solo lee esos tres);
 // el resto son campos nuevos OPCIONALES que el n8n actual ignora.
 function armarPayloadAviso(){
@@ -2631,7 +2640,8 @@ function armarPayloadAviso(){
     grupo:(grupoRef||refCopiado||refVigente||''),
     versionCotizacion:versionGuardada,
     fuente:(ES_DEV?'dev':'prod'),
-    version:VERSION_PAGINA
+    version:VERSION_PAGINA,
+    origen:valorOrigen()
   };
 }
 // ═══════════════════════════════════════════════════════════════════════
