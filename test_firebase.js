@@ -237,7 +237,7 @@ async function parteB() {
       url: 'https://expresscarehps.github.io/cotizador-express-care/cotizador_dev.html' + (query || ''),
       beforeParse(w) {
         w.fetch = (u, o) => { fetchCalls.push({ u, body: o && o.body ? JSON.parse(o.body) : null }); return Promise.resolve({}); };
-        w.alert = () => {}; w.confirm = () => true;
+        w.alert = () => {}; w.confirm = () => true; w.document.execCommand = () => true;
       }
     });
     return { w: dom.window, fetchCalls, dom };
@@ -248,7 +248,9 @@ async function parteB() {
     set('cli-nombre', 'Cliente de Prueba Integración'); set('cli-tel', '6140000000'); set('cli-origen', 'WhatsApp');
     set('asesor', 'Ana'); set('v-marca', 'Nissan'); set('v-modelo', 'Sentra'); set('v-anio', '2020'); set('v-cil', '4');
     w.tallerItems = [{ id: 't1', concepto: 'Mano de obra prueba', costo: '', margen: 30, precio: '550', mo: true, precioFijo: false, pend: false, opcional: false, qty: 2, conQty: true, descuento: 0, proveedor: '' }];
-    w.document.getElementById(boton).click();
+    w.generarWA();   // la app regenera el texto (y habilita "Copiar") cada vez que cambia una partida
+    // el botón "Guardar en historial" ya no existe: copiar = guardar (se usa "Copiar para WhatsApp")
+    w.document.getElementById(boton === 'btn-guardar' ? 'bcp' : boton).click();
   }
   function api(escritos) { return { escribir: (id, d) => { escritos.push({ id, d }); return Promise.resolve(); } }; }
 
@@ -278,7 +280,7 @@ async function parteB() {
     ok('B2 documento: cliente, teléfono, vehículo, asesor', d && d.cliente === 'Cliente de Prueba Integración' && d.telefono === '6140000000' && /Nissan Sentra 2020/.test(d.vehiculo) && d.asesor === 'Ana', d);
     ok('B2 documento: partida de mano de obra', d && d.partidas.length === 1 && d.partidas[0].manoDeObra === true && d.partidas[0].cant === 2 && d.partidas[0].precio === 550 && d.partidas[0].subtotal === 1100, d && d.partidas);
     ok('B2 documento: total = 1100', d && d.total === 1100, d && d.total);
-    ok('B2 el botón queda en "Cotización guardada"', /Cotización guardada/.test(w.document.getElementById('btn-guardar').textContent));
+    ok('B2 el letrero queda en "Guardada"', /✅ Guardada/.test(w.document.getElementById('estado-guardado').textContent), w.document.getElementById('estado-guardado').textContent);
   }
   // B3: Generar PDF con folio → respaldo con folio
   {

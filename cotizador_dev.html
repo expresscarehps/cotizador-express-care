@@ -335,7 +335,18 @@ input:focus,select:focus{
   overflow-y:auto;
 }
 
-/* Botón guardar en historial */
+/* Casilla "Sin nombre" y letrero de estado de guardado (reemplaza al botón Guardar en historial) */
+label.chk-sin-nombre{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:400;margin:6px 0 0;cursor:pointer}
+label.chk-sin-nombre input{width:auto;margin:0}
+.estado-guardado{width:100%;box-sizing:border-box;padding:10px 12px;border-radius:8px;font-size:13px;font-weight:600;margin-bottom:8px;border:1.5px solid transparent}
+.estado-guardado.ok{background:#ecfdf5;color:#065f46;border-color:#a7f3d0}
+.estado-guardado.warn{background:#fffbeb;color:#92400e;border-color:#fde68a}
+.estado-guardado.err{background:#fef2f2;color:#b91c1c;border-color:#fca5a5}
+.estado-guardado.wait{background:#eff6ff;color:#1e40af;border-color:#bfdbfe}
+.estado-guardado button{margin-left:8px;padding:4px 10px;border-radius:6px;border:1.5px solid #b91c1c;background:#fff;color:#b91c1c;font-weight:700;cursor:pointer}
+.bcopy:disabled{opacity:.5;cursor:not-allowed}
+
+/* Botón guardar en historial (ya no se usa en pantalla) */
 #btn-guardar{
   width:100%;
   padding:13px;
@@ -590,8 +601,9 @@ input:focus,select:focus{
   <div class="card">
     <p class="st">Cliente</p>
     <div class="g2">
-      <div><label>Nombre <span class="req">*</span></label><input type="text" id="cli-nombre" required="" placeholder="Nombre del cliente"></div>
-      <div><label>Teléfono <span class="req">*</span></label><input type="tel" id="cli-tel" required="" oninput="this.value=this.value.replace(/[^0-9]/g,'')" maxlength="10" placeholder="614 000 0000" inputmode="numeric" pattern="[0-9]*" oninput="this.value=this.value.replace(/[^0-9]/g,&#39;&#39;)"></div>
+      <div><label>Nombre <span class="req">*</span></label><input type="text" id="cli-nombre" required="" placeholder="Nombre del cliente">
+        <label class="chk-sin-nombre"><input type="checkbox" id="cli-sin-nombre"> Sin nombre (solo trae teléfono)</label></div>
+      <div><label>Teléfono (10 dígitos) <span class="req">*</span></label><input type="tel" id="cli-tel" required="" oninput="this.value=normalizarTelefono(this.value)" maxlength="16" placeholder="614 000 0000" inputmode="numeric" pattern="[0-9]{10}"></div>
     </div>
     <div class="g2">
       <div>
@@ -616,9 +628,10 @@ input:focus,select:focus{
   <div class="card">
     <p class="st">Vehículo</p>
     <div class="g2">
-      <div><label>Marca <span class="req">*</span></label><input type="text" id="v-marca" required="" minlength="2" oninput="this.value=this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚüÜñÑ0-9 ]/g,'')" placeholder="Nissan"></div>
+      <div><label>Marca <span class="req">*</span></label><input type="text" id="v-marca" required="" minlength="2" oninput="this.value=this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚüÜñÑ0-9 ]/g,'')" placeholder="Nissan  ·  o SOLO LLANTAS"></div>
       <div><label>Modelo <span class="req">*</span></label><input type="text" id="v-modelo" required="" minlength="2" oninput="this.value=this.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚüÜñÑ0-9 ]/g,'')" placeholder="Sentra"></div>
     </div>
+    <div style="font-size:11px;color:#b45309;margin:-2px 0 8px">Si es solo de llantas y no hay datos del vehículo, escribe SOLO LLANTAS en Marca (ya no se piden modelo, año ni cilindros).</div>
     <div class="g3">
       <div><label>Año <span class="req">*</span></label><input type="number" id="v-anio" required="" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,4)" maxlength="4" placeholder="2022"></div>
       <div>
@@ -639,7 +652,7 @@ input:focus,select:focus{
 <div id="p-whatsapp" class="pnl">
   <div class="card">
     <pre class="wa" id="wt" style="white-space:pre-wrap;font-family:inherit;margin:0">Agrega productos para generar el mensaje...</pre>
-    <button id="btn-guardar">Guardar en historial</button>
+    <div id="estado-guardado" class="estado-guardado" aria-live="polite" style="display:none"></div>
     <button class="bcopy" id="bcp">Copiar para WhatsApp</button>
     <button class="byaenvie" id="btn-ya-envie" disabled>✅ Ya la envié</button>
     <button id="btn-pdf" class="bpdf">📄 Generar PDF</button>
@@ -999,6 +1012,10 @@ var GHL_WEBHOOK_URL = 'https://hpsexpresscare.app.n8n.cloud/webhook/cotizacion-e
 // pruebas de cada cambio prueben algo de verdad. Usar ?test=1 únicamente cuando se quiera
 // verificar algo visual/funcional sin tocar Sheet, Drive ni el contador de folios.
 var MODO_PRUEBA = (typeof window!=='undefined' && window.location && /[?&]test=1(&|$)/.test(window.location.search||''));
+// Se detecta por el nombre del archivo: en dev, el aviso real a GHL pide confirmación explícita
+// (para no etiquetar clientes reales por accidente). También viaja en el aviso como "fuente".
+var ES_DEV = (typeof window!=='undefined' && window.location && /dev\.html?$/i.test(window.location.pathname||''));
+var VERSION_PAGINA = 'dev 2026-10-07 fase1';
 
 var RIN = {
   'a': {mon:85,  bal:80,  piv:20, h:'Montaje $85 - Balanceo $80 - Pivote $20 por llanta'},
@@ -1075,6 +1092,18 @@ var yaGuardado = false;
 var folioActual = null;       // un solo folio por cotización, se reutiliza entre Guardar y PDF
 var folioNumeroActual = null; // el número (para confirmar/consumir el folio solo si el guardado se verifica)
 var pdfYaSubidoDrive = false; // evita subir el mismo PDF más de una vez a Drive
+// ── Ref de cotización y estado de guardado (Fase 1) ──
+var refVigente = '';          // Ref del contenido actual, ej. 1007-K7M2Q (mismo contenido = mismo Ref)
+var totalActualWA = 0;        // total numérico de la cotización actual (para el aviso)
+var guardadoInfo = {ref:'', conFolio:false}; // último guardado confirmado (Ref y si llevó folio)
+var grupoRef = null;          // Ref de la primera versión guardada de esta cotización
+var versionGuardada = 0;      // número de versión guardada dentro del grupo
+var camposRefPend = null;     // {ref, grupo, version} que viaja en el guardado en curso
+var estadoGuardado = '';      // '' | 'guardando'
+var errorGuardadoRef = '';    // Ref cuyo guardado falló (letrero rojo + Reintentar)
+var esperaGuardado = [];      // callbacks esperando a que termine un guardado en curso
+var refCopiado = '';          // Ref del texto que el asesor copió (es el que se avisa a GHL)
+var avisosEnviados = {};      // Refs ya avisados a GHL desde esta página (bloqueo local de duplicados)
 
 function g(id) { return document.getElementById(id); }
 function v(id) { var e = g(id); return e ? e.value.trim() : ''; }
@@ -1221,6 +1250,7 @@ function agregarTarifa() {
 
 function getVehiculo() {
   var marca = v('v-marca'), modelo = v('v-modelo'), anio = v('v-anio');
+  if(esSoloLlantas()) return 'Solo llantas';
   var cilEl = g('v-cil'), cil = cilEl ? cilEl.value.trim() : '';
   var ver = v('v-version');
   var parts = [marca, modelo, anio, cil ? cil+' cil' : '', ver].filter(function(x){return x && x.trim() && x.trim()!=='-' && x.trim()!=='0';});
@@ -1775,7 +1805,8 @@ function getTipo(){
 
 function generarWA() {
   var wt=g('wt'); if(!wt) return;
-  var cl=v('cli-nombre')||'Cliente';
+  var sinNombre=esSinNombre();
+  var cl=(sinNombre?'':v('cli-nombre'))||'Cliente';
   var vh=getVehiculo();
   var orEl=g('cli-origen'), origen=orEl?orEl.value:'';
   var tallerCart=tallerItems.filter(function(i){return i.concepto&&i.precio!==''&&parseFloat(i.precio)>0&&parseFloat(i.qty)>0;});
@@ -1783,7 +1814,9 @@ function generarWA() {
   var autoSvcs=cart.filter(function(c){return c.pid;});
   var extSvcs=cart.filter(function(c){return c.t==='s'&&!c.pid;});
   if(!llantas.length&&!tallerCart.length&&!extSvcs.length){
-    wt.textContent='Agrega productos para generar el mensaje...'; return;
+    wt.textContent='Agrega productos para generar el mensaje...';
+    refVigente=''; totalActualWA=0; actualizarEstadoCotizacion();
+    return;
   }
   var tot=0, totTaller=0, txt='';
   var ordenEl=g('orden-servicio'), orden=ordenEl?ordenEl.value.trim():'';
@@ -1791,6 +1824,7 @@ function generarWA() {
   var asesorNombre = v('asesor');
   txt += '🚗 *Cotización Express Care*\n';
   if(cl && cl!=='Cliente') txt += '👤 '+cl+(vh?' | '+vh:'')+'\n';
+  else if(sinNombre && vh) txt += '🚘 '+vh+'\n';
   if(asesorNombre) txt += '👨\u200d🔧 Asesor: '+asesorNombre+'\n';
   txt += '\n';
 
@@ -1871,12 +1905,17 @@ function generarWA() {
   }
 
   var primerNombre=cl.trim().split(' ')[0];
-  var msg='Gracias por tu paciencia, '+primerNombre+'. Aquí está tu presupuesto'+origenTxt+':\n\n';
+  var msg=(sinNombre?'Gracias por tu paciencia.':'Gracias por tu paciencia, '+primerNombre+'.')+' Aquí está tu presupuesto'+origenTxt+':\n\n';
   msg+=txt+'\n✅ *Total: '+fmt(tot)+'*';
   msg+='\n\n---\n🛠️ Precios netos (sujetos a disponibilidad de piezas y litros requeridos).\n💳 Aceptamos efectivo, transferencia y tarjetas de crédito o débito. ¡Contamos con promociones a meses sin intereses! (Con tarjetas participantes, aplican restricciones). 💳\n🚘 ¿Te apartamos espacio en el taller hoy o prefieres mañana? 📅👇';
+  // Ref: mismo contenido (+ mismo teléfono y día) = mismo Ref; si algo cambia, cambia el Ref.
+  totalActualWA=tot;
+  refVigente=calcularRef(msg, v('cli-tel'));
+  msg+='\n\nRef '+refVigente;
   wt.textContent=msg;
   var btn=g('btn-guardar');
   if(btn){btn.textContent='Guardar en historial';btn.disabled=false;btn.style.background='';btn.style.color='';}
+  actualizarEstadoCotizacion();
 }
 function resetGuardar(){
   yaGuardado=false;
@@ -2015,6 +2054,11 @@ function limpiarTodo(skipConfirm){
   folioActual=null;
   folioNumeroActual=null;
   pdfYaSubidoDrive=false;
+  // Fase 1: estado de Ref/guardado de la cotización anterior (avisosEnviados se conserva: bloquea Refs ya avisados)
+  guardadoInfo={ref:'',conFolio:false}; grupoRef=null; versionGuardada=0; camposRefPend=null;
+  estadoGuardado=''; errorGuardadoRef=''; esperaGuardado=[]; refCopiado=''; refVigente='';
+  var cbSN=g('cli-sin-nombre'); if(cbSN) cbSN.checked=false;
+  var nmSN=g('cli-nombre'); if(nmSN) nmSN.disabled=false;
   // Limpiar campos cliente
   ['cli-nombre','cli-tel','cli-origen','asesor','v-marca','v-modelo','v-anio','v-version','orden-servicio'].forEach(function(id){
     var el=g(id); if(el) el.value='';
@@ -2070,6 +2114,8 @@ function validarCampos(){
     if(el) el.classList.remove('field-error');
   });
   var vehiculoFields = ['v-marca','v-modelo','v-anio'];
+  var soloLlantas = esSoloLlantas();   // con "SOLO LLANTAS" en Marca ya no se piden modelo, año ni cilindros
+  var sinNombre = esSinNombre();
   campos.forEach(function(c){
     var el=g(c.id);
     var val=el?el.value.trim():'';
@@ -2078,8 +2124,14 @@ function validarCampos(){
     var cilNum = esCil ? parseInt(val) : 0;
     var anioNum = esAnio ? parseInt(val) : 0;
     var invalido = !val || val==='-' || val==='0' || val==='--' || /^[-\s0]+$/.test(val) || (['v-marca','v-modelo'].indexOf(c.id)>=0 && val.length<2) || (esCil && (isNaN(cilNum)||cilNum<2||cilNum>16)) || (esAnio && (isNaN(anioNum)||val.length!==4||!/^(19|20)/.test(val)));
+    var etiqueta=c.label;
+    if(soloLlantas && (c.id==='v-modelo'||c.id==='v-anio'||c.id==='v-cil')) invalido=false;
+    // Teléfono: exactamente 10 dígitos
+    if(c.id==='cli-tel' && !/^[0-9]{10}$/.test(val)){ invalido=true; if(val) etiqueta='Teléfono del cliente (deben ser exactamente 10 dígitos)'; }
+    // Nombre: no puede ser solo números (un teléfono no es un nombre). Sin nombre => casilla "Sin nombre".
+    if(c.id==='cli-nombre' && !sinNombre && val && /^[0-9\s+()\-.]+$/.test(val)){ invalido=true; etiqueta='Nombre del cliente (no puede ser solo números; si no trae nombre marca "Sin nombre")'; }
     if(invalido){
-      errores.push(c.label);
+      errores.push(etiqueta);
       if(el) el.classList.add('field-error');
     }
   });
@@ -2170,7 +2222,7 @@ function guardarCotizacion(onOk, onErr){
     return;
   }
 
-  var cuerpo=Object.assign({action:'saveCotizacion', folio:''}, datos);
+  var cuerpo=Object.assign({action:'saveCotizacion', folio:''}, datos, camposRef());
   fetch(SCRIPT_URL,{
     method:'POST',mode:'no-cors',
     headers:{'Content-Type':'text/plain;charset=utf-8'},
@@ -2250,6 +2302,7 @@ function generarPDF(){
   var errores=validarCampos();
   if(errores.length>0){alert('Faltan datos obligatorios:\n\n'+errores.join('\n'));setTab('cotizacion');return;}
 
+  generarWA();   // el Ref debe corresponder al contenido de este momento
   var btn=g('btn-pdf');
   if(btn){btn.textContent='Generando...';btn.disabled=true;}
 
@@ -2264,23 +2317,27 @@ function generarPDF(){
   }
 
   function guardarConFolioYContinuar(){
-    if(MODO_PRUEBA){ continuarPDF(); return; }
+    if(MODO_PRUEBA){ guardadoInfo={ref:refVigente, conFolio:true}; pintarEstadoGuardado(); continuarPDF(); return; }
     var datos=armarDatosCotizacion(llantas, autoSvcs, extSvcs, tallerCart);
-    var cuerpo=Object.assign({action:'saveCotizacion', folio:folioActual}, datos);
+    nuevaVersionParaGuardar();   // el PDF queda como una versión nueva del mismo Ref, ahora con folio
+    var refEnviada=refVigente;
+    var cuerpo=Object.assign({action:'saveCotizacion', folio:folioActual}, datos, camposRef());
     fetch(SCRIPT_URL,{
       method:'POST',mode:'no-cors',
       headers:{'Content-Type':'text/plain;charset=utf-8'},
       body: JSON.stringify(cuerpo)
-    }).then(function(){ continuarPDF(); })
-      .catch(function(){ continuarPDF(); }); // el PDF se genera igual; riesgo aceptado de no confirmar
+    }).then(function(){ guardadoInfo={ref:refEnviada, conFolio:true}; if(errorGuardadoRef===refEnviada) errorGuardadoRef=''; pintarEstadoGuardado(); continuarPDF(); },
+      function(){ errorGuardadoRef=refEnviada; versionGuardada=Math.max(0,versionGuardada-1); pintarEstadoGuardado(); continuarPDF(); }); // si no se pudo guardar, el PDF se genera igual y el letrero rojo lo avisa (el error al armar el PDF ya no se confunde con un guardado fallido)
   }
 
   if(folioActual){
     // Ya se pidió folio antes en esta misma cotización (otro PDF ya generado en esta sesión).
-    continuarPDF();
+    // Si el contenido cambió desde el último guardado con folio, se guarda esa versión nueva.
+    if(guardadoInfo.ref===refVigente && guardadoInfo.conFolio) continuarPDF();
+    else guardarConFolioYContinuar();
   } else if(MODO_PRUEBA){
     folioActual='PRUEBA-'+Date.now();
-    continuarPDF();
+    guardarConFolioYContinuar();   // en modo prueba solo marca el letrero; no toca el Sheet
   } else {
     obtenerFolioJSONP(function(folio){
       folioActual=folio;
@@ -2442,26 +2499,39 @@ function construirYDescargarPDF(folio, cl, tel, vh, asesor, fechaStr, llantas, a
   img.src='membrete_compressed.jpg';
 }
 function copiar(){
+  // Sin productos no hay nada que copiar (antes copiaba el texto "Agrega productos..." y activaba el aviso)
+  if(!hayProductos()){
+    alert('Agrega al menos un producto antes de copiar la cotización.');
+    return;
+  }
   var errores=validarCampos();
   if(errores.length>0){
     alert('Faltan datos obligatorios:\n\n' + errores.join('\n'));
     setTab('cotizacion');
     return;
   }
+  generarWA();   // asegura que el texto y su Ref estén al día en este instante
   var wt=g('wt'); if(!wt) return;
   var btn=g('bcp');
   function ok(){
     if(btn){btn.textContent='¡Copiado!';btn.classList.add('done');setTimeout(function(){btn.textContent='Copiar para WhatsApp';btn.classList.remove('done');},2000);}
     habilitarYaLaEnvie();
+    registrarCotizacion();   // copiar = guardar: la cotización queda registrada en Hoja1
   }
   if(navigator.clipboard){navigator.clipboard.writeText(wt.textContent).then(ok).catch(function(){fb(wt.textContent);ok();});}
   else{fb(wt.textContent);ok();}
 }
 // Activa el botón "Ya la envié" (visual, no bloqueante) una vez que el asesor
-// ya copió el texto. No dispara ningún aviso por sí solo.
+// ya copió el texto. No dispara ningún aviso por sí solo. Si ya se avisó este mismo Ref
+// (mismo contenido), queda bloqueado para no reiniciar los recordatorios.
 function habilitarYaLaEnvie(){
   var bye=g('btn-ya-envie');
-  if(bye){bye.disabled=false;bye.classList.add('enabled');}
+  refCopiado=refVigente||'';
+  if(bye && refCopiado && avisosEnviados[refCopiado]){
+    bye.disabled=true;bye.classList.remove('enabled');bye.classList.add('done');bye.textContent='✅ Aviso ya enviado';
+    return;
+  }
+  if(bye){bye.disabled=false;bye.classList.add('enabled');bye.classList.remove('done');bye.textContent='✅ Ya la envié';}
 }
 // Se dispara SOLO cuando el asesor confirma que sí mandó la cotización por
 // WhatsApp. Separado de "Copiar" a propósito: copiar el texto no garantiza que
@@ -2473,6 +2543,24 @@ var avisoGHLPresionado=false;
 // pierda el aviso a GHL por olvido. Si nunca copió (trato cerrado por teléfono), no
 // pregunta nada.
 function nuevaCotizacionConCandado(){
+  // Antes de borrar: si la cotización actual no está guardada, se guarda; si no se puede, se pregunta.
+  generarWA();
+  if(hayProductos() && guardadoInfo.ref!==refVigente){
+    if(estadoGuardado==='guardando') return;   // ya hay un guardado en curso; esperar a que termine
+    var errores=validarCampos();
+    if(errores.length>0){
+      if(!confirm('⚠️ Esta cotización NO está guardada y le faltan datos:\n\n'+errores.join('\n')+'\n\nAceptar = borrarla sin guardar.\nCancelar = volver a completarla.')){ setTab('cotizacion'); return; }
+    } else {
+      registrarCotizacion(function(exito){
+        if(!exito && !confirm('⚠️ No se pudo guardar esta cotización en el historial.\n\n¿Borrarla de todos modos?\n\nAceptar = borrar.\nCancelar = conservarla para reintentar.')) return;
+        continuarNuevaCotizacion();
+      });
+      return;
+    }
+  }
+  continuarNuevaCotizacion();
+}
+function continuarNuevaCotizacion(){
   var bye=g('btn-ya-envie');
   if(bye && !bye.disabled && !avisoGHLPresionado){
     if(!confirm('⚠️ Copiaste la cotización pero NO has presionado "✅ Ya la envié".\n\n' +
@@ -2486,11 +2574,31 @@ function nuevaCotizacionConCandado(){
 function yaLaEnvie(){
   var btn=g('btn-ya-envie');
   if(!btn || btn.disabled) return;
+  // El aviso lleva el Ref del texto que se copió; si la cotización cambió después, hay que copiar de nuevo.
+  if(refCopiado && refCopiado!==refVigente){
+    alert('La cotización cambió después de copiarla.\n\nPresiona "Copiar para WhatsApp" otra vez y después "Ya la envié".');
+    return;
+  }
+  var refAviso=refCopiado||refVigente||'';
+  if(refAviso && avisosEnviados[refAviso]) return;   // ya se avisó este mismo Ref: no se repite
+  var nombreAviso=esSinNombre()?'(sin nombre)':v('cli-nombre'), telAviso=v('cli-tel');
+  var simular=false;
+  if(!MODO_PRUEBA){
+    if(ES_DEV){
+      // Dev usa datos reales: el aviso REAL etiqueta al contacto real en GHL y arranca sus recordatorios.
+      simular=!confirm('🧪 ESTÁS EN LA VERSIÓN DE PRUEBA (dev)\n\nCliente: '+nombreAviso+' · '+telAviso+'\n\nAceptar = enviar el aviso REAL (etiqueta al contacto real en GHL y arranca sus recordatorios).\nCancelar = solo simular (no se envía nada).');
+    } else if(!confirm('¿Ya le mandaste esta cotización a '+nombreAviso+' ('+telAviso+')?\n\nAl aceptar se activa su seguimiento automático con recordatorios.')){
+      return;
+    }
+  }
+  if(simular){ toast('🧪 Aviso simulado: no se envió nada a GHL'); return; }
   avisoGHLPresionado=true;
+  if(refAviso) avisosEnviados[refAviso]=true;
   notificarGHLCotizacionEnviada();
-  btn.textContent='✅ ¡Aviso enviado!';
+  btn.disabled=true;
+  btn.classList.remove('enabled');
   btn.classList.add('done');
-  setTimeout(function(){btn.textContent='✅ Ya la envié';btn.classList.remove('done');},2500);
+  btn.textContent=MODO_PRUEBA?'🧪 Aviso simulado (modo prueba)':'✅ Aviso enviado';
 }
 // Avisa a GHL (vía n8n) que esta cotización se envió, para disparar el workflow de
 // recordatorios allá (tag "cotizacion-enviada"). Fire-and-forget: nunca bloquea ni
@@ -2502,15 +2610,161 @@ function notificarGHLCotizacionEnviada(){
       method:'POST',
       mode:'no-cors',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({telefono:v('cli-tel'), cliente:v('cli-nombre'), folio:(folioActual||'')})
+      body:JSON.stringify(armarPayloadAviso())
     }).catch(function(){});
   }catch(e){}
 }
+// Datos del aviso. telefono/cliente/folio son los de siempre (el n8n actual solo lee esos tres);
+// el resto son campos nuevos OPCIONALES que el n8n actual ignora.
+function armarPayloadAviso(){
+  return {
+    telefono:v('cli-tel'),
+    cliente:(esSinNombre()?'':v('cli-nombre')),
+    folio:(folioActual||''),
+    asesor:v('asesor'),
+    total:totalActualWA,
+    ref:(refCopiado||refVigente||''),
+    grupo:(grupoRef||refCopiado||refVigente||''),
+    versionCotizacion:versionGuardada,
+    fuente:(ES_DEV?'dev':'prod'),
+    version:VERSION_PAGINA
+  };
+}
+// ═══════════════════════════════════════════════════════════════════════
+// FASE 1 — Teléfono, "Sin nombre", "SOLO LLANTAS", Ref y guardado automático
+// ═══════════════════════════════════════════════════════════════════════
+
+// Teléfono: solo dígitos, exactamente 10. Acepta pegar con 52 / +52 / +521 y lo limpia.
+function normalizarTelefono(txt){
+  var d=String(txt||'').replace(/[^0-9]/g,'');
+  if(d.length>=13 && d.indexOf('521')===0) d=d.slice(3);
+  else if(d.length>=12 && d.indexOf('52')===0) d=d.slice(2);
+  return d.slice(0,10);
+}
+
+// "Sin nombre": casilla debajo del campo Nombre (o el texto "Sin nombre" escrito/restaurado).
+function esSinNombre(){
+  var cb=g('cli-sin-nombre');
+  if(cb && cb.checked) return true;
+  return v('cli-nombre').toLowerCase()==='sin nombre';
+}
+function alternarSinNombre(){
+  var cb=g('cli-sin-nombre'), nm=g('cli-nombre');
+  if(!cb || !nm) return;
+  if(cb.checked){ nm.value='Sin nombre'; nm.disabled=true; nm.classList.remove('field-error'); }
+  else { nm.disabled=false; if(nm.value.trim().toLowerCase()==='sin nombre') nm.value=''; }
+  generarWA();
+}
+
+// "SOLO LLANTAS" en Marca: sin datos del vehículo (ya no se piden modelo, año ni cilindros).
+function esSoloLlantas(){
+  return v('v-marca').toUpperCase().replace(/\s+/g,' ')==='SOLO LLANTAS';
+}
+
+// ¿Hay algo que cotizar? (mismos filtros que usan generarWA, guardar y PDF)
+function hayProductos(){
+  var tallerCart=tallerItems.filter(function(i){return i.concepto&&i.precio!==''&&parseFloat(i.precio)>0&&parseFloat(i.qty)>0;});
+  var llantas=cart.filter(function(c){return c.t==='l';});
+  var extSvcs=cart.filter(function(c){return c.t==='s'&&!c.pid;});
+  return !!(llantas.length||tallerCart.length||extSvcs.length);
+}
+
+// ── Ref: MMDD-XXXXX (5 caracteres sin 0/O/1/I/L). Se deriva del contenido, así que el mismo
+// contenido (mismo teléfono y mismo día) da siempre el mismo Ref, y cualquier cambio da otro.
+var ALFABETO_REF='23456789ABCDEFGHJKMNPQRSTUVWXYZ';
+function hashTexto(str){
+  var h=0x811c9dc5;
+  for(var i=0;i<str.length;i++){ h^=str.charCodeAt(i); h=Math.imul(h,0x01000193)>>>0; }
+  return h>>>0;
+}
+function fechaMMDD(){
+  try{
+    var partes=new Intl.DateTimeFormat('en-CA',{timeZone:'America/Chihuahua',month:'2-digit',day:'2-digit'}).formatToParts(new Date());
+    var m='',d='';
+    partes.forEach(function(p){ if(p.type==='month') m=p.value; if(p.type==='day') d=p.value; });
+    if(m&&d) return m+d;
+  }catch(e){}
+  var n=new Date();
+  return ('0'+(n.getMonth()+1)).slice(-2)+('0'+n.getDate()).slice(-2);
+}
+function calcularRef(texto, tel){
+  var mmdd=fechaMMDD();
+  var n=hashTexto(mmdd+'|'+(tel||'')+'|'+texto), code='';
+  for(var i=0;i<5;i++){ code=ALFABETO_REF.charAt(n%31)+code; n=Math.floor(n/31); }
+  return mmdd+'-'+code;
+}
+
+// ── Guardado automático ──
+function nuevaVersionParaGuardar(){
+  if(!grupoRef) grupoRef=refVigente;
+  versionGuardada++;
+  camposRefPend={ref:refVigente, grupo:grupoRef, version:versionGuardada};
+}
+function camposRef(){ return camposRefPend||{}; }
+
+// Guarda en Hoja1 la cotización actual si todavía no está guardada con su Ref actual.
+// alTerminar(exito, motivo) es opcional. Nunca bloquea el copiado (copiar ya ocurrió).
+function registrarCotizacion(alTerminar){
+  function fin(exito,motivo){ if(typeof alTerminar==='function') alTerminar(exito,motivo); }
+  generarWA();   // el Ref debe corresponder al contenido de este momento
+  if(!hayProductos()){ fin(true); return; }
+  if(guardadoInfo.ref===refVigente){ pintarEstadoGuardado(); fin(true); return; }
+  if(estadoGuardado==='guardando'){ esperaGuardado.push(fin); return; }   // ya hay uno en curso
+  var errores=validarCampos();
+  if(errores.length>0){ pintarEstadoGuardado(); fin(false,'incompleta'); return; }
+  var refEnviada=refVigente;
+  estadoGuardado='guardando'; errorGuardadoRef='';
+  pintarEstadoGuardado();
+  nuevaVersionParaGuardar();
+  yaGuardado=false;   // es una versión nueva: guardarCotizacion no debe bloquearla
+  function terminar(exito){
+    estadoGuardado='';
+    if(exito){ guardadoInfo={ref:refEnviada, conFolio:false}; errorGuardadoRef=''; }
+    else { errorGuardadoRef=refEnviada; versionGuardada=Math.max(0,versionGuardada-1); }
+    pintarEstadoGuardado();
+    var cbs=esperaGuardado; esperaGuardado=[];
+    fin(exito,exito?'':'error');
+    cbs.forEach(function(cb){ cb(exito,exito?'':'error'); });
+  }
+  guardarCotizacion(function(){ terminar(true); }, function(){ terminar(false); });
+}
+
+// Letrero de estado (reemplaza al botón "Guardar en historial").
+function pintarEstadoGuardado(){
+  var el=g('estado-guardado'); if(!el) return;
+  if(!hayProductos()){ el.style.display='none'; el.innerHTML=''; return; }
+  var clase, html;
+  if(estadoGuardado==='guardando'){
+    clase='wait'; html='⏳ Guardando en el historial…';
+  } else if(errorGuardadoRef && errorGuardadoRef===refVigente){
+    clase='err'; html='❌ NO se guardó en el historial (revisa tu conexión). <button type="button" id="btn-reintentar-guardado">Reintentar</button>';
+  } else if(guardadoInfo.ref && guardadoInfo.ref===refVigente){
+    clase='ok'; html=(MODO_PRUEBA?'🧪 PRUEBA — no se tocó el Sheet real':'✅ Guardada')+' · Ref '+refVigente+(guardadoInfo.conFolio?' · con folio':'');
+  } else {
+    clase='warn'; html='⚠️ Sin guardar — se guarda al copiar o al generar el PDF';
+  }
+  el.className='estado-guardado '+clase;
+  el.innerHTML=html;
+  el.style.display='block';
+}
+
+// Se llama al final de generarWA (cada vez que cambia algo de la cotización).
+function actualizarEstadoCotizacion(){
+  var bcp=g('bcp'); if(bcp) bcp.disabled=!hayProductos();
+  // Si cambió la cotización después de copiarla, "Ya la envié" se apaga: el aviso debe llevar el Ref del texto copiado.
+  var bye=g('btn-ya-envie');
+  if(bye && refCopiado && refCopiado!==refVigente && !bye.disabled){
+    bye.disabled=true; bye.classList.remove('enabled');
+  }
+  pintarEstadoGuardado();
+}
+
 function fb(t){var ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);}
 
 // ── INIT ─────────────────────────────────────────────────
 window.addEventListener('load',function(){
   actualizarMarcas('');
+  actualizarEstadoCotizacion();   // sin productos: "Copiar" arranca deshabilitado
   renderSvc();
   // Event delegation for cart - prevents listener accumulation on re-render
   var coEl = g('ci');
@@ -2536,7 +2790,7 @@ window.addEventListener('load',function(){
     cargarPlantilla('afinacion');
     renderTallerItems();
   });
-  var watchIds=['cli-nombre','v-marca','v-modelo','v-anio','v-cil','v-version','cli-origen','asesor','orden-servicio'];
+  var watchIds=['cli-nombre','cli-tel','v-marca','v-modelo','v-anio','v-cil','v-version','cli-origen','asesor','orden-servicio'];
   for(var i=0;i<watchIds.length;i++){
     var el=g(watchIds[i]);
     if(el){el.addEventListener('input',generarWA);el.addEventListener('change',generarWA);}
@@ -2559,7 +2813,11 @@ window.addEventListener('load',function(){
   var mgEl=g('mg');if(mgEl){mgEl.addEventListener('input',recalcPVP);mgEl.addEventListener('change',recalcPVP);mgEl.addEventListener('keyup',recalcPVP);}
   var bcpEl=g('bcp');if(bcpEl)bcpEl.addEventListener('click',copiar);
   var byeEl=g('btn-ya-envie');if(byeEl)byeEl.addEventListener('click',yaLaEnvie);
-  var bgEl=g('btn-guardar');if(bgEl)bgEl.addEventListener('click',guardarCotizacion);
+  var sinNomEl=g('cli-sin-nombre');if(sinNomEl)sinNomEl.addEventListener('change',alternarSinNombre);
+  var estGuardadoEl=g('estado-guardado');
+  if(estGuardadoEl)estGuardadoEl.addEventListener('click',function(e){
+    if(e.target && e.target.id==='btn-reintentar-guardado') registrarCotizacion();
+  });
   var bpdfEl=g('btn-pdf');if(bpdfEl)bpdfEl.addEventListener('click',generarPDF);
   var bnEl=g('btn-nueva');if(bnEl)bnEl.addEventListener('click',nuevaCotizacionConCandado);
   var batEl=g('btn-add-tarifa');if(batEl)batEl.addEventListener('click',agregarTarifa);

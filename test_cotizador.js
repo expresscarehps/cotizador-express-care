@@ -139,7 +139,11 @@ test('GHL_WEBHOOK_URL definido',          ()=>appJS.includes("var GHL_WEBHOOK_UR
 test('notificarGHLCotizacionEnviada existe', ()=>appJS.includes('function notificarGHLCotizacionEnviada()'));
 test('Notificación respeta MODO_PRUEBA',  ()=>/function notificarGHLCotizacionEnviada\(\)\{\s*if\(MODO_PRUEBA\) return;/.test(appJS));
 test('Notificación es fire-and-forget (no-cors)', ()=>/notificarGHLCotizacionEnviada[\s\S]*?mode:'no-cors'/.test(appJS));
-test('Payload incluye telefono/cliente/folio', ()=>appJS.includes("telefono:v('cli-tel'), cliente:v('cli-nombre'), folio:(folioActual||'')"));
+test('Payload conserva telefono/cliente/folio y suma campos nuevos opcionales', ()=>{
+  const m=appJS.match(/function armarPayloadAviso\(\)\{[\s\S]*?\n\}/);
+  return !!m && ["telefono:v('cli-tel')","folio:(folioActual||'')","asesor:","total:","ref:","fuente:","version:"].every(s=>m[0].includes(s)) && /cliente:\(esSinNombre\(\)\?'':v\('cli-nombre'\)\)/.test(m[0]);
+});
+test('notificarGHL usa armarPayloadAviso', ()=>/notificarGHLCotizacionEnviada\(\)\{[\s\S]*?JSON\.stringify\(armarPayloadAviso\(\)\)/.test(appJS));
 test('copiar() YA NO llama a notificarGHLCotizacionEnviada (solo copia)',
   ()=>{
     const m=appJS.match(/function copiar\(\)\{[\s\S]*?\n\}/);
