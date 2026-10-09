@@ -67,7 +67,7 @@ const txt = b => b.textContent.trim();
   buscarMedida(w, '195'); btns(w)[1].click(); await wait(200);
   ok('F1 una llanta sola sigue llevando Montaje + Balanceo + Pivote', ['Montaje', 'Balanceo', 'Pivote'].every(n => w.cart.some(c => c.t === 's' && c.desc === n)));
   ok('F2 el precio de la llanta sola no lleva recargo', Math.round(w.cart.filter(c => c.t === 'l')[0].precio) === Math.round(w.cart.filter(c => c.t === 'l')[0].precioBase));
-  ok('F3 la página tiene etiqueta de versión dev', /VERSION_PAGINA *= *'dev 2026-10-09/.test(html));
+  ok('F3 la página tiene etiqueta de versión (dev o prod)', /VERSION_PAGINA *= *'(dev|prod) 2026-10-09/.test(html));
   console.log('\n=============================================');
   console.log('TOTAL: ' + (passed + failed) + ' | ✅ ' + passed + ' OK | ❌ ' + failed + ' FALLIDAS');
   process.exit(failed ? 1 : 0);

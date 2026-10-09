@@ -88,7 +88,7 @@ const total = w => parseInt((w.document.getElementById('cnt').textContent.match(
   buscarMedida(w, MED);
   ok('F1 el filtro de Gama sigue funcionando solo', (() => { cambiar(w, 'qg', 'Alta'); const m = marcasResultado(w); cambiar(w, 'qg', ''); return m.every(x => B[x].gama === 'Alta'); })());
   ok('F2 las casillas de "varias opciones" siguen apareciendo', w.document.querySelectorAll('#res .ochk').length > 0, total(w));
-  ok('F3 la página tiene etiqueta de versión dev (el filtro de Demanda ya está desde "filtro demanda")', /^dev 2026-10-09/.test(w.VERSION_PAGINA), w.VERSION_PAGINA);
+  ok('F3 la página tiene etiqueta de versión (dev o prod) (el filtro de Demanda ya está desde "filtro demanda")', /^(dev|prod) 2026-10-09/.test(w.VERSION_PAGINA), w.VERSION_PAGINA);
 
   console.log('\n=============================================');
   console.log('TOTAL: ' + (passed + failed) + ' | ✅ ' + passed + ' OK | ❌ ' + failed + ' FALLIDAS');

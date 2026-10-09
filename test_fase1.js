@@ -338,7 +338,7 @@ const textoLetrero = r => $(r, 'estado-guardado').textContent;
     ok('L2 con No. de orden: el aviso lleva "Auto en servicio #2319", igual que el Sheet', so === 'Auto en servicio #2319' && ao === so, { so, ao });
     const p = r.aviso()[0].body;
     ok('L3 el resto del aviso no cambió (mismos 10 campos + origen)', ['telefono','cliente','folio','asesor','total','ref','grupo','versionCotizacion','fuente','version','origen'].every(k => k in p) && Object.keys(p).length === 11, Object.keys(p));
-    ok('L4 la versión de la página es nueva (no "fase1")', /^dev 2026-10-\d\d \w+/.test(p.version) && !/fase1/.test(p.version), p.version);
+    ok('L4 la versión de la página es nueva (no "fase1")', /^(dev|prod) 2026-10-\d\d \w+/.test(p.version) && !/fase1/.test(p.version), p.version);
   }
   {
     const r = abrir({ confirm: true }); await esperar(80);
