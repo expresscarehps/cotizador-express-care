@@ -1379,7 +1379,15 @@ function buscar() {
       var bv=(BRAND_DB&&d.marca&&BRAND_DB[d.marca])||{pais:'',gama:''}; var bPais=bv.pais||''; var bGama=bv.gama||''; if((!gf||bGama===gf)&&pasaDemanda(d.marca)) r.push({cve:d.cve,desc:d.desc,medida:d.medida,marca:d.marca,pb:d.costo,precio:pvpLlanta(d.costo),isVega:true,isAyala:false,proveedor:'VEGA',pais:bPais,gama:bGama});
     }
   }
-  if (sinMedida) r.sort(function(a,b){ return (a.medida||'')<(b.medida||'') ? -1 : ((a.medida||'')>(b.medida||'') ? 1 : 0); });
+  // Sin medida: primero las medidas de auto normal (195/55R15, 225/55R17, P205/55R16, 195R15...) y al final
+  // camión / todoterreno / LT (11R22.5, 33X12.50R15, LT265/70R17...). Dentro de cada grupo, por medida.
+  if (sinMedida) {
+    var _auto=function(m){ m=(m||'').toUpperCase(); return /^P?\d{3}(\/\d{2}|R)/.test(m) && m.indexOf('LT')<0; };
+    r.sort(function(a,b){
+      var ga=_auto(a.medida)?0:1, gb=_auto(b.medida)?0:1; if(ga!==gb) return ga-gb;
+      var ma=a.medida||'', mb=b.medida||''; return ma<mb ? -1 : (ma>mb ? 1 : 0);
+    });
+  }
   cnt.textContent = r.length ? r.length+' resultado'+(r.length>1?'s':'')+(sinMedida?' · escribe una medida para afinar':'') : 'Sin resultados';
   if (!r.length) { res.innerHTML = '<div class="empty">Sin resultados. '+(sinMedida?'Prueba otra combinación de filtros.':'Prueba otra medida.')+'</div>'; return; }
   var html = '';
