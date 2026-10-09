@@ -1019,7 +1019,7 @@ var MODO_PRUEBA = (typeof window!=='undefined' && window.location && /[?&]test=1
 // Se detecta por el nombre del archivo: en dev, el aviso real a GHL pide confirmación explícita
 // (para no etiquetar clientes reales por accidente). También viaja en el aviso como "fuente".
 var ES_DEV = (typeof window!=='undefined' && window.location && /dev\.html?$/i.test(window.location.pathname||''));
-var VERSION_PAGINA = 'dev 2026-10-08 origen';
+var VERSION_PAGINA = 'dev 2026-10-08 marca-obligatoria';
 
 var RIN = {
   'a': {mon:85,  bal:80,  piv:20, h:'Montaje $85 - Balanceo $80 - Pivote $20 por llanta'},
@@ -1381,6 +1381,7 @@ function buscar() {
     '<p style="font-size:11px;color:#888;margin-bottom:4px">Precio de otro proveedor (WhatsApp / llamada)</p>'+
     '<div style="display:flex;align-items:center;gap:4px">'+
     '<input type="text" id="otro-desc" placeholder="Descripción" style="flex:3;font-size:12px;padding:5px 6px;border:1px solid #ddd;border-radius:7px">'+
+    '<input type="text" id="otro-marca" placeholder="Marca *" maxlength="30" style="flex:1.2;min-width:70px;font-size:11px;font-weight:600;padding:5px 6px;border:1px solid #ddd;border-radius:7px;text-transform:uppercase">'+
     '<input type="text" id="otro-prov" placeholder="Proveedor" style="flex:1.5;font-size:11px;padding:5px 6px;border:1px solid #ddd;border-radius:7px;color:#666">'+
     '<input type="number" id="otro-costo" placeholder="Costo $" min="0" step="0.01" style="width:80px;flex-shrink:0;font-size:12px;font-weight:700;padding:5px 4px;text-align:right;border:1px solid #ddd;border-radius:7px" oninput="calcOtro()">'+
     '<div style="width:65px;flex-shrink:0;font-size:11px;color:#2e7d32;font-weight:600;text-align:right;white-space:nowrap" id="otro-pvp-preview">PVP: -</div>'+
@@ -1395,13 +1396,16 @@ function buscar() {
     btnOtro.addEventListener('click', function(){
       var desc = (g('otro-desc').value||'').trim();
       var costo = parseFloat(g('otro-costo').value)||0;
+      var otroMarca = (g('otro-marca') ? g('otro-marca').value.trim().replace(/\s+/g,' ').toUpperCase() : '');
       if (!desc)  { alert('Escribe la descripción de la llanta'); return; }
+      // La marca es obligatoria (se usa para estadística): mínimo 2 caracteres y al menos una letra
+      if (otroMarca.length<2 || !/[A-ZÁÉÍÓÚÜÑ]/.test(otroMarca)) { alert('Escribe la MARCA de la llanta (obligatoria), por ejemplo: MICHELIN'); if(g('otro-marca')){g('otro-marca').style.borderColor='#c62828'; g('otro-marca').focus();} return; }
       if (!costo) { alert('Escribe el precio de costo'); return; }
       var pv = pvpLlanta(costo), id = 'l'+Date.now();
       var otroProv = (g('otro-prov') ? g('otro-prov').value.trim() : '') || 'Otro proveedor';
-      cart.push({id:id, t:'l', desc:desc, marca:otroProv, precio:pv, precioBase:pv, pb:costo, qty:1, pid:null, rinCat:rin});
+      cart.push({id:id, t:'l', desc:desc, marca:otroMarca, prov:otroProv, otro:true, precio:pv, precioBase:pv, pb:costo, qty:1, pid:null, rinCat:rin});
       recalcInstalacionLlantas();
-      g('otro-desc').value=''; g('otro-costo').value=''; if(g('otro-prov'))g('otro-prov').value=''; g('otro-pvp-preview').textContent='PVP: -';
+      g('otro-desc').value=''; if(g('otro-marca')){g('otro-marca').value='';g('otro-marca').style.borderColor='#ddd';} g('otro-costo').value=''; if(g('otro-prov'))g('otro-prov').value=''; g('otro-pvp-preview').textContent='PVP: -';
       renderCarrito(); updateBadge();
       this.textContent='OK'; this.style.background='#2e7d32';
       setTimeout(function(){ var b=g('btn-otro'); if(b){b.textContent='+';b.style.background='#111';} },900);
@@ -1837,7 +1841,7 @@ function generarWA() {
     var totLlantas=0;
     for(var i=0;i<llantas.length;i++){
       var l=llantas[i],sub=l.precio*l.qty; tot+=sub; totLlantas+=sub;
-      txt+='* '+l.desc+(l.qty>1?' x'+l.qty:'')+' - '+fmt(l.precio)+' c/u'+(l.qty>1?' = '+fmt(sub):'')+'\n';
+      txt+='* '+descConMarca(l)+(l.qty>1?' x'+l.qty:'')+' - '+fmt(l.precio)+' c/u'+(l.qty>1?' = '+fmt(sub):'')+'\n';
     }
     var ag={};
     for(var i=0;i<autoSvcs.length;i++){var s=autoSvcs[i];if(!ag[s.desc])ag[s.desc]={p:s.precio,q:0};ag[s.desc].q+=s.qty;}
@@ -2165,7 +2169,7 @@ function armarDatosCotizacion(llantas, autoSvcs, extSvcs, tallerCart){
       tipo:'Llantas',
       proveedor: l.isAyala?'AYALA':(l.isVega?'VEGA':'SERV'),
       noParte: l.cve||'',
-      producto: l.desc,
+      producto: descConMarca(l),
       cant: l.qty,
       costo: l.pb ? fmtN(l.pb) : '',
       margen: l.isAyala ? (pago==='meses'?'20%':'25%') : (gm()+'%'),
@@ -2617,6 +2621,16 @@ function notificarGHLCotizacionEnviada(){
       body:JSON.stringify(armarPayloadAviso())
     }).catch(function(){});
   }catch(e){}
+}
+// Descripcion de una llanta CON su marca al frente (ej. "MICHELIN 175/70 R13 82T ...").
+// Se usa en el texto de WhatsApp y en la columna Producto del Sheet.
+// Aplica a llantas de catalogo (tienen cve) y a las manuales de otro proveedor (otro:true, donde la
+// marca se captura obligatoria). Si la descripcion ya trae la marca no se repite.
+function descConMarca(l){
+  var d=(l&&l.desc)?String(l.desc):'', m=(l&&l.marca)?String(l.marca).trim():'';
+  if(!d||!m||!(l&&(l.cve||l.otro))) return d;
+  if(d.toUpperCase().indexOf(m.toUpperCase())>=0) return d;
+  return m+' '+d;
 }
 // Valor de "Origen" EXACTAMENTE como se guarda en la columna Origen de Hoja1:
 // la opción elegida (Llamada, Visita, WhatsApp…) y, si se capturó No. de orden, " #<orden>".

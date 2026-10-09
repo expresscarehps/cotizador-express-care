@@ -338,7 +338,7 @@ const textoLetrero = r => $(r, 'estado-guardado').textContent;
     ok('L2 con No. de orden: el aviso lleva "Auto en servicio #2319", igual que el Sheet', so === 'Auto en servicio #2319' && ao === so, { so, ao });
     const p = r.aviso()[0].body;
     ok('L3 el resto del aviso no cambió (mismos 10 campos + origen)', ['telefono','cliente','folio','asesor','total','ref','grupo','versionCotizacion','fuente','version','origen'].every(k => k in p) && Object.keys(p).length === 11, Object.keys(p));
-    ok('L4 la versión de la página es nueva (no "fase1")', /origen/.test(p.version) && !/fase1/.test(p.version), p.version);
+    ok('L4 la versión de la página es nueva (no "fase1")', /^dev 2026-10-08 \w+/.test(p.version) && !/fase1/.test(p.version), p.version);
   }
   {
     const r = abrir({ confirm: true }); await esperar(80);
@@ -362,6 +362,109 @@ const textoLetrero = r => $(r, 'estado-guardado').textContent;
     llenar(r, { origen: 'Visita' }); conProducto(r); await copiar(r);
     $(r, 'btn-ya-envie').click(); await esperar(40);
     ok('L8 en producción: origen igual al del Sheet y fuente "prod"', r.aviso()[0] && r.aviso()[0].body.origen === 'Visita' && r.aviso()[0].body.fuente === 'prod' && r.sheet()[0].body.origen === 'Visita', r.aviso()[0] && r.aviso()[0].body);
+  }
+
+  // ══════════════════════════════════════════════════════════
+  console.log('\n=== F1-M. MARCA DE LA LLANTA EN EL TEXTO DE WHATSAPP Y EN EL SHEET ===');
+  {
+    const r = abrir(); await esperar(80);
+    const f = r.w.descConMarca;
+    ok('M1 descConMarca existe', typeof f === 'function');
+    ok('M2 llanta de catálogo sin la marca en la descripción: la marca va al frente', f({ desc: '175/70 R13 82T TL ENERGY XM2', marca: 'MICHELIN', cve: 'AY26387' }) === 'MICHELIN 175/70 R13 82T TL ENERGY XM2');
+    ok('M3 si la descripción YA trae la marca no se repite (VEGA)', f({ desc: '155/70-R13 BLACKHAWK HH11 75T', marca: 'BLACKHAWK', cve: '15570R13HH11' }) === '155/70-R13 BLACKHAWK HH11 75T');
+    ok('M4 llanta manual "otro" (sin cve; marca = proveedor) NO se modifica', f({ desc: '205/55R16 ALGO', marca: 'Llantera X', precio: 1 }) === '205/55R16 ALGO');
+    ok('M5 sin marca: queda igual', f({ desc: '205/55R16 ALGO', marca: '', cve: 'X1' }) === '205/55R16 ALGO');
+    ok('M6 comparación sin importar mayúsculas', f({ desc: '205/55R16 michelin primacy', marca: 'MICHELIN', cve: 'X2' }) === '205/55R16 michelin primacy');
+    // catálogo real: ninguna llanta pierde información ni queda sin marca
+    const cat = [['DATA', r.w.DATA], ['AYALA', r.w.AYALA], ['VEGA', r.w.VEGA]];
+    for (const [n, a] of cat) {
+      const mal = a.filter(x => { const d = f({ desc: x.desc, marca: x.marca, cve: x.cve || 'c' }); return d.toUpperCase().indexOf(String(x.marca).toUpperCase()) < 0 || d.indexOf(x.desc) < 0; });
+      ok('M7 catálogo ' + n + ' (' + a.length + '): toda llanta sale con su marca y conserva su descripción', mal.length === 0, mal.slice(0, 3));
+    }
+  }
+  for (const [nombre, url] of [['dev', URL_DEV], ['prod', URL_PROD]]) {
+    const r = abrir({ confirm: true, url }); await esperar(80);
+    llenar(r);
+    const it = r.w.AYALA[0];
+    r.w.cart.push({ id: 'l1', t: 'l', desc: it.desc, marca: it.marca, precio: 2000, precioBase: 2000, pb: 1500, qty: 4, pid: null, cve: it.cve, isAyala: true, isVega: false, rinCat: it.rin });
+    r.w.generarWA();
+    const wa = r.w.waTexto || ($(r, 'wa-texto') && ($(r, 'wa-texto').value || $(r, 'wa-texto').textContent)) || '';
+    await copiar(r);
+    const copiado = r.copiados[0] || '';
+    ok('M8 (' + nombre + ') el texto copiado a WhatsApp trae la marca: "' + it.marca + ' ' + it.desc.slice(0, 18) + '…"', copiado.indexOf('* ' + it.marca + ' ' + it.desc) >= 0, copiado.split('\n').filter(x => /^\* /.test(x)));
+    const fila = r.sheet()[0] && r.sheet()[0].body.items.find(x => x.tipo === 'Llantas' && x.noParte === it.cve);
+    ok('M9 (' + nombre + ') la columna Producto del Sheet trae la marca, y No. de parte/proveedor siguen igual', fila && fila.producto === it.marca + ' ' + it.desc && fila.noParte === it.cve && fila.proveedor === 'AYALA', fila);
+    ok('M10 (' + nombre + ') el total no cambió por poner la marca', r.sheet()[0] && r.sheet()[0].body.items.filter(x => x.tipo === 'Llantas').some(x => x.cant === 4 && parseFloat(String(x.subtotal).replace(/[^0-9.]/g, '')) === 8000), r.sheet()[0] && r.sheet()[0].body.items.map(x => [x.cant, x.subtotal]));
+  }
+  {
+    const r = abrir({ confirm: true }); await esperar(80);
+    llenar(r);
+    r.w.cart.push({ id: 'l9', t: 'l', desc: '205/55R16 LLANTA RARA', marca: 'Llantera X', precio: 1500, precioBase: 1500, pb: 1000, qty: 1, pid: null, isAyala: false, isVega: false });
+    r.w.generarWA(); await copiar(r);
+    const fila = r.sheet()[0].body.items.find(x => x.tipo === 'Llantas');
+    ok('M11 llanta manual: WhatsApp y Sheet sin cambios (no se inventa marca)', r.copiados[0].indexOf('* 205/55R16 LLANTA RARA') >= 0 && fila.producto === '205/55R16 LLANTA RARA', fila);
+  }
+
+  // ══════════════════════════════════════════════════════════
+  console.log('\n=== F1-N. LLANTA DE OTRO PROVEEDOR: MARCA OBLIGATORIA ===');
+  {
+    const r = abrir({ confirm: true }); await esperar(80);
+    llenar(r);
+    $(r, 'qm').value = '205/55R16'; r.w.buscar();
+    const marca = $(r, 'otro-marca'), desc = $(r, 'otro-desc'), costo = $(r, 'otro-costo'), prov = $(r, 'otro-prov'), btn = $(r, 'btn-otro');
+    ok('N1 el formulario de "otro proveedor" tiene el campo Marca (con asterisco de obligatorio)', !!marca && /\*/.test(marca.placeholder) && !!prov && !!btn, marca && marca.placeholder);
+    const n0 = r.w.cart.length;
+    desc.value = '205/55R16 LLANTA DE PRUEBA'; costo.value = '1000'; prov.value = 'Llantera X';
+    marca.value = ''; btn.click();
+    ok('N2 sin marca: NO agrega la llanta y avisa que la marca es obligatoria', r.w.cart.length === n0 && r.alerts.some(a => /MARCA/.test(a)), { cart: r.w.cart.length, alerts: r.alerts });
+    r.alerts.length = 0;
+    for (const mala of ['   ', 'A', '12', '--', '0']) { marca.value = mala; btn.click(); }
+    ok('N3 marca vacía / de 1 letra / solo números o símbolos: se rechaza', r.w.cart.length === n0 && r.alerts.length === 5, { cart: r.w.cart.length, alerts: r.alerts.length });
+    r.alerts.length = 0;
+    marca.value = ' hankook  '; btn.click();
+    const ultOtro = () => r.w.cart.filter(c => c.t === 'l' && c.otro).pop();
+    const it = ultOtro();
+    ok('N4 con marca: se agrega y la marca se guarda en MAYÚSCULAS y sin espacios sobrantes', r.w.cart.filter(c => c.t === 'l').length === 1 && it.marca === 'HANKOOK' && r.alerts.length === 0, it);
+    ok('N5 el proveedor capturado se conserva aparte y el precio se calcula igual que antes', it.prov === 'Llantera X' && it.pb === 1000 && it.precio === r.w.pvpLlanta(1000) && it.otro === true, it);
+    ok('N6 después de agregar, los campos Marca/Descripción/Costo/Proveedor se limpian', $(r, 'otro-marca').value === '' && $(r, 'otro-desc').value === '' && $(r, 'otro-prov').value === '' && $(r, 'otro-costo').value === '');
+    r.w.generarWA(); await copiar(r);
+    ok('N7 el texto de WhatsApp lleva la marca: "* HANKOOK 205/55R16 LLANTA DE PRUEBA"', r.copiados[0].indexOf('* HANKOOK 205/55R16 LLANTA DE PRUEBA') >= 0, r.copiados[0]);
+    const fila = r.sheet()[0].body.items.find(x => x.tipo === 'Llantas' && /LLANTA DE PRUEBA/.test(x.producto));
+    ok('N8 la columna Producto del Sheet lleva la marca', fila && fila.producto === 'HANKOOK 205/55R16 LLANTA DE PRUEBA', fila);
+    // si la descripción ya trae la marca no se repite
+    $(r, 'qm').value = '205/55R16'; r.w.buscar();
+    $(r, 'otro-desc').value = '205/55R16 HANKOOK VENTUS'; $(r, 'otro-costo').value = '900'; $(r, 'otro-marca').value = 'Hankook'; $(r, 'btn-otro').click();
+    const it2 = ultOtro();
+    ok('N9 si la descripción ya trae la marca, no se duplica', r.w.descConMarca(it2) === '205/55R16 HANKOOK VENTUS', r.w.descConMarca(it2));
+  }
+  {
+    // El nombre del proveedor NUNCA debe llegar al cliente (texto de WhatsApp ni PDF)
+    const r = abrir({ confirm: true, query: '?test=1' }); await esperar(80);
+    llenar(r);
+    const textos = [];                                    // todo lo que el PDF dibuja
+    const doc = new Proxy({ internal: { getNumberOfPages: () => 1, pageSize: { getWidth: () => 215.9, getHeight: () => 279.4 } }, lastAutoTable: { finalY: 100 } }, {
+      get(t, k) { if (k in t) return t[k]; return (...a) => { try { textos.push(JSON.stringify(a)); } catch (e) {} if (k === 'splitTextToSize') return [String(a[0])]; if (k === 'getTextWidth') return 10; if (k === 'save' || k === 'output') return ''; return doc; }; }
+    });
+    r.w.jspdf = { jsPDF: function () { return doc; } };
+    r.w.Image = function () { const o = {}; Object.defineProperty(o, 'src', { set() { setTimeout(() => o.onerror && o.onerror(), 0); } }); return o; };   // el membrete no carga en jsdom: se sigue sin él
+    $(r, 'qm').value = '205/55R16'; r.w.buscar();
+    $(r, 'otro-desc').value = '205/55R16 LLANTA PROVEEDORSECRETO'; $(r, 'otro-costo').value = '1000'; $(r, 'otro-prov').value = 'ProveedorSecreto SA'; $(r, 'otro-marca').value = 'hankook'; $(r, 'btn-otro').click();
+    r.w.generarWA(); await copiar(r);
+    ok('N11 el texto de WhatsApp NO trae el nombre del proveedor', r.copiados.length === 1 && !/ProveedorSecreto SA/i.test(r.copiados[0]), r.copiados[0]);
+    try { r.w.generarPDF(); } catch (e) {}
+    await esperar(400);
+    const todoPDF = textos.join('\n');
+    ok('N12 el PDF se dibujó con la llanta y su MARCA', /HANKOOK/.test(todoPDF), todoPDF.slice(0, 300));
+    ok('N13 el PDF NO trae el nombre del proveedor', !/ProveedorSecreto SA/i.test(todoPDF));
+    ok('N14 lo que se manda al Sheet tampoco trae el nombre del proveedor en ningún campo', !r.fetch.some(c => /ProveedorSecreto SA/i.test(JSON.stringify(c.body || ''))));
+  }
+  {
+    // el flujo normal de catálogo no cambia
+    const r = abrir({ confirm: true }); await esperar(80);
+    llenar(r);
+    const it = r.w.AYALA[5];
+    r.w.cart.push({ id: 'lc', t: 'l', desc: it.desc, marca: it.marca, precio: 2000, precioBase: 2000, pb: 1500, qty: 1, pid: null, cve: it.cve, isAyala: true, isVega: false, rinCat: it.rin });
+    ok('N10 llantas de catálogo: siguen sin pedir nada extra y llevan su marca', r.w.descConMarca(r.w.cart[0]).indexOf(it.marca) >= 0);
   }
 
   // ══════════════════════════════════════════════════════════
