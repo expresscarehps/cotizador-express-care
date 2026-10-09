@@ -338,7 +338,7 @@ const textoLetrero = r => $(r, 'estado-guardado').textContent;
     ok('L2 con No. de orden: el aviso lleva "Auto en servicio #2319", igual que el Sheet', so === 'Auto en servicio #2319' && ao === so, { so, ao });
     const p = r.aviso()[0].body;
     ok('L3 el resto del aviso no cambió (mismos 10 campos + origen)', ['telefono','cliente','folio','asesor','total','ref','grupo','versionCotizacion','fuente','version','origen'].every(k => k in p) && Object.keys(p).length === 11, Object.keys(p));
-    ok('L4 la versión de la página es nueva (no "fase1")', /^dev 2026-10-08 \w+/.test(p.version) && !/fase1/.test(p.version), p.version);
+    ok('L4 la versión de la página es nueva (no "fase1")', /^dev 2026-10-\d\d \w+/.test(p.version) && !/fase1/.test(p.version), p.version);
   }
   {
     const r = abrir({ confirm: true }); await esperar(80);
@@ -465,6 +465,183 @@ const textoLetrero = r => $(r, 'estado-guardado').textContent;
     const it = r.w.AYALA[5];
     r.w.cart.push({ id: 'lc', t: 'l', desc: it.desc, marca: it.marca, precio: 2000, precioBase: 2000, pb: 1500, qty: 1, pid: null, cve: it.cve, isAyala: true, isVega: false, rinCat: it.rin });
     ok('N10 llantas de catálogo: siguen sin pedir nada extra y llevan su marca', r.w.descConMarca(r.w.cart[0]).indexOf(it.marca) >= 0);
+  }
+
+  // ══════════════════════════════════════════════════════════
+  console.log('\n=== F1-O. COLUMNA "MARCA" EN LO QUE SE MANDA AL SHEET ===');
+  {
+    const r = abrir({ confirm: true }); await esperar(80);
+    llenar(r);
+    const it = r.w.AYALA[5];
+    r.w.cart.push({ id: 'oc', t: 'l', desc: it.desc, marca: it.marca, precio: 2000, precioBase: 2000, pb: 1500, qty: 4, pid: null, cve: it.cve, isAyala: true, isVega: false, rinCat: it.rin });
+    r.w.cart.push({ id: 'om', t: 'l', desc: '205/55R16 LLANTA PROVEEDORSECRETO', marca: 'jk  tyre', prov: 'ProveedorSecreto SA', otro: true, precio: 1500, precioBase: 1500, pb: 1000, qty: 1, pid: null, rinCat: 16 });
+    r.w.generarWA(); await copiar(r);
+    const items = r.sheet()[0].body.items;
+    const llantas = items.filter(x => x.tipo === 'Llantas' && (x.proveedor || x.noParte));
+    const cat = llantas.find(x => x.noParte === it.cve), man = llantas.find(x => /PROVEEDORSECRETO/.test(x.producto));
+    ok('O1 llanta de catálogo: el Sheet recibe su marca en MAYÚSCULAS', cat && cat.marca === String(it.marca).toUpperCase(), cat);
+    ok('O2 llanta manual: manda la MARCA (mayúsculas, espacios limpios), nunca el proveedor', man && man.marca === 'JK TYRE' && !/ProveedorSecreto/i.test(man.marca), man);
+    ok('O3 los renglones que no son llanta (servicios) no llevan marca', items.filter(x => !(x.proveedor || x.noParte) ).every(x => !x.marca), items.filter(x => x.marca));
+    ok('O4 el nombre del proveedor manual no viaja en ningún campo', !/ProveedorSecreto SA/i.test(JSON.stringify(r.sheet()[0].body)));
+  }
+
+  // ══════════════════════════════════════════════════════════
+  console.log('\n=== F1-P. VARIAS OPCIONES (marcas) DE LA MISMA MEDIDA ===');
+  {
+    const marcar = (r, n) => {      // marca n llantas de MARCAS DISTINTAS en los resultados; regresa sus cve
+      const cs = Array.from(r.w.document.querySelectorAll('#res .ochk')), usadas = {}, cves = [];
+      for (const c of cs) {
+        const cve = c.getAttribute('data-cve'); const f = r.w.buscarItemCatalogo(cve); if (!f) continue;
+        const m = f.it.marca; if (usadas[m]) continue; usadas[m] = 1;
+        if (cves.length >= n) break;
+        c.checked = true; c.dispatchEvent(new r.w.Event('change')); cves.push(cve);
+      }
+      return cves;
+    };
+    const nuevaConOpciones = async (n, qty, query) => {
+      const r = abrir({ confirm: true, query: query }); await esperar(80); llenar(r);
+      $(r, 'qm').value = '205/55R16'; r.w.buscar();
+      const cves = marcar(r, n);
+      if (qty !== undefined) $(r, 'opc-qty').value = String(qty);
+      $(r, 'opc-add').click();
+      return { r, cves };
+    };
+
+    // P1–P4: 3 opciones, cantidad 4
+    {
+      const { r, cves } = await nuevaConOpciones(3, 4);
+      const tires = r.w.cart.filter(c => c.t === 'l');
+      ok('P1 los resultados traen casillas y al marcar 3 aparece la barra "Cotizar opciones"', cves.length === 3 && $(r, 'opc-bar') !== null, cves);
+      ok('P2 quedan 3 opciones numeradas 1-2-3, cada una con 4 piezas', tires.length === 3 && tires.map(t => t.op).join() === '1,2,3' && tires.every(t => t.qty === 4), tires.map(t => [t.op, t.qty]));
+      ok('P3 con 4 piezas: instalación incluida (+$135 c/u) y SIN líneas sueltas de Montaje/Balanceo/Pivote', r.w.instalacionInfo.recargo === 135 && r.w.cart.filter(c => c.pid).length === 0 && tires.every(t => Math.abs(t.precio - (t.precioBase + 135)) < 0.001));
+      const T = r.w.totalesOpciones();
+      ok('P4 cada opción tiene su propio total = su llanta × 4 (no se suman entre sí)', T.lista.length === 3 && T.lista.every(x => Math.abs(x.total - x.l.precio * 4) < 0.01) && new Set(T.lista.map(x => x.total.toFixed(2))).size >= 2, T.lista.map(x => x.total));
+      r.w.generarWA(); const wa = $(r, 'wt').textContent;
+      ok('P5 el WhatsApp trae Opción 1, 2 y 3 y una lista "Total por opción"', /\*Opción 1\*/.test(wa) && /\*Opción 2\*/.test(wa) && /\*Opción 3\*/.test(wa) && /Total por opción/.test(wa), wa);
+      ok('P6 el WhatsApp NO trae un "Total:" único que sume las opciones', !/✅ \*Total:/.test(wa));
+      ok('P7 cada total del WhatsApp coincide con el cálculo', T.lista.every(x => wa.indexOf(r.w.fmt(x.total)) >= 0));
+      ok('P8 el WhatsApp sigue diciendo instalación gratis y trae la marca de cada opción', /INSTALACIÓN GRATIS/.test(wa) && T.lista.every(x => wa.indexOf(r.w.marcaLlanta(x.l)) >= 0));
+      ok('P9 el carrito muestra el rango de totales, no una suma', /\$[\d,]+\.\d\d a \$[\d,]+\.\d\d/.test($(r, 'tv').textContent) && $(r, 'ci').querySelectorAll('.bsel').length === 3, $(r, 'tv').textContent);
+      ok('P10 el botón se llama "Cliente seleccionó esta opción"', /Cliente seleccionó esta opción/.test($(r, 'ci').querySelector('.bsel').textContent));
+
+      // P11: cantidad compartida
+      r.w.setQty(tires[1].id, 2);
+      ok('P11 al cambiar la cantidad de una opción cambia la de todas (y recalcula la instalación: 2 piezas = +$210)', r.w.cart.filter(c => c.t === 'l').every(t => t.qty === 2) && r.w.instalacionInfo.recargo === 210);
+      r.w.setQty(tires[0].id, 4);
+
+      // P12–P14: Sheet y GHL
+      const datos = r.w.armarDatosCotizacion(r.w.cart.filter(c => c.t === 'l'), r.w.cart.filter(c => c.pid), r.w.cart.filter(c => c.t === 's' && !c.pid), []);
+      ok('P12 el Sheet recibe cada renglón de llanta con su número de opción y su marca', datos.items.filter(i => i.opcion).length === 3 && datos.items.every(i => !i.opcion || (i.marca && i.marca === i.marca.toUpperCase())), datos.items);
+      ok('P13 el total único va vacío y se manda la lista de totales por opción', datos.total === '' && datos.opciones.length === 3 && datos.opciones.every(o => o.marca && parseFloat(o.total) > 0), { t: datos.total, o: datos.opciones });
+      const aviso = r.w.armarPayloadAviso();
+      ok('P14 a GHL NO se manda total (solo cuántas opciones)', !('total' in aviso) && aviso.opciones === 3 && !!aviso.telefono, aviso);
+
+      // P15: el proveedor no viaja
+      ok('P15 el texto de WhatsApp no menciona al proveedor (AYALA / VEGA / SERV)', !/\b(AYALA|VEGA|SERV|Servillantas)\b/i.test(wa), wa);
+
+      // P16: elegir una
+      const cuarta = tires[1];
+      r.w.elegirOpcion(cuarta.id);
+      const quedan = r.w.cart.filter(c => c.t === 'l');
+      ok('P16 "Cliente seleccionó esta opción": quedan solo esa llanta, sin etiqueta de opción', quedan.length === 1 && quedan[0].id === cuarta.id && !quedan[0].op && r.confirms.some(m => /seleccion/i.test(m)), quedan.map(q => [q.id, q.op]));
+      r.w.generarWA(); const wa2 = $(r, 'wt').textContent;
+      ok('P17 después de elegir, el WhatsApp vuelve a ser una cotización normal con "Total:"', /✅ \*Total:/.test(wa2) && !/Opción/.test(wa2) && !/Total por opción/.test(wa2));
+      ok('P18 y el aviso a GHL vuelve a llevar total', 'total' in r.w.armarPayloadAviso() && r.w.armarPayloadAviso().total > 0);
+    }
+
+    // P19: máximo 5
+    {
+      const r = abrir({ confirm: true }); await esperar(80); llenar(r);
+      $(r, 'qm').value = '205/55R16'; r.w.buscar();
+      const cs = Array.from(r.w.document.querySelectorAll('#res .ochk'));
+      cs.slice(0, 7).forEach(c => { c.checked = true; c.dispatchEvent(new r.w.Event('change')); });
+      ok('P19 no deja marcar más de 5 (la 6.ª casilla se desmarca)', r.w.opcSel.length === 5 && cs.slice(0, 7).filter(c => c.checked).length === 5, r.w.opcSel.length);
+      $(r, 'opc-add').click();
+      ok('P20 con 5 marcadas se crean 5 opciones', r.w.cart.filter(c => c.t === 'l' && c.op).length === 5);
+    }
+    // P21: mínimo 2
+    {
+      const r = abrir({ confirm: true }); await esperar(80); llenar(r);
+      $(r, 'qm').value = '205/55R16'; r.w.buscar();
+      const c = r.w.document.querySelector('#res .ochk'); c.checked = true; c.dispatchEvent(new r.w.Event('change'));
+      $(r, 'opc-add').click();
+      ok('P21 con una sola marcada avisa y no agrega nada', r.w.cart.length === 0 && r.alerts.some(a => /al menos 2/.test(a)), r.alerts);
+    }
+    // P22–P24: 1 pieza por opción
+    {
+      const { r } = await nuevaConOpciones(3, 1);
+      const T = r.w.totalesOpciones();
+      ok('P22 con 1 pieza no hay recargo: cada opción lleva su Montaje, Balanceo y Pivote', r.w.instalacionInfo.recargo === 0 && r.w.cart.filter(c => c.pid).length === 9, r.w.cart.filter(c => c.pid).length);
+      ok('P23 el total de cada opción incluye SU instalación (llanta + montaje + balanceo + pivote)', T.lista.every(x => x.svcs.length === 3 && Math.abs(x.total - (x.llanta + x.svcTotal)) < 0.01));
+      r.w.generarWA(); const wa = $(r, 'wt').textContent;
+      ok('P24 el WhatsApp muestra la instalación debajo de cada opción', (wa.match(/\+ Montaje/g) || []).length === 3, wa);
+    }
+    // P25–P27: con un servicio común
+    {
+      const { r } = await nuevaConOpciones(2, 4);
+      r.w.cart.push({ id: 'sx', t: 's', desc: 'Alineación — computarizada', precio: 500, qty: 1 });
+      r.w.recalcInstalacionLlantas(); r.w.renderCarrito();
+      const T = r.w.totalesOpciones();
+      ok('P25 un servicio común se suma UNA vez a cada opción', T.comun === 500 && T.lista.every(x => Math.abs(x.total - (x.llanta + 500)) < 0.01), T.lista.map(x => x.total));
+      r.w.generarWA(); const wa = $(r, 'wt').textContent;
+      ok('P26 el WhatsApp lo lista una sola vez como "Incluido con cualquier opción"', /Incluido con cualquier opción/.test(wa) && (wa.match(/Alineación/g) || []).length === 1, wa);
+      // quitar una opción: la que queda deja de ser "opción"
+      const primera = r.w.cart.find(c => c.t === 'l');
+      r.w.removeCartItem(primera.id);
+      ok('P27 si se quita una y queda solo una, vuelve a ser cotización normal', r.w.cart.filter(c => c.t === 'l').length === 1 && !r.w.cart.find(c => c.t === 'l').op && !r.w.hayOpciones());
+    }
+    // P28: llanta suelta previa
+    {
+      const r = abrir({ confirm: true }); await esperar(80); llenar(r);
+      $(r, 'qm').value = '205/55R16'; r.w.buscar();
+      const b = r.w.document.querySelector('#res .badd[data-cve]'); b.click();
+      const antes = r.w.cart.filter(c => c.t === 'l').length;
+      marcar(r, 2); $(r, 'opc-add').click();
+      ok('P28 si ya había una llanta suelta, pide confirmar y la reemplaza por las opciones', antes === 1 && r.confirms.some(m => /llantas sueltas/.test(m)) && r.w.cart.filter(c => c.t === 'l').length === 2 && r.w.cart.filter(c => c.t === 'l').every(c => c.op));
+    }
+    // P29–P31: PDF
+    {
+      const { r } = await nuevaConOpciones(3, 4, '?test=1');
+      const textos = [];
+      const doc = new Proxy({ internal: { getNumberOfPages: () => 1, pageSize: { getWidth: () => 215.9, getHeight: () => 279.4 } }, lastAutoTable: { finalY: 100 } }, {
+        get(t, k) { if (k in t) return t[k]; return (...a) => { try { textos.push(JSON.stringify(a)); } catch (e) {} if (k === 'splitTextToSize') return [String(a[0])]; if (k === 'getTextWidth') return 10; if (k === 'save' || k === 'output') return ''; return doc; }; }
+      });
+      r.w.jspdf = { jsPDF: function () { return doc; } };
+      r.w.Image = function () { const o = {}; Object.defineProperty(o, 'src', { set() { setTimeout(() => o.onerror && o.onerror(), 0); } }); return o; };
+      try { r.w.generarPDF(); } catch (e) {}
+      await esperar(400);
+      const pdf = textos.join('\n');
+      const T = r.w.totalesOpciones();
+      ok('P29 el PDF dibuja una tabla por opción y el total de cada una', /Opción 1/.test(pdf) && /Opción 2/.test(pdf) && /Opción 3/.test(pdf) && /Total opción 3/.test(pdf), pdf.slice(0, 300));
+      ok('P30 el PDF trae los totales de las 3 opciones y NO un total único', T.lista.every(x => pdf.indexOf(r.w.fmt(x.total)) >= 0) && !/"Total:"/.test(pdf));
+      ok('P31 el PDF trae la marca de cada opción', T.lista.every(x => pdf.indexOf(r.w.marcaLlanta(x.l)) >= 0));
+    }
+    // P33: regresión — una cotización normal (una llanta) sigue con su tabla única, IVA y "Total:"
+    {
+      const r = abrir({ confirm: true, query: '?test=1' }); await esperar(80); llenar(r);
+      $(r, 'qm').value = '205/55R16'; r.w.buscar();
+      r.w.document.querySelector('#res .badd[data-cve]').click();
+      const textos = [];
+      const doc = new Proxy({ internal: { getNumberOfPages: () => 1, pageSize: { getWidth: () => 215.9, getHeight: () => 279.4 } }, lastAutoTable: { finalY: 100 } }, {
+        get(t, k) { if (k in t) return t[k]; return (...a) => { try { textos.push(JSON.stringify(a)); } catch (e) {} if (k === 'splitTextToSize') return [String(a[0])]; if (k === 'getTextWidth') return 10; if (k === 'save' || k === 'output') return ''; return doc; }; }
+      });
+      r.w.jspdf = { jsPDF: function () { return doc; } };
+      r.w.Image = function () { const o = {}; Object.defineProperty(o, 'src', { set() { setTimeout(() => o.onerror && o.onerror(), 0); } }); return o; };
+      try { r.w.generarPDF(); } catch (e) {}
+      await esperar(400);
+      const pdf = textos.join('\n');
+      ok('P33 sin opciones el PDF sigue igual: tabla de Concepto, IVA y "Total:" (nada de "Opción")', /Concepto/.test(pdf) && /IVA \(16%\)/.test(pdf) && /"Total:"/.test(pdf) && !/Opción/.test(pdf), pdf.slice(0, 200));
+      ok('P34 sin opciones el aviso a GHL sigue llevando su total', 'total' in r.w.armarPayloadAviso());
+    }
+    // P32: guardado en Sheet real (modo real) con opciones y verificación de que el aviso GHL no lleva total
+    {
+      const r = abrir({ confirm: true, query: '?real=1' }); await esperar(80); llenar(r);
+      $(r, 'qm').value = '205/55R16'; r.w.buscar();
+      marcar(r, 2); $(r, 'opc-add').click();
+      r.w.generarWA(); await copiar(r); await esperar(120);
+      const g1 = r.sheet();
+      ok('P32 al copiar se guarda en el Sheet con opción por renglón y total vacío', g1.length >= 1 && g1[0].body.total === '' && g1[0].body.items.filter(i => i.opcion).length === 2 && g1[0].body.opciones.length === 2, g1[0] && g1[0].body);
+    }
   }
 
   // ══════════════════════════════════════════════════════════

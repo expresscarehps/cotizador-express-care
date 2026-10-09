@@ -85,6 +85,30 @@ console.log('\n=== AS-M2. Hoja vacía / sin respaldo ===');
   ok('M16 el candado se libera siempre', l.bl.espera === l.bl.libera && l.bl.espera > 0, l.bl);
 }
 
+console.log('\n=== AS-M2b. Llantas capturadas a mano que Carlos pidió identificar ===');
+{
+  const casos = [
+    ['185/65R15 JK VECTRA 92T', 'JK TYRE 185/65R15 JK VECTRA 92T'],
+    ['225/65R17 ECOTOUR HP3 102H', 'VINMAX 225/65R17 ECOTOUR HP3 102H'],
+    ['235/55R17 SPORT GREEN 103W', 'ATLAS 235/55R17 SPORT GREEN 103W'],
+    ['235/55R19 A51 101V', 'ATLAS 235/55R19 A51 101V'],
+    ['195/50 R 16 ADVAN V105', 'YOKOHAMA 195/50 R 16 ADVAN V105'],
+    ['185/65R15 MR-169 88H', 'MIRAGE 185/65R15 MR-169 88H'],
+    ['205/55R16 JK TYRE UX1 TL 91H', null], ['225/45R17 Yokohama premium', null], ['225/60R18 YOKOHAMA PREMIUM GEOLANDAR G058', null],
+    ['HANKOOK RF12 LT 120/116 S', null], ['175/70R13 YOKOHAMA', null], ['175/70R13 *ALLIANCE*', null], ['175/70R13 *SUNFULL*', null],
+    ['33x12.50R20 HANKOOK RF12 LT', null], ['6.50.16 TORNEL T1300', null], ['195/45R15 ILINK L-ZEAL56 82V XL', null], ['195/70 R15C RY55 YOKOHAMA', null]];
+  const g = [ENC.slice()].concat(casos.map(c => fila('Llantas', 'SERV', '', c[0])));
+  g.push(fila('Llantas', 'SERV', '', '6.50-16 TT ASCENSO TS8110'), fila('Llantas', 'SERV', '', 'LLANTA SIN MARCA CONOCIDA 999'));
+  const { ctx, hojas } = libro(g);
+  const p = ctx.completarMarcaLlantas_PRUEBA();
+  ok('M17 de las 18 llantas a mano: 6 reciben marca al frente, 12 ya la traían escrita (incluida ASCENSO) y 1 llanta desconocida de prueba queda sin identificar', p.cambios === 6 && p.yaTienen === 12 && p.noIdentificadas === 1, p);
+  ctx.completarMarcaLlantas_APLICAR();
+  const h = hojas.Hoja1.grid;
+  ok('M18 cada una queda con la marca correcta al frente', casos.every((c, i) => c[1] === null || h[i + 1][9] === c[1]), h.map(f => f[9]));
+  ok('M19 las que ya traían la marca escrita no se tocan (no se repite)', casos.every((c, i) => c[1] !== null || h[i + 1][9] === c[0]));
+  ok('M20 ASCENSO queda igual (ya la trae) y una llanta desconocida no recibe marca inventada', h[18][9] === '6.50-16 TT ASCENSO TS8110' && h[19][9] === 'LLANTA SIN MARCA CONOCIDA 999');
+}
+
 if (CSV && fs.existsSync(CSV)) {
   console.log('\n=== AS-M3. Con los datos REALES de Hoja1 (' + CSV + ') ===');
   function parse(t) { const rows = []; let r = [], f = '', q = false; for (let i = 0; i < t.length; i++) { const c = t[i]; if (q) { if (c == '"') { if (t[i + 1] == '"') { f += '"'; i++; } else q = false; } else f += c; } else if (c == '"') q = true; else if (c == ',') { r.push(f); f = ''; } else if (c == '\n') { r.push(f); rows.push(r); r = []; f = ''; } else if (c != '\r') f += c; } if (f || r.length) { r.push(f); rows.push(r); } return rows; }
@@ -95,7 +119,7 @@ if (CSV && fs.existsSync(CSV)) {
   const p = ctx.completarMarcaLlantas_PRUEBA();
   ok('R1 PRUEBA con datos reales no modifica Hoja1', JSON.stringify(hojas.Hoja1.grid) === orig);
   console.log('     resumen:', p.resumen);
-  ok('R2 de las llantas con No. de parte, casi todas se identifican (≥ 90%)', (p.cambios + p.yaTienen) >= 0.9 * llantasCve && p.noIdentificadas < 0.1 * llantasCve, { llantasCve, p });
+  ok('R2 con los datos reales TODAS las llantas quedan identificadas (0 sin identificar)', p.noIdentificadas === 0, { llantasCve, p });
   ctx.completarMarcaLlantas_APLICAR();
   const h = hojas.Hoja1.grid;
   ok('R3 mismo número de renglones y columnas distintas a Producto intactas', h.length === grid.length && h.every((f, i) => f.every((x, j) => j === 9 || x === grid[i][j])));

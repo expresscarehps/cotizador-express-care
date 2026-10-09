@@ -9,6 +9,8 @@ var COL_REF      = 19;
 var COL_GRUPO    = 20;
 var COL_VERSION  = 21;
 var COL_VIGENTE  = 22;
+var COL_OPCION   = 24;   // X = número de opción (1-5) cuando la cotización trae varias opciones de llantas; vacío en cotizaciones normales (9 oct 2026)
+var COL_MARCA    = 23;   // W = Marca de la llanta (8 oct 2026) — solo llantas; en los demás renglones queda vacía
 
 // ── doPost ────────────────────────────────────────────────
 function doPost(e) {
@@ -49,8 +51,19 @@ function doPost(e) {
           asegurarEncabezadosRef(sheet);
           marcarVersionesAnteriores(sheet, data.grupo || data.ref);
         }
+        var opcionesVistas = {};
         for (var i = 0; i < items.length; i++) {
           var it = items[i];
+          // Total (col 16): normalmente solo en el primer renglón. Con varias OPCIONES de llantas cada opción
+          // trae el suyo, en su primer renglón (las opciones son alternativas: NO se suman entre sí).
+          var totalFila = firstRow ? data.total : '';
+          if (tieneRef && it.opcion && !opcionesVistas[it.opcion]) {
+            opcionesVistas[it.opcion] = true;
+            var lstOp = data.opciones || [];
+            for (var q = 0; q < lstOp.length; q++) {
+              if (String(lstOp[q].opcion) === String(it.opcion)) { totalFila = lstOp[q].total; break; }
+            }
+          }
           var fila = [
             firstRow ? data.fecha    : '',  // Col 1  Fecha
             firstRow ? data.asesor   : '',  // Col 2  Asesor
@@ -67,7 +80,7 @@ function doPost(e) {
             it.margen    || '',             // Col 13 Margen%
             it.precio,                      // Col 14 Precio
             it.subtotal,                    // Col 15 Subtotal
-            firstRow ? data.total    : '',  // Col 16 Total
+            totalFila,                      // Col 16 Total
             '',                             // Col 17 Estatus (vacío, se llena manual)
             firstRow ? data.folio    : ''   // Col 18 Cotización (folio EXPCARE-XXX/XX)
           ];
@@ -76,13 +89,15 @@ function doPost(e) {
             fila.push(data.grupo || data.ref);         // Col 20 Grupo (Ref de la primera versión)
             fila.push(data.version || 1);              // Col 21 Versión
             fila.push('');                             // Col 22 Vigente (vacío = vigente)
+            fila.push(String(it.marca || '').replace(/\s+/g, ' ').trim().toUpperCase());   // Col 23 Marca (solo llantas)
+            fila.push(it.opcion ? it.opcion : '');                                           // Col 24 Opción (1-5; vacío si no hay opciones)
           }
           sheet.appendRow(fila);
           firstRow = false;
         }
         var lastRow     = sheet.getLastRow();
         var firstRowNum = lastRow - items.length + 1;
-        sheet.getRange(firstRowNum, 1, items.length, tieneRef ? COL_VIGENTE : 18).setBorder(true,true,true,true,true,true);
+        sheet.getRange(firstRowNum, 1, items.length, tieneRef ? COL_OPCION : 18).setBorder(true,true,true,true,true,true);
       } finally {
         if (candado) candado.releaseLock();
       }
@@ -152,15 +167,19 @@ function doPost(e) {
 // ── Ref / Versión / Vigente (8 oct 2026) ──────────────────
 // Pone los encabezados de las columnas S–V la primera vez que llega una cotización con Ref.
 function asegurarEncabezadosRef(sheet) {
-  // Si la hoja llega justo hasta la columna R, se agregan las columnas que falten (hasta V).
-  if (sheet.getMaxColumns() < COL_VIGENTE) {
-    sheet.insertColumnsAfter(sheet.getMaxColumns(), COL_VIGENTE - sheet.getMaxColumns());
+  // Si la hoja llega justo hasta la columna R, se agregan las columnas que falten (hasta W).
+  if (sheet.getMaxColumns() < COL_OPCION) {
+    sheet.insertColumnsAfter(sheet.getMaxColumns(), COL_OPCION - sheet.getMaxColumns());
   }
   var encabezado = sheet.getRange(1, COL_REF, 1, 4);
   var actual = encabezado.getValues()[0];
   if (!actual[0] && !actual[1] && !actual[2] && !actual[3]) {
     encabezado.setValues([['Ref', 'Grupo', 'Versión', 'Vigente']]);
   }
+  var encMarca = sheet.getRange(1, COL_MARCA, 1, 1);
+  if (!encMarca.getValues()[0][0]) encMarca.setValues([['Marca']]);
+  var encOpcion = sheet.getRange(1, COL_OPCION, 1, 1);
+  if (!encOpcion.getValues()[0][0]) encOpcion.setValues([['Opción']]);
 }
 
 // Cuando llega una versión nueva de una cotización, las versiones anteriores del mismo
@@ -1059,5 +1078,258 @@ function deshacerMarcaLlantas() {
     var resumen = 'DESHECHO: ' + restaurados + ' renglones regresados · ' + omitidos + ' no se pudieron regresar (cambiaron o se movieron).';
     Logger.log(resumen);
     return { restaurados: restaurados, omitidos: omitidos, resumen: resumen };
+  } finally { candado.releaseLock(); }
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  COLUMNA "MARCA" (W) EN Hoja1 — relleno del historial (8 oct 2026)
+//  A partir de ahora el cotizador manda la marca de cada llanta y doPost la guarda en la columna W.
+//  Estas funciones llenan la columna W de las llantas que ya estaban en el historial.
+//  Orden:  1) columnaMarca_PRUEBA   (solo mira; llena la hoja "Vista previa Columna Marca")
+//          2) columnaMarca_APLICAR  (escribe la marca en W solo donde está vacía; guarda respaldo)
+//          3) columnaMarca_DESHACER (vacía lo que APLICAR escribió, si el valor sigue igual)
+//  Se puede correr de nuevo cuando quieras: solo llena los renglones de llanta que sigan sin marca.
+// ═══════════════════════════════════════════════════════════════════════════
+var HOJA_VISTA_COL_MARCA = 'Vista previa Columna Marca';
+var HOJA_RESPALDO_COL_MARCA = 'Respaldo Columna Marca';
+
+// Todas las marcas del catálogo (más las que se han capturado a mano). Sirve para reconocer la marca
+// cuando el renglón ya la trae escrita en el Producto (al frente o dentro del texto).
+var MARCAS_CONOCIDAS = [
+  "ACCELERA",
+  "ADVANCE",
+  "AGATE",
+  "ALFAMOTORS",
+  "ALLIANCE",
+  "AMERICA",
+  "AMULET",
+  "ANSU",
+  "ANTARES",
+  "APLUS",
+  "ARCRON",
+  "ASCENSO",
+  "ATLAS",
+  "BARUM",
+  "BFGOODRICH",
+  "BLACKARROW",
+  "BLACKHAWK",
+  "BLACKLION",
+  "BRIDGESTONE",
+  "BROADPEAK",
+  "COBRA",
+  "CONTINENTAL",
+  "COOPER",
+  "DERUIBO",
+  "DOUBLEKING",
+  "DOUBLESTAR",
+  "DSTAR",
+  "DUNLOP",
+  "EUZKADI",
+  "FARROAD",
+  "FIRESTONE",
+  "FORCELAND",
+  "FRONWAY",
+  "FULLRUN",
+  "FULLWAY",
+  "GALLANT",
+  "GENERAL",
+  "GMX PRIME",
+  "GOODRIDE",
+  "GOODYEAR",
+  "GOPRO",
+  "GREEN MAX",
+  "GREENTRAC",
+  "GUTEROAD",
+  "HABILEAD",
+  "HAIDA",
+  "HANKOOK",
+  "HAPPY ROAD",
+  "HIFLY",
+  "HIFLY(TORQUE)",
+  "ILINK",
+  "JK TYRE",
+  "KAPSEN",
+  "KAYTOON",
+  "KELLY",
+  "KETER",
+  "KUMHO",
+  "LANDY",
+  "LANVIGATOR",
+  "LAUFENN",
+  "LCH",
+  "LINGLONG",
+  "MASTERCRAFT",
+  "MAXTREK",
+  "MAXXIS",
+  "MAZZINI",
+  "MICHELIN",
+  "MILEVER",
+  "MINELL",
+  "MINNELL",
+  "MIRAGE",
+  "NEXEN",
+  "NITTO",
+  "NOBHEX",
+  "NOVAMAXX",
+  "ONYX",
+  "PASSI",
+  "PEGASUS",
+  "PIRELLI",
+  "RACEALONE",
+  "RETRO",
+  "ROADCLAW",
+  "ROADMASTER",
+  "ROADX",
+  "ROYAL BLACK",
+  "SAFERICH",
+  "SAILUN",
+  "SIERRA",
+  "STARFIRE",
+  "STARK",
+  "SUMAXX",
+  "SUMITOMO",
+  "SUNEW",
+  "SUNFULL",
+  "SURETRAC",
+  "TBBTIRES",
+  "TDI TIRES",
+  "TORNEL",
+  "TORQUE",
+  "TOYO",
+  "TURNPIKE",
+  "UNIROYAL",
+  "VIKRANT",
+  "VINMAX",
+  "WINDA",
+  "WINRUN",
+  "WOSEN",
+  "XBRI",
+  "YOKOHAMA",
+  "ZEXTOUR",
+  "ZWARTHZ"
+];
+
+// Decide la marca de UN renglón de llanta para la columna W. Devuelve { marca, como } o null.
+function marcaParaColumna_(proveedor, noParte, producto) {
+  var r = marcaDeRenglon_(proveedor, noParte, producto);          // No. de parte / descripción exacta / lista manual
+  if (r) return { marca: r.marca, como: r.como };
+  var k = marcaNormalizarTexto_(producto);
+  if (!k) return null;
+  // 1) la marca ya está al frente (renglones a los que se les puso la marca antes, o capturados con el cotizador nuevo)
+  var mejor = '';
+  for (var i = 0; i < MARCAS_CONOCIDAS.length; i++) {
+    var m = MARCAS_CONOCIDAS[i];
+    if (k.indexOf(m + ' ') === 0 && m.length > mejor.length) mejor = m;
+  }
+  if (mejor) return { marca: mejor, como: 'Marca al frente del Producto' };
+  // 2) la marca aparece como palabra completa dentro del texto
+  var hallados = [];
+  for (var j = 0; j < MARCAS_CONOCIDAS.length; j++) {
+    var b = MARCAS_CONOCIDAS[j];
+    var pos = k.indexOf(b);
+    while (pos >= 0) {
+      var antes = pos === 0 ? ' ' : k.charAt(pos - 1), desp = pos + b.length >= k.length ? ' ' : k.charAt(pos + b.length);
+      if (/[^A-Z0-9]/.test(antes) && /[^A-Z0-9]/.test(desp)) { hallados.push(b); break; }
+      pos = k.indexOf(b, pos + 1);
+    }
+  }
+  // se descartan marcas contenidas en otra marca más larga encontrada (ej. "GREEN" dentro de "GREEN MAX")
+  hallados = hallados.filter(function (h) { return !hallados.some(function (o) { return o !== h && o.indexOf(h) >= 0; }); });
+  if (hallados.length === 1) return { marca: hallados[0], como: 'Marca escrita en el Producto' };
+  return null;
+}
+
+// Lee Hoja1 (hasta la columna W si existe) y arma el plan. No escribe nada.
+function planColumnaMarca_(ss) {
+  var hoja = ss.getSheetByName(HOJA_COTIZACIONES);
+  if (!hoja) throw new Error('No encontré la hoja ' + HOJA_COTIZACIONES);
+  var ult = hoja.getLastRow();
+  var ancho = Math.min(hoja.getMaxColumns(), COL_MARCA);
+  var valores = ult >= 2 ? hoja.getRange(2, 1, ult - 1, ancho).getValues() : [];
+  var plan = { hoja: hoja, ancho: ancho, ultima: ult, nuevas: [], yaTienen: 0, sinMarca: [], noLlantas: 0 };
+  for (var i = 0; i < valores.length; i++) {
+    var f = valores[i], fila = i + 2;
+    var prov = f[COL_PROVEEDOR - 1], cve = f[COL_NOPARTE - 1], prod = f[COL_PRODUCTO - 1];
+    if (String(f[COL_TIPO - 1]).trim() !== 'Llantas' || (!String(prov).trim() && !String(cve).trim())) { plan.noLlantas++; continue; }   // servicios y otros tipos: sin marca
+    var actual = ancho >= COL_MARCA ? String(f[COL_MARCA - 1] === null ? '' : f[COL_MARCA - 1]).trim() : '';
+    if (actual) { plan.yaTienen++; continue; }
+    var r = marcaParaColumna_(prov, cve, prod);
+    if (!r) { plan.sinMarca.push({ fila: fila, proveedor: prov, noParte: cve, producto: prod }); continue; }
+    plan.nuevas.push({ fila: fila, proveedor: prov, noParte: cve, producto: prod, marca: r.marca, como: r.como });
+  }
+  return plan;
+}
+
+// 1) PRUEBA: no modifica Hoja1.
+function columnaMarca_PRUEBA() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var plan = planColumnaMarca_(ss);
+  var vista = ss.getSheetByName(HOJA_VISTA_COL_MARCA) || ss.insertSheet(HOJA_VISTA_COL_MARCA);
+  vista.clear();
+  var filas = [['Resultado', 'Fila en Hoja1', 'Proveedor', 'No. de parte', 'Producto', 'Marca que se escribiría en W', 'Cómo se identificó']];
+  for (var i = 0; i < plan.nuevas.length; i++) { var c = plan.nuevas[i]; filas.push(['SE ESCRIBIRÍA', c.fila, c.proveedor, c.noParte, c.producto, c.marca, c.como]); }
+  for (var j = 0; j < plan.sinMarca.length; j++) { var n = plan.sinMarca[j]; filas.push(['SIN MARCA (se queda vacía)', n.fila, n.proveedor, n.noParte, n.producto, '', '']); }
+  vista.getRange(1, 1, filas.length, 7).setValues(filas);
+  var resumen = 'PRUEBA (Hoja1 NO se modificó): se escribiría la marca en ' + plan.nuevas.length + ' renglones · ya la tenían ' + plan.yaTienen +
+    ' · sin identificar ' + plan.sinMarca.length + ' · renglones que no son llanta ' + plan.noLlantas + '. Revisa la hoja "' + HOJA_VISTA_COL_MARCA + '".';
+  Logger.log(resumen);
+  return { nuevas: plan.nuevas.length, yaTienen: plan.yaTienen, sinMarca: plan.sinMarca.length, noLlantas: plan.noLlantas, resumen: resumen };
+}
+
+// 2) APLICAR: escribe la marca en la columna W solo donde está vacía.
+function columnaMarca_APLICAR() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var candado = LockService.getScriptLock();
+  candado.waitLock(30000);
+  try {
+    var hoja = ss.getSheetByName(HOJA_COTIZACIONES);
+    if (!hoja) throw new Error('No encontré la hoja ' + HOJA_COTIZACIONES);
+    if (hoja.getMaxColumns() < COL_MARCA) hoja.insertColumnsAfter(hoja.getMaxColumns(), COL_MARCA - hoja.getMaxColumns());
+    var enc = hoja.getRange(1, COL_MARCA, 1, 1);
+    if (!String(enc.getValues()[0][0]).trim()) enc.setValues([['Marca']]);
+    var plan = planColumnaMarca_(ss);
+    if (!plan.nuevas.length) { var m0 = 'Nada que escribir: todas las llantas identificables ya tienen marca en la columna W.'; Logger.log(m0); return { escritas: 0, resumen: m0 }; }
+    var resp = ss.getSheetByName(HOJA_RESPALDO_COL_MARCA);
+    if (!resp) { resp = ss.insertSheet(HOJA_RESPALDO_COL_MARCA); resp.getRange(1, 1, 1, 4).setValues([['Fecha', 'Fila en Hoja1', 'Marca escrita', 'Deshecho']]); }
+    var ult = hoja.getLastRow();
+    var col = hoja.getRange(2, COL_MARCA, ult - 1, 1).getValues();
+    var ahora = new Date().toISOString(), respaldo = [];
+    for (var i = 0; i < plan.nuevas.length; i++) {
+      var c = plan.nuevas[i];
+      col[c.fila - 2][0] = c.marca;
+      respaldo.push([ahora, c.fila, c.marca, '']);
+    }
+    resp.getRange(resp.getLastRow() + 1, 1, respaldo.length, 4).setValues(respaldo);
+    hoja.getRange(2, COL_MARCA, col.length, 1).setValues(col);
+    var resumen = 'APLICADO: marca escrita en ' + plan.nuevas.length + ' renglones · ya la tenían ' + plan.yaTienen + ' · sin identificar ' + plan.sinMarca.length + '. Respaldo en "' + HOJA_RESPALDO_COL_MARCA + '".';
+    Logger.log(resumen);
+    return { escritas: plan.nuevas.length, yaTienen: plan.yaTienen, sinMarca: plan.sinMarca.length, resumen: resumen };
+  } finally { candado.releaseLock(); }
+}
+
+// 3) DESHACER: vacía de la columna W lo que APLICAR escribió, solo si el valor sigue igual.
+function columnaMarca_DESHACER() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var candado = LockService.getScriptLock();
+  candado.waitLock(30000);
+  try {
+    var resp = ss.getSheetByName(HOJA_RESPALDO_COL_MARCA), hoja = ss.getSheetByName(HOJA_COTIZACIONES);
+    if (!resp || resp.getLastRow() < 2) { var m0 = 'No hay respaldo: no hay nada que deshacer.'; Logger.log(m0); return { quitadas: 0, resumen: m0 }; }
+    var ult = hoja.getLastRow();
+    var col = hoja.getRange(2, COL_MARCA, ult - 1, 1).getValues();
+    var reg = resp.getRange(2, 1, resp.getLastRow() - 1, 4).getValues();
+    var quitadas = 0, omitidas = 0;
+    for (var i = 0; i < reg.length; i++) {
+      if (String(reg[i][3]) === 'Sí') continue;
+      var idx = Number(reg[i][1]) - 2;
+      if (idx >= 0 && idx < col.length && String(col[idx][0]) === String(reg[i][2])) { col[idx][0] = ''; reg[i][3] = 'Sí'; quitadas++; }
+      else { reg[i][3] = 'No se pudo (el renglón cambió o se movió)'; omitidas++; }
+    }
+    hoja.getRange(2, COL_MARCA, col.length, 1).setValues(col);
+    resp.getRange(2, 4, reg.length, 1).setValues(reg.map(function (r) { return [r[3]]; }));
+    var resumen = 'DESHECHO: ' + quitadas + ' marcas quitadas de la columna W · ' + omitidas + ' no se pudieron quitar (cambiaron o se movieron).';
+    Logger.log(resumen);
+    return { quitadas: quitadas, omitidas: omitidas, resumen: resumen };
   } finally { candado.releaseLock(); }
 }
