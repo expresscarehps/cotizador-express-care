@@ -1020,7 +1020,7 @@ var MODO_PRUEBA = (typeof window!=='undefined' && window.location && /[?&]test=1
 // Se detecta por el nombre del archivo: en dev, el aviso real a GHL pide confirmación explícita
 // (para no etiquetar clientes reales por accidente). También viaja en el aviso como "fuente".
 var ES_DEV = (typeof window!=='undefined' && window.location && /dev\.html?$/i.test(window.location.pathname||''));
-var VERSION_PAGINA = 'dev 2026-10-09 filtro demanda v2';
+var VERSION_PAGINA = 'dev 2026-10-09 boton ok fijo';
 
 var RIN = {
   'a': {mon:85,  bal:80,  piv:20, h:'Montaje $85 - Balanceo $80 - Pivote $20 por llanta'},
@@ -1398,6 +1398,7 @@ function buscar() {
     '<button class="badd" id="btn-otro" style="flex-shrink:0">+</button></div></div>';
   res.innerHTML = html;
   iniciarOpcUI(res);
+  marcarLlantasEnCarrito();
   var btns = res.querySelectorAll('.badd[data-cve]');
   for (var i = 0; i < btns.length; i++) {
     btns[i].addEventListener('click', function(){ addLlanta(this); });
@@ -1446,9 +1447,7 @@ function addLlanta(btn) {
   var pb  = isAyala ? it.lista : (isVega ? it.costo : it.precio);
   cart.push({id:id, t:'l', desc:it.desc, marca:it.marca, precio:pvp, precioBase:pvp, pb:pb, qty:1, cve:cve, pid:null, isAyala:isAyala, isVega:isVega, rinCat:rin});
   recalcInstalacionLlantas();
-  renderCarrito(); updateBadge();
-  btn.textContent='OK'; btn.style.background='#2e7d32';
-  setTimeout(function(){btn.textContent='+';btn.style.background='#111';},900);
+  renderCarrito(); updateBadge();   // renderCarrito pinta el botón en verde "OK" de forma fija
 }
 
 function recalcPVP() {
@@ -1895,6 +1894,18 @@ function qtyCtrl(c){
   return '<div class="cq"><button data-id="'+c.id+'" data-d="-1">-</button><input type="number" value="'+c.qty+'" min="1" data-id="'+c.id+'" class="qty-inp"><button data-id="'+c.id+'" data-d="1">+</button></div>';
 }
 
+// Botón de cada llanta en los resultados: verde "OK" fijo si ya está en la cotización; "+" normal si no.
+function marcarLlantasEnCarrito(){
+  var btns=document.querySelectorAll('#res .badd[data-cve]');
+  if(!btns.length) return;
+  var enc={};
+  for(var i=0;i<cart.length;i++){ if(cart[i].t==='l' && cart[i].cve) enc[cart[i].cve]=true; }
+  for(var k=0;k<btns.length;k++){
+    var cv=btns[k].getAttribute('data-cve');
+    if(enc[cv]){ btns[k].textContent='OK'; btns[k].style.background='#2e7d32'; btns[k].style.fontSize='13px'; btns[k].title='Ya está en la cotización'; }
+    else { btns[k].textContent='+'; btns[k].style.background=''; btns[k].style.fontSize=''; btns[k].title=''; }
+  }
+}
 function renderCarrito(){
   var co=g('ci'); if(!co) return;
   var tallerCart=tallerItems.filter(function(i){return i.concepto&&i.precio!==''&&parseFloat(i.precio)>0&&parseFloat(i.qty)>0;});
@@ -1905,6 +1916,7 @@ function renderCarrito(){
   if(!cart.length&&!tallerCart.length){
     co.innerHTML='<div class="empty">Agrega llantas, servicios de taller o servicios adicionales</div>';
     g('tb').style.display='none';
+    marcarLlantasEnCarrito();
     resetGuardar(); generarWA(); return;
   }
 
@@ -1957,7 +1969,7 @@ function renderCarrito(){
   g('tb').style.display='flex';
   g('tv').textContent=hayOpciones()?textoRangoOpc():fmt(tot);
 
-
+  marcarLlantasEnCarrito();
   generarWA();
 }
 
