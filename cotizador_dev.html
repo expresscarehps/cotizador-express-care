@@ -557,6 +557,7 @@ label.chk-sin-nombre input:checked + span{color:var(--val-dark-blue);font-weight
     <div class="g2">
       <div><label>Medida</label><input type="text" id="qm" placeholder="225/55R17" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"></div>
       <div><label>Gama</label><select id="qg" style="font-size:12px;padding:5px 8px;border:1px solid #ddd;border-radius:7px"><option value="">Todas</option><option value="Alta">⭐ Alta</option><option value="Media-Alta">🔵 Media-Alta</option><option value="Media">🟡 Media</option><option value="Económica">🟠 Económica</option><option value="Muy Económica">🔴 Muy Económica</option></select></div>
+      <div><label>Demanda</label><select id="qd" style="font-size:12px;padding:5px 8px;border:1px solid #ddd;border-radius:7px"><option value="">Todas</option><option value="alta">🔥 Alta</option><option value="media">🌡️ Media</option><option value="baja">❄️ Baja</option></select></div>
       <div><label>Marca</label><select id="qk"><option value="">Todas (16)</option><option value="AGATE">AGATE</option><option value="APLUS">APLUS</option><option value="BFGOODRICH">BFGOODRICH</option><option value="DOUBLESTAR">DOUBLESTAR</option><option value="GOODYEAR">GOODYEAR</option><option value="HAIDA">HAIDA</option><option value="HANKOOK">HANKOOK</option><option value="HIFLY">HIFLY</option><option value="ILINK">ILINK</option><option value="JK TYRE">JK TYRE</option><option value="KUMHO">KUMHO</option><option value="LAUFENN">LAUFENN</option><option value="MICHELIN">MICHELIN</option><option value="NEXEN">NEXEN</option><option value="UNIROYAL">UNIROYAL</option><option value="VINMAX">VINMAX</option></select></div>
     </div>
     <div class="mr">
@@ -1019,7 +1020,7 @@ var MODO_PRUEBA = (typeof window!=='undefined' && window.location && /[?&]test=1
 // Se detecta por el nombre del archivo: en dev, el aviso real a GHL pide confirmación explícita
 // (para no etiquetar clientes reales por accidente). También viaja en el aviso como "fuente".
 var ES_DEV = (typeof window!=='undefined' && window.location && /dev\.html?$/i.test(window.location.pathname||''));
-var VERSION_PAGINA = 'dev 2026-10-09 opciones';
+var VERSION_PAGINA = 'dev 2026-10-09 filtro demanda';
 
 var RIN = {
   'a': {mon:85,  bal:80,  piv:20, h:'Montaje $85 - Balanceo $80 - Pivote $20 por llanta'},
@@ -1301,12 +1302,19 @@ function pvpAyala(lista) {
 function pvpItem(costo, margen) { return margen > 0 ? costo / (1 - margen / 100) : costo; }
 
 // ── LLANTAS ──────────────────────────────────────────────
+// Filtro de DEMANDA (rotación de la marca: alta / media / baja). Vacío = todas.
+function pasaDemanda(marca) {
+  var df = g('qd') ? v('qd') : '';
+  if (!df) return true;
+  var r = (typeof ROTACION_DB !== 'undefined' && ROTACION_DB && marca) ? ROTACION_DB[marca] : null;
+  return !!r && r.rotacion === df;
+}
 function actualizarMarcas(q) {
   var sm = g('qk'); if (!sm) return;
   if(typeof BRAND_DB === 'undefined') return;
   var sel = sm.value, mf;
   var gf = g('qg')?v('qg'):'';
-  function matchGama(marca) { if(!gf) return true; var bi=(BRAND_DB&&marca&&BRAND_DB[marca])||{pais:'',gama:''}; return (bi.gama||'')===gf; }
+  function matchGama(marca) { if(!pasaDemanda(marca)) return false; if(!gf) return true; var bi=(BRAND_DB&&marca&&BRAND_DB[marca])||{pais:'',gama:''}; return (bi.gama||'')===gf; }
   if (q && q.length >= 2) {
     var set = {};
     for (var i = 0; i < DATA.length; i++) {
@@ -1327,7 +1335,7 @@ function actualizarMarcas(q) {
     mf = Object.keys(set).sort();
   } else {
     var _seen={}; var allMarcas = MARCAS.concat(MARCAS_AYALA).concat(MARCAS_VEGA).filter(function(m){if(!m||_seen[m])return false;_seen[m]=true;return true;}).sort();
-    mf = gf ? allMarcas.filter(function(m){ var bi=(BRAND_DB&&m&&BRAND_DB[m])||{pais:'',gama:''}; return (bi.gama||'')===gf; }) : allMarcas;
+    mf = (gf || (g('qd')&&v('qd'))) ? allMarcas.filter(function(m){ return matchGama(m); }) : allMarcas;
   }
   sm.innerHTML = '<option value="">Todas ('+mf.length+')</option>';
   for (var i = 0; i < mf.length; i++) {
@@ -1352,19 +1360,19 @@ function buscar() {
   for (var i = 0; i < DATA.length; i++) {
     var d = DATA[i];
     if (d.medida && d.desc && (d.medida.toUpperCase().replace(/\s/g,'').indexOf(q)>=0||d.desc.toUpperCase().indexOf(q)>=0)&&(!m||d.marca===m)){
-      var bi=(BRAND_DB&&d.marca&&BRAND_DB[d.marca])||{pais:'',gama:''}; var bPais=bi.pais||''; var bGama=bi.gama||''; if(!gf||bGama===gf) r.push({cve:d.cve,desc:d.desc,marca:d.marca,medida:d.medida,precio:d.precio,proveedor:'SERV',pais:bPais,gama:bGama});
+      var bi=(BRAND_DB&&d.marca&&BRAND_DB[d.marca])||{pais:'',gama:''}; var bPais=bi.pais||''; var bGama=bi.gama||''; if((!gf||bGama===gf)&&pasaDemanda(d.marca)) r.push({cve:d.cve,desc:d.desc,marca:d.marca,medida:d.medida,precio:d.precio,proveedor:'SERV',pais:bPais,gama:bGama});
     }
   }
   for (var i = 0; i < AYALA.length; i++) {
     var d = AYALA[i];
     if (d.medida && d.desc && (d.medida.toUpperCase().replace(/\s/g,'').indexOf(q)>=0||d.desc.toUpperCase().indexOf(q)>=0)&&(!m||d.marca===m)){
-      var bi=(BRAND_DB&&d.marca&&BRAND_DB[d.marca])||{pais:'',gama:''}; var bPais=bi.pais||''; var bGama=bi.gama||''; if(!gf||bGama===gf) r.push({cve:d.cve,desc:d.desc,marca:d.marca,medida:d.medida,lista:d.lista,proveedor:'AYALA',pais:bPais,gama:bGama});
+      var bi=(BRAND_DB&&d.marca&&BRAND_DB[d.marca])||{pais:'',gama:''}; var bPais=bi.pais||''; var bGama=bi.gama||''; if((!gf||bGama===gf)&&pasaDemanda(d.marca)) r.push({cve:d.cve,desc:d.desc,marca:d.marca,medida:d.medida,lista:d.lista,proveedor:'AYALA',pais:bPais,gama:bGama});
     }
   }
   for(var i=0;i<VEGA.length;i++){
     var d=VEGA[i];
     if(d.medida&&d.desc&&(d.medida.toUpperCase().replace(/[\s\-]/g,'').indexOf(q)>=0||d.desc.toUpperCase().indexOf(q)>=0)&&(!m||d.marca===m)){
-      var bv=(BRAND_DB&&d.marca&&BRAND_DB[d.marca])||{pais:'',gama:''}; var bPais=bv.pais||''; var bGama=bv.gama||''; if(!gf||bGama===gf) r.push({cve:d.cve,desc:d.desc,medida:d.medida,marca:d.marca,pb:d.costo,precio:pvpLlanta(d.costo),isVega:true,isAyala:false,proveedor:'VEGA',pais:bPais,gama:bGama});
+      var bv=(BRAND_DB&&d.marca&&BRAND_DB[d.marca])||{pais:'',gama:''}; var bPais=bv.pais||''; var bGama=bv.gama||''; if((!gf||bGama===gf)&&pasaDemanda(d.marca)) r.push({cve:d.cve,desc:d.desc,medida:d.medida,marca:d.marca,pb:d.costo,precio:pvpLlanta(d.costo),isVega:true,isAyala:false,proveedor:'VEGA',pais:bPais,gama:bGama});
     }
   }
   cnt.textContent = r.length ? r.length+' resultado'+(r.length>1?'s':'') : 'Sin resultados';
@@ -2263,6 +2271,7 @@ function limpiarTodo(skipConfirm){
   var qm=g('qm'); if(qm) qm.value='';
   var qk=g('qk'); if(qk) qk.value='';
   var qg=g('qg'); if(qg) qg.value='';
+  var qd=g('qd'); if(qd) qd.value='';
   var vcil=g('v-cil'); if(vcil) vcil.value='';
   var res=g('res'); if(res) res.innerHTML='<div class="empty">Escribe una medida para buscar<br>Ej: 225/55R17 o HANKOOK</div>';
   var cnt=g('cnt'); if(cnt) cnt.textContent='';
@@ -3083,6 +3092,7 @@ window.addEventListener('load',function(){
   var qmEl=g('qm');if(qmEl)qmEl.addEventListener('input',buscar);
   var qkEl=g('qk');if(qkEl)qkEl.addEventListener('change',buscar);
   var qgEl=g('qg');if(qgEl)qgEl.addEventListener('change',function(){ actualizarMarcas(v('qm').toUpperCase().replace(/\s/g,'')); buscar(); });
+  var qdEl=g('qd');if(qdEl)qdEl.addEventListener('change',function(){ actualizarMarcas(v('qm').toUpperCase().replace(/\s/g,'')); buscar(); });
   var mgEl=g('mg');if(mgEl){mgEl.addEventListener('input',recalcPVP);mgEl.addEventListener('change',recalcPVP);mgEl.addEventListener('keyup',recalcPVP);}
   var bcpEl=g('bcp');if(bcpEl)bcpEl.addEventListener('click',copiar);
   var byeEl=g('btn-ya-envie');if(byeEl)byeEl.addEventListener('click',yaLaEnvie);
