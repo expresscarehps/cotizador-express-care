@@ -556,8 +556,8 @@ label.chk-sin-nombre input:checked + span{color:var(--val-dark-blue);font-weight
     <p class="st">Catálogo Servillantas</p>
     <div class="g2">
       <div><label>Medida</label><input type="text" id="qm" placeholder="225/55R17" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"></div>
-      <div><label>Gama</label><select id="qg" style="font-size:12px;padding:5px 8px;border:1px solid #ddd;border-radius:7px"><option value="">Todas</option><option value="Alta">⭐ Alta</option><option value="Media-Alta">🔵 Media-Alta</option><option value="Media">🟡 Media</option><option value="Económica">🟠 Económica</option><option value="Muy Económica">🔴 Muy Económica</option></select></div>
-      <div><label>Demanda</label><select id="qd" style="font-size:12px;padding:5px 8px;border:1px solid #ddd;border-radius:7px"><option value="">Todas</option><option value="alta">🔥 Alta</option><option value="media">🌡️ Media</option><option value="baja">❄️ Baja</option></select></div>
+      <div><label>Gama</label><select id="qg"><option value="">Todas</option><option value="Alta">⭐ Alta</option><option value="Media-Alta">🔵 Media-Alta</option><option value="Media">🟡 Media</option><option value="Económica">🟠 Económica</option><option value="Muy Económica">🔴 Muy Económica</option></select></div>
+      <div><label>Demanda</label><select id="qd"><option value="">Todas</option><option value="alta">🔥 Alta</option><option value="media">🌡️ Media</option><option value="baja">❄️ Baja</option></select></div>
       <div><label>Marca</label><select id="qk"><option value="">Todas (16)</option><option value="AGATE">AGATE</option><option value="APLUS">APLUS</option><option value="BFGOODRICH">BFGOODRICH</option><option value="DOUBLESTAR">DOUBLESTAR</option><option value="GOODYEAR">GOODYEAR</option><option value="HAIDA">HAIDA</option><option value="HANKOOK">HANKOOK</option><option value="HIFLY">HIFLY</option><option value="ILINK">ILINK</option><option value="JK TYRE">JK TYRE</option><option value="KUMHO">KUMHO</option><option value="LAUFENN">LAUFENN</option><option value="MICHELIN">MICHELIN</option><option value="NEXEN">NEXEN</option><option value="UNIROYAL">UNIROYAL</option><option value="VINMAX">VINMAX</option></select></div>
     </div>
     <div class="mr">
@@ -1020,7 +1020,7 @@ var MODO_PRUEBA = (typeof window!=='undefined' && window.location && /[?&]test=1
 // Se detecta por el nombre del archivo: en dev, el aviso real a GHL pide confirmación explícita
 // (para no etiquetar clientes reales por accidente). También viaja en el aviso como "fuente".
 var ES_DEV = (typeof window!=='undefined' && window.location && /dev\.html?$/i.test(window.location.pathname||''));
-var VERSION_PAGINA = 'dev 2026-10-09 filtro demanda';
+var VERSION_PAGINA = 'dev 2026-10-09 filtro demanda v2';
 
 var RIN = {
   'a': {mon:85,  bal:80,  piv:20, h:'Montaje $85 - Balanceo $80 - Pivote $20 por llanta'},
