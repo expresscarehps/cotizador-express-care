@@ -1020,7 +1020,7 @@ var MODO_PRUEBA = (typeof window!=='undefined' && window.location && /[?&]test=1
 // Se detecta por el nombre del archivo: en dev, el aviso real a GHL pide confirmación explícita
 // (para no etiquetar clientes reales por accidente). También viaja en el aviso como "fuente".
 var ES_DEV = (typeof window!=='undefined' && window.location && /dev\.html?$/i.test(window.location.pathname||''));
-var VERSION_PAGINA = 'dev 2026-10-09 margen automatico fijo';
+var VERSION_PAGINA = 'dev 2026-10-09 margen fijo y marcas Llaselesa';
 
 var RIN = {
   'a': {mon:85,  bal:80,  piv:20, h:'Montaje $85 - Balanceo $80 - Pivote $20 por llanta'},
@@ -1426,7 +1426,7 @@ function buscar() {
     '<button class="badd" id="btn-otro" style="flex-shrink:0">+</button></div>'+
     '<datalist id="otro-marcas">'+listaMarcasManual()+'</datalist>'+
     '<div id="otro-margen-ayuda" style="margin-top:5px;font-size:11px;line-height:1.4;color:#5d4a00;background:#fff8e1;border-radius:6px;padding:4px 8px">'+
-      '🔒 Margen fijo por marca: <b>YOKOHAMA '+MARGEN_PROV_LIBRE.YOKOHAMA+'%</b> · <b>SUNFULL '+MARGEN_PROV_LIBRE.SUNFULL+'%</b> · otra marca: según su gama (Económica / China '+MARGEN_ECON+'%, las demás '+MARGEN_NORMAL+'%)'+
+      '🔒 Margen fijo (Llaselesa): <b>YOKOHAMA '+MARGEN_PROV_LIBRE.YOKOHAMA+'%</b> · <b>SUNFULL '+MARGEN_PROV_LIBRE.SUNFULL+'%</b> · Las demás marcas deben elegirse del catálogo de arriba.'+
       '<div id="otro-margen-aplicado" style="font-weight:700;margin-top:2px"></div></div></div>';
   res.innerHTML = html;
   iniciarOpcUI(res);
@@ -1466,9 +1466,8 @@ function calcOtro() {
   if (ap) ap.textContent = String(marca).trim() ? ('Margen aplicado a '+String(marca).trim().toUpperCase()+': '+margenLlanta(marca)+'%'+(pago==='meses'?' (+5% meses sin intereses)':'')) : '';
 }
 function listaMarcasManual() {
-  var o = ['YOKOHAMA','SUNFULL'], ks = (typeof BRAND_DB !== 'undefined') ? Object.keys(BRAND_DB).sort() : [];
-  for (var i=0;i<ks.length;i++) if (o.indexOf(ks[i])<0) o.push(ks[i]);
-  return o.map(function(m){ return '<option value="'+m+'">'; }).join('');
+  // Solo las marcas del proveedor libre (Llaselesa); todas las demás deben elegirse del catálogo
+  return ['YOKOHAMA','SUNFULL'].map(function(m){ return '<option value="'+m+'">'; }).join('');
 }
 function pintarRecordatorioMargen() {
   var a=g('rec-mn'), b=g('rec-me'), c=g('rec-mm');

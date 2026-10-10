@@ -49,7 +49,7 @@ function buscarMedida(w, med) { const el = w.document.getElementById('qm'); el.v
   const ay = d.getElementById('otro-margen-ayuda');
   ok('C1 ayuda visual con YOKOHAMA 12.5% y SUNFULL 15.5%', ay && /YOKOHAMA 12\.5%/.test(ay.textContent) && /SUNFULL 15\.5%/.test(ay.textContent), ay && ay.textContent);
   const opts = Array.from(d.querySelectorAll('#otro-marcas option')).map(o => o.value);
-  ok('C2 selector de marca (datalist) con YOKOHAMA y SUNFULL primero', opts[0] === 'YOKOHAMA' && opts[1] === 'SUNFULL' && opts.length > 100, opts.slice(0, 3));
+  ok('C2 selector de marca (datalist) con SOLO YOKOHAMA y SUNFULL', opts.length === 2 && opts[0] === 'YOKOHAMA' && opts[1] === 'SUNFULL', opts);
   const set = (marca, costo) => { d.getElementById('otro-marca').value = marca; d.getElementById('otro-costo').value = costo; w.calcOtro(); };
   set('YOKOHAMA', '1000'); const pY = d.getElementById('otro-pvp-preview').textContent, aY = d.getElementById('otro-margen-aplicado').textContent;
   ok('C3 YOKOHAMA $1000 → PVP $1,142.86 y "12.5%"', /1,142\.86/.test(pY) && /12\.5%/.test(aY), [pY, aY]);
