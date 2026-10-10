@@ -39,7 +39,7 @@ function test(name,fn){
 console.log('\n=== 1. CATÁLOGOS ===');
 test('DATA Servillantas 1200+',   ()=>DATA.length>=1200);
 test('AYALA 4037+',               ()=>AYALA.length>=4037);
-test('VEGA 1431+',                ()=>VEGA.length>=1431);
+test('VEGA 1327 (lista 6 oct 2026, solo con existencia)', ()=>VEGA.length===1327);
 test('SVC 18+',                   ()=>SVC.length>=18);
 test('RIN a/b/c',                 ()=>!!(RIN?.a&&RIN?.b&&RIN?.c));
 test('BRAND_DB 100+ marcas',      ()=>typeof BRAND_DB!=='undefined'&&Object.keys(BRAND_DB).length>=100);
@@ -92,7 +92,24 @@ test('Borrar llanta elimina sus servicios',   ()=>cart.length===0);
 
 // ══════════════════════════════════════════════════════════
 console.log('\n=== 6. MÁRGENES ===');
-test('Llantas default 12.5%',       ()=>html.includes('value="12.5"') && gm()===12.5);
+test('Llantas marca normal 12.5% (fijo)',  ()=>margenLlanta('MICHELIN')===12.5 && margenLlanta('')===12.5 && margenLlanta('MARCA INEXISTENTE')===12.5);
+test('Llantas "chinas" 15.5% (origen China)', ()=>margenLlanta('TERCELO')===15.5);
+test('Gama Económica/Muy Económica 15.5% aunque no sea China', ()=>['ACCELERA','AMERICA','JK TYRE','NOBHEX','VIKRANT'].every(m=>margenLlanta(m)===15.5));
+test('Ninguna marca China queda en 12.5%', ()=>Object.keys(BRAND_DB).filter(k=>BRAND_DB[k].pais==='China').every(k=>margenLlanta(k)===15.5));
+test('Toda marca Económica/Muy Económica en 15.5%', ()=>Object.keys(BRAND_DB).filter(k=>/Econ/i.test(BRAND_DB[k].gama.normalize('NFD').replace(/[\u0300-\u036f]/g,''))).every(k=>margenLlanta(k)===15.5));
+test('Marcas Alta/Media-Alta/Media (no China) 12.5%', ()=>Object.keys(BRAND_DB).filter(k=>['Alta','Media-Alta','Media'].includes(BRAND_DB[k].gama)&&BRAND_DB[k].pais!=='China').every(k=>margenLlanta(k)===12.5));
+test('Proveedor libre: YOKOHAMA 12.5 / SUNFULL 15.5 / SUNFUL 15.5', ()=>margenLlanta('YOKOHAMA')===12.5&&margenLlanta(' sunfull ')===15.5&&margenLlanta('Sunful')===15.5);
+test('pvpLlanta contado: normal $1000 -> 1142.86', ()=>{pago='contado';return Math.abs(pvpLlanta(1000,'MICHELIN')-1000/0.875)<0.001;});
+test('pvpLlanta contado: china $1000 -> 1183.43',  ()=>{pago='contado';return Math.abs(pvpLlanta(1000,'TERCELO')-1000/0.845)<0.001;});
+test('pvpLlanta meses: +5% sobre precio con margen', ()=>{pago='meses';const r=Math.abs(pvpLlanta(1000,'TERCELO')-1000/0.845*1.05)<0.001&&Math.abs(pvpLlanta(1000,'YOKOHAMA')-1000/0.875*1.05)<0.001;pago='contado';return r;});
+test('recalcPVP recalcula por marca del renglón', ()=>{pago='contado';cart=[{id:'z1',t:'l',marca:'SUNFULL',pb:1000,qty:1,otro:true},{id:'z2',t:'l',marca:'YOKOHAMA',pb:1000,qty:1,otro:true}];
+  const bak=[global.renderCarrito,global.updateBadge,global.generarWA,global.recalcInstalacionLlantas];
+  try{recalcPVP();}catch(e){} cart.forEach(c=>{}); const ok=Math.abs(cart[0].precioBase-1000/0.845)<0.001&&Math.abs(cart[1].precioBase-1000/0.875)<0.001; cart=[]; return ok;});
+test('Ya NO existe campo editable de margen (#mg)', ()=>!html.includes('id="mg"') && !appJS.includes("v('mg')") && typeof gm==='undefined');
+test('Recordatorio de margen presente en el buscador', ()=>html.includes('id="mg-recordatorio"') && html.includes('Margen automático (fijo'));
+test('Fila de otro proveedor: ayuda Yokohama 12.5 / Sunfull 15.5', ()=>appJS.includes('otro-margen-ayuda') && appJS.includes("MARGEN_PROV_LIBRE.YOKOHAMA") && appJS.includes("MARGEN_PROV_LIBRE.SUNFULL") && appJS.includes('list="otro-marcas"'));
+test('Hoja1: margen aplicado por marca (AYALA 25%/20% sin cambio)', ()=>appJS.includes("(margenLlanta(l.marca)+'%')") && appJS.includes("l.isAyala ? (pago==='meses'?'20%':'25%')"));
+test('AYALA sin cambio: contado x0.75x1.16 / meses x0.80x1.16', ()=>{pago='contado';const a=pvpAyala(1000);pago='meses';const b=pvpAyala(1000);pago='contado';return Math.abs(a-870)<0.001&&Math.abs(b-928)<0.001;});
 test('Bujías 28%',                  ()=>appJS.includes("concepto:'Bujías (especificar tipo)',           costo:'', margen:28"));
 test('Filtro de aceite (afinación) 32%', ()=>appJS.includes("concepto:'Filtro de aceite',                    costo:'', margen:32, mo:false, pend:false},"));
 test('Filtro de aire (afinación) 32%',   ()=>appJS.includes("concepto:'Filtro de aire',                      costo:'', margen:32, mo:false, pend:false},"));
@@ -105,7 +122,7 @@ test('Amortiguador trasero 32%',    ()=>appJS.includes("concepto:'Amortiguador t
 test('Horquilla 32%',               ()=>appJS.includes("concepto:'Horquilla',                           costo:'', margen:32"));
 test('Barra estabilizadora 32%',    ()=>appJS.includes("concepto:'Barra estabilizadora',                costo:'', margen:32"));
 test('Rótula 32%',                  ()=>appJS.includes("concepto:'R\u00f3tula',                              costo:'', margen:32"));
-test('Meses sin intereses 5%',      ()=>appJS.includes('base * 1.05'));
+test('Meses sin intereses 5%',      ()=>appJS.includes('base * RECARGO_MESES') && RECARGO_MESES===1.05);
 
 // ══════════════════════════════════════════════════════════
 console.log('\n=== 7. TALLER ===');
@@ -123,7 +140,6 @@ test('updateBadge implementado',         ()=>appJS.includes('var n=cart.length')
 test('updTallerField llama renderCarrito+WA', ()=>appJS.includes('renderCarrito(); updateBadge(); generarWA()'));
 test('data-d delegation presente',       ()=>appJS.includes("getAttribute('data-d')"));
 test('recalcPVP llama buscar()',         ()=>appJS.includes("if(qm && qm.length>=2) buscar()"));
-test('oninput en campo mg',              ()=>html.includes('oninput="recalcPVP()"'));
 
 // ══════════════════════════════════════════════════════════
 console.log('\n=== 9. WHATSAPP ===');
