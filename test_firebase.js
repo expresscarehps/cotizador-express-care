@@ -289,6 +289,7 @@ async function parteB() {
     const escritos = []; w.__fb._t.setEstado(api(escritos), { uid: 'u1' });
     w.obtenerFolioJSONP = cb => { w.folioNumeroActual = 77; cb('EXPCARE-077/26'); };
     w.confirmarFolioJSONP = (n, cb) => { if (cb) cb(); };
+    w.buscarFolioPorRefJSONP = (ref, cb) => cb('');   // candado de cotización repetida (11 oct): sin red en la prueba, el Ref no tiene folio
     llenarYGuardar(w, 'btn-pdf');            // jsPDF no está cargado en jsdom: el PDF fallará DESPUÉS del respaldo
     await esperar(60);
     const sheet = fetchCalls.filter(c => c.body && c.body.action === 'saveCotizacion');

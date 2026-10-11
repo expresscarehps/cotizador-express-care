@@ -262,6 +262,7 @@ const textoLetrero = r => $(r, 'estado-guardado').textContent;
     const r = abrir(); await esperar(80);
     r.w.obtenerFolioJSONP = cb => { r.w.folioNumeroActual = 9; cb('EXPCARE-009/26'); };
     r.w.confirmarFolioJSONP = (n, cb) => { if (cb) cb(); };
+    r.w.buscarFolioPorRefJSONP = (ref, cb) => cb('');   // candado de cotización repetida (11 oct): sin red en la prueba, el Ref no tiene folio
     llenar(r); conProducto(r);
     await copiar(r);                                  // v1 sin folio
     const ref = r.sheet()[0].body.ref;
@@ -276,6 +277,7 @@ const textoLetrero = r => $(r, 'estado-guardado').textContent;
     const r = abrir(); await esperar(80);
     r.w.obtenerFolioJSONP = cb => { r.w.folioNumeroActual = 10; cb('EXPCARE-010/26'); };
     r.w.confirmarFolioJSONP = (n, cb) => { if (cb) cb(); };
+    r.w.buscarFolioPorRefJSONP = (ref, cb) => cb('');   // candado de cotización repetida (11 oct): sin red en la prueba, el Ref no tiene folio
     llenar(r); conProducto(r);
     $(r, 'btn-pdf').click(); await esperar(80);
     ok('I4 PDF sin copiar antes: se guarda con folio, Ref y versión 1', r.sheet().length === 1 && r.sheet()[0].body.folio === 'EXPCARE-010/26' && RE_REF.test(r.sheet()[0].body.ref) && r.sheet()[0].body.version === 1, r.sheet()[0] && r.sheet()[0].body);
