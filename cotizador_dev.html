@@ -1020,7 +1020,7 @@ var MODO_PRUEBA = (typeof window!=='undefined' && window.location && /[?&]test=1
 // Se detecta por el nombre del archivo: en dev, el aviso real a GHL pide confirmación explícita
 // (para no etiquetar clientes reales por accidente). También viaja en el aviso como "fuente".
 var ES_DEV = (typeof window!=='undefined' && window.location && /dev\.html?$/i.test(window.location.pathname||''));
-var VERSION_PAGINA = 'dev 2026-10-09 margen fijo y marcas Llaselesa';
+var VERSION_PAGINA = 'dev 2026-10-11 mensaje sin 9 meses';
 
 var RIN = {
   'a': {mon:85,  bal:80,  piv:20, h:'Montaje $85 - Balanceo $80 - Pivote $20 por llanta'},
@@ -2112,7 +2112,7 @@ function generarWA() {
     }
   }
   if(pago==='meses' && (llantas.length||extSvcs.length)){
-    txt+='\n💳 *Precio a meses sin intereses (3, 6 y 9 meses con tarjetas participantes)*\n\n';
+    txt+='\n💳 *Precio a meses sin intereses (3 y 6 meses con tarjetas participantes)*\n\n';
   } else if(llantas.length||extSvcs.length){
     txt+='\n💵 *Precios de contado.* En caso de que prefieras realizar tu compra a meses sin intereses, se aplicará un incremento del 5% sobre el precio cotizado.\n\n';
   }
