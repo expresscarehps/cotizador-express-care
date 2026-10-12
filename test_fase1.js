@@ -49,6 +49,7 @@ function abrir(opc) {
     }
   });
   reg.w = dom.window;
+  reg.w.buscarRefExisteJSONP = (ref, cb) => cb({ found: false });   // candado de repetida para toda cotización (11 oct): sin red en la prueba, el Ref no existe
   reg.sheet = () => reg.fetch.filter(c => c.body && c.body.action === 'saveCotizacion');
   reg.aviso = () => reg.fetch.filter(c => /cotizacion-enviada-ghl/.test(c.u));
   return reg;

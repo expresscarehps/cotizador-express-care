@@ -240,6 +240,7 @@ async function parteB() {
         w.alert = () => {}; w.confirm = () => true; w.document.execCommand = () => true;
       }
     });
+    dom.window.buscarRefExisteJSONP = (ref, cb) => cb({ found: false });   // candado de repetida para toda cotización (11 oct): sin red en la prueba, el Ref no existe
     return { w: dom.window, fetchCalls, dom };
   }
   const esperar = ms => new Promise(r => setTimeout(r, ms));

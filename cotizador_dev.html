@@ -1020,7 +1020,7 @@ var MODO_PRUEBA = (typeof window!=='undefined' && window.location && /[?&]test=1
 // Se detecta por el nombre del archivo: en dev, el aviso real a GHL pide confirmación explícita
 // (para no etiquetar clientes reales por accidente). También viaja en el aviso como "fuente".
 var ES_DEV = (typeof window!=='undefined' && window.location && /dev\.html?$/i.test(window.location.pathname||''));
-var VERSION_PAGINA = 'dev 2026-10-11 candado repetida y claves repetidas Serv-Vega';
+var VERSION_PAGINA = 'dev 2026-10-11 candado repetida en toda cotizacion (WhatsApp y PDF)';
 
 var RIN = {
   'a': {mon:85,  bal:80,  piv:20, h:'Montaje $85 - Balanceo $80 - Pivote $20 por llanta'},
@@ -2562,6 +2562,31 @@ function buscarFolioPorRefJSONP(ref, cb){
   document.body.appendChild(script);
 }
 
+// Candado para CUALQUIER cotización (copiar para WhatsApp / guardado normal): pregunta al Sheet si este Ref ya está guardado.
+// cb(info) → {found, folio, version, fecha, asesor, cliente}; cb(null) si no se pudo consultar
+// (en ese caso se guarda como siempre: nunca se bloquea el trabajo por una falla de red; el Apps Script también lo vigila).
+function buscarRefExisteJSONP(ref, cb){
+  if(!ref){ cb({found:false}); return; }
+  var done=false;
+  var cbName='_refExisteCb'+Date.now();
+  var script=document.createElement('script');
+  function limpiar(){ if(window[cbName]) delete window[cbName]; if(script.parentNode) script.parentNode.removeChild(script); }
+  window[cbName]=function(data){
+    if(done) return; done=true; limpiar();
+    cb(data && data.status==='ok' ? data : null);
+  };
+  script.onerror=function(){ if(done) return; done=true; limpiar(); cb(null); };
+  setTimeout(function(){ if(done) return; done=true; limpiar(); cb(null); }, 5000);
+  script.src=SCRIPT_URL+'?action=refExiste&ref='+encodeURIComponent(ref)+'&callback='+cbName;
+  document.body.appendChild(script);
+}
+function avisarCotizacionRepetida(info){
+  var cuando=info.fecha?(' el '+info.fecha):'';
+  var quien=info.asesor?(' por '+info.asesor):'';
+  alert('Cotización repetida\n\nEsta misma cotización (Ref '+refVigente+') ya estaba guardada'+cuando+quien+
+        (info.folio?(' con el folio '+info.folio):'')+'.\n\nNo se guardó otra vez: no se crea otro renglón en el historial.');
+}
+
 // Confirma/consume el folio propuesto para el PDF. Se llama justo después de proponerlo
 // (no espera a verificar el guardado — el folio es exclusivo del PDF, así que se consume
 // en cuanto se decide usarlo para generar uno).
@@ -2902,7 +2927,7 @@ function nuevaCotizacionConCandado(){
       registrarCotizacion(function(exito){
         if(!exito && !confirm('⚠️ No se pudo guardar esta cotización en el historial.\n\n¿Borrarla de todos modos?\n\nAceptar = borrar.\nCancelar = conservarla para reintentar.')) return;
         continuarNuevaCotizacion();
-      });
+      }, {silencioso:true});   // al limpiar, una cotización ya guardada no necesita aviso
       return;
     }
   }
@@ -3081,7 +3106,7 @@ function camposRef(){ return camposRefPend||{}; }
 
 // Guarda en Hoja1 la cotización actual si todavía no está guardada con su Ref actual.
 // alTerminar(exito, motivo) es opcional. Nunca bloquea el copiado (copiar ya ocurrió).
-function registrarCotizacion(alTerminar){
+function registrarCotizacion(alTerminar, opciones){
   function fin(exito,motivo){ if(typeof alTerminar==='function') alTerminar(exito,motivo); }
   generarWA();   // el Ref debe corresponder al contenido de este momento
   if(!hayProductos()){ fin(true); return; }
@@ -3092,18 +3117,32 @@ function registrarCotizacion(alTerminar){
   var refEnviada=refVigente;
   estadoGuardado='guardando'; errorGuardadoRef='';
   pintarEstadoGuardado();
-  nuevaVersionParaGuardar();
-  yaGuardado=false;   // es una versión nueva: guardarCotizacion no debe bloquearla
-  function terminar(exito){
+  function terminar(exito,motivo){
     estadoGuardado='';
-    if(exito){ guardadoInfo={ref:refEnviada, conFolio:false}; errorGuardadoRef=''; }
+    if(exito){ guardadoInfo={ref:refEnviada, conFolio:!!(motivo && motivo.conFolio)}; errorGuardadoRef=''; }
     else { errorGuardadoRef=refEnviada; versionGuardada=Math.max(0,versionGuardada-1); }
     pintarEstadoGuardado();
     var cbs=esperaGuardado; esperaGuardado=[];
-    fin(exito,exito?'':'error');
-    cbs.forEach(function(cb){ cb(exito,exito?'':'error'); });
+    var m=exito?((motivo&&motivo.repetida)?'repetida':''):'error';
+    fin(exito,m);
+    cbs.forEach(function(cb){ cb(exito,m); });
   }
-  guardarCotizacion(function(){ terminar(true); }, function(){ terminar(false); });
+  function guardarVersionNueva(){
+    nuevaVersionParaGuardar();
+    yaGuardado=false;   // es una versión nueva: guardarCotizacion no debe bloquearla
+    guardarCotizacion(function(){ terminar(true); }, function(){ terminar(false); });
+  }
+  // Candado para CUALQUIER cotización: si este Ref ya está en el Sheet (otra sesión, otra pantalla), no se guarda otro renglón.
+  // En modo de prueba (?test=1) no se consulta nada: ese modo no toca el Sheet real.
+  if(MODO_PRUEBA){ guardarVersionNueva(); return; }
+  buscarRefExisteJSONP(refEnviada, function(info){
+    if(info && info.found){
+      if(!(opciones && opciones.silencioso)) avisarCotizacionRepetida(info);
+      terminar(true,{repetida:true, conFolio:!!info.folio});
+      return;
+    }
+    guardarVersionNueva();
+  });
 }
 
 // Letrero de estado (reemplaza al botón "Guardar en historial").
