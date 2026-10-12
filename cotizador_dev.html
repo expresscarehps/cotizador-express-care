@@ -1020,7 +1020,7 @@ var MODO_PRUEBA = (typeof window!=='undefined' && window.location && /[?&]test=1
 // Se detecta por el nombre del archivo: en dev, el aviso real a GHL pide confirmación explícita
 // (para no etiquetar clientes reales por accidente). También viaja en el aviso como "fuente".
 var ES_DEV = (typeof window!=='undefined' && window.location && /dev\.html?$/i.test(window.location.pathname||''));
-var VERSION_PAGINA = 'dev 2026-10-11 borrador usado se quita al copiar o hacer PDF';
+var VERSION_PAGINA = 'dev 2026-10-12 un folio = una cotizacion; borrador cargado empieza limpio; Ref en historial';
 
 var RIN = {
   'a': {mon:85,  bal:80,  piv:20, h:'Montaje $85 - Balanceo $80 - Pivote $20 por llanta'},
@@ -1095,6 +1095,7 @@ var tallerTipo = 'Taller - Afinación';
 var tarifasMO = {};
 var tarifasMOTipos = {};
 var yaGuardado = false;
+var refDelFolio = '';          // Ref (contenido) para el que ya se emitió el folio actual: ese folio NO se reutiliza para otro contenido
 var folioActual = null;       // un solo folio por cotización, se reutiliza entre Guardar y PDF
 var folioNumeroActual = null; // el número (para confirmar/consumir el folio solo si el guardado se verifica)
 var pdfYaSubidoDrive = false; // evita subir el mismo PDF más de una vez a Drive
@@ -2258,6 +2259,10 @@ function cargarBorrador(id) {
   for(var i=0;i<borradores.length;i++){ if(borradores[i].id===id){b=borradores[i];break;} }
   if(!b) return;
   borradorActivoId = b.id;
+  // Una cotización cargada de un borrador es una cotización NUEVA: no hereda folio, Grupo ni versión de la que estaba en pantalla.
+  yaGuardado=false; folioActual=null; folioNumeroActual=null; pdfYaSubidoDrive=false; refDelFolio='';
+  guardadoInfo={ref:'',conFolio:false}; grupoRef=null; versionGuardada=0; camposRefPend=null;
+  estadoGuardado=''; errorGuardadoRef=''; esperaGuardado=[]; refCopiado=''; refVigente='';
   cart = b.cart; sact = new Set(b.sact);
   tallerItems = b.tallerItems; tallerTipo = b.tallerTipo;
   pago = b.pago; rin = b.rin;
@@ -2334,6 +2339,7 @@ function limpiarTodo(skipConfirm){
   sact=new Set();
   tallerItems=[];
   borradorActivoId=null;
+  refDelFolio='';
   yaGuardado=false;
   folioActual=null;
   folioNumeroActual=null;
@@ -2641,6 +2647,7 @@ function generarPDF(){
   if(errores.length>0){alert('Faltan datos obligatorios:\n\n'+errores.join('\n'));setTab('cotizacion');return;}
 
   generarWA();   // el Ref debe corresponder al contenido de este momento
+  liberarFolioSiCambioContenido();   // si el contenido cambió después de emitir un folio, esta cotización pide el suyo
   var btn=g('btn-pdf');
   if(btn){btn.textContent='Generando...';btn.disabled=true;}
 
@@ -2656,7 +2663,7 @@ function generarPDF(){
   }
 
   function guardarConFolioYContinuar(){
-    if(MODO_PRUEBA){ guardadoInfo={ref:refVigente, conFolio:true}; pintarEstadoGuardado(); continuarPDF(); return; }
+    if(MODO_PRUEBA){ guardadoInfo={ref:refVigente, conFolio:true}; refDelFolio=refVigente; pintarEstadoGuardado(); continuarPDF(); return; }
     var datos=armarDatosCotizacion(llantas, autoSvcs, extSvcs, tallerCart);
     nuevaVersionParaGuardar();   // el PDF queda como una versión nueva del mismo Ref, ahora con folio
     var refEnviada=refVigente;
@@ -2665,7 +2672,7 @@ function generarPDF(){
       method:'POST',mode:'no-cors',
       headers:{'Content-Type':'text/plain;charset=utf-8'},
       body: JSON.stringify(cuerpo)
-    }).then(function(){ guardadoInfo={ref:refEnviada, conFolio:true}; if(errorGuardadoRef===refEnviada) errorGuardadoRef=''; pintarEstadoGuardado(); continuarPDF(); },
+    }).then(function(){ guardadoInfo={ref:refEnviada, conFolio:true}; refDelFolio=refEnviada; if(errorGuardadoRef===refEnviada) errorGuardadoRef=''; pintarEstadoGuardado(); continuarPDF(); },
       function(){ errorGuardadoRef=refEnviada; versionGuardada=Math.max(0,versionGuardada-1); pintarEstadoGuardado(); continuarPDF(); }); // si no se pudo guardar, el PDF se genera igual y el letrero rojo lo avisa (el error al armar el PDF ya no se confunde con un guardado fallido)
   }
 
@@ -2684,7 +2691,7 @@ function generarPDF(){
       if(folioExistente){
         alert('Cotización repetida\n\nEsta cotización ya se generó antes con el folio '+folioExistente+'.\nNo se crea un folio nuevo: se vuelve a bajar el mismo PDF.');
         folioActual=folioExistente;
-        guardadoInfo={ref:refVigente, conFolio:true};
+        guardadoInfo={ref:refVigente, conFolio:true}; refDelFolio=refVigente;
         pdfYaSubidoDrive=true;   // ese PDF ya se subió a Drive cuando se generó con ese folio
         pintarEstadoGuardado();
         continuarPDF();
@@ -3118,7 +3125,17 @@ function calcularRef(texto, tel){
 }
 
 // ── Guardado automático ──
+// Un folio pertenece a UNA sola cotización (un contenido = una Ref). Si después de emitir el folio la cotización
+// cambia (aunque sea una pieza) la nueva ya no puede usar ese folio: es una cotización nueva, con su propio
+// folio y su propio Grupo. El folio anterior queda tal cual, ligado a la cotización que sí se emitió.
+function liberarFolioSiCambioContenido(){
+  if(refDelFolio && refDelFolio!==refVigente){
+    folioActual=null; folioNumeroActual=null; pdfYaSubidoDrive=false;
+    grupoRef=null; versionGuardada=0; refDelFolio='';
+  }
+}
 function nuevaVersionParaGuardar(){
+  liberarFolioSiCambioContenido();
   if(!grupoRef) grupoRef=refVigente;
   versionGuardada++;
   camposRefPend={ref:refVigente, grupo:grupoRef, version:versionGuardada};
@@ -3428,6 +3445,7 @@ window.addEventListener('load',function(){
   var cacheListo = false;
   var cacheError = '';
   var datosPend = null;    // últimos datos armados que aún no se respaldan
+  var refPend = '';        // Ref de esos datos (para mostrarla en el historial cuando no hay folio)
   var mostrar = POR_PAGINA;
   var detener = null;      // función para dejar de escuchar el historial
 
@@ -3552,7 +3570,7 @@ window.addEventListener('load',function(){
     if(!tokens.length) return lista;
     return lista.filter(function(d){
       var h=d._h;
-      if(!h){ h=d._h=normBusq([d.cliente,d.vehiculo,d.folio,d.asesor].join(' '))+' '+soloDigitos(d.telefono); }
+      if(!h){ h=d._h=normBusq([d.cliente,d.vehiculo,d.folio,d.ref,d.asesor].join(' '))+' '+soloDigitos(d.telefono); }
       return tokens.every(function(t){ return h.indexOf(t)>=0; });
     });
   }
@@ -3621,6 +3639,7 @@ window.addEventListener('load',function(){
       var partes=[fechaLegible(d.fecha)];
       if(d.asesor) partes.push(esc(d.asesor));
       if(d.folio) partes.push('<b>'+esc(d.folio)+'</b>');
+      else if(d.ref) partes.push('<b>'+esc(d.ref)+'</b>');   // copia de WhatsApp sin folio: se identifica por su Ref
       var filas=(d.partidas||[]).map(function(p){
         return '<tr><td>'+esc(p.producto)+(p.opcional?' <i>(opcional)</i>':'')+'</td><td>'+(esc(p.proveedor)||'—')+'</td><td style="text-align:right">'+esc(p.cant)+'</td><td style="text-align:right">'+(p.costo==null?'—':dinero(p.costo))+'</td><td style="text-align:right">'+dinero(p.precio)+'</td><td style="text-align:right">'+(p.opcional?'—':dinero(p.subtotal))+'</td></tr>';
       }).join('');
@@ -3800,6 +3819,7 @@ window.addEventListener('load',function(){
     if(typeof MODO_PRUEBA!=='undefined' && MODO_PRUEBA){ aviso('🧪 PRUEBA — no se respaldó en Firebase'); return null; }
     if(!api||!perfil){ aviso('⚠ No se respaldó en Firebase: inicia sesión en la pestaña Historial'); return null; }
     var docu=conCreador(armarDocumento(pend,folio),perfil), id=nuevoId();
+    if(refPend) docu.ref=refPend;
     return api.escribir(id,docu).then(function(){ aviso('☁ Respaldada en Firebase'); return id; })
       .catch(function(e){ try{console.warn('Respaldo Firebase falló:',e);}catch(x){} aviso('⚠ No se pudo respaldar en Firebase ('+((e&&e.code)||'error')+')'); return null; });
   }
@@ -3809,7 +3829,7 @@ window.addEventListener('load',function(){
   function envolver(){
     if(typeof armarDatosCotizacion==='function'){
       var o1=armarDatosCotizacion;
-      armarDatosCotizacion=function(){ var d=o1.apply(this,arguments); datosPend=d; return d; };
+      armarDatosCotizacion=function(){ var d=o1.apply(this,arguments); datosPend=d; refPend=(typeof refVigente==='string')?refVigente:''; return d; };
     }
     if(typeof guardarCotizacion==='function'){
       var o2=guardarCotizacion;
