@@ -1020,7 +1020,7 @@ var MODO_PRUEBA = (typeof window!=='undefined' && window.location && /[?&]test=1
 // Se detecta por el nombre del archivo: en dev, el aviso real a GHL pide confirmación explícita
 // (para no etiquetar clientes reales por accidente). También viaja en el aviso como "fuente".
 var ES_DEV = (typeof window!=='undefined' && window.location && /dev\.html?$/i.test(window.location.pathname||''));
-var VERSION_PAGINA = 'dev 2026-10-11 candado repetida en toda cotizacion (WhatsApp y PDF)';
+var VERSION_PAGINA = 'dev 2026-10-11 borrador usado se quita al copiar o hacer PDF';
 
 var RIN = {
   'a': {mon:85,  bal:80,  piv:20, h:'Montaje $85 - Balanceo $80 - Pivote $20 por llanta'},
@@ -1086,6 +1086,7 @@ var rin = 'a';
 var pago = 'contado';
 var borradores = [];
 var borradores = [];  // Array of saved draft cotizaciones
+var borradorActivoId = null;  // id del borrador cargado en pantalla (se quita de la lista cuando la cotización se usa: copiar o PDF)
 var cart = [];
 var sact = new Set();
 var tallerItems = [];
@@ -2235,11 +2236,28 @@ function guardarBorrador() {
   limpiarTodo(true);
 }
 
+// Cuando la cotización cargada desde un borrador YA SE USÓ (se copió para WhatsApp o se generó el PDF),
+// el borrador se quita de la lista: si el cliente regresa, se arma una cotización nueva desde cero.
+// Si solo se cargó y se revisó, el borrador se queda en la lista.
+function consumirBorradorActivo() {
+  if(!borradorActivoId) return;
+  var id = borradorActivoId;
+  borradorActivoId = null;
+  cargarBorradores();
+  var antes = borradores.length;
+  borradores = borradores.filter(function(b){ return b.id !== id; });
+  if(borradores.length === antes) return;
+  try{ localStorage.setItem('expresscare_borradores', JSON.stringify(borradores)); }catch(e){}
+  renderBorradores();
+  toast('📋 Este borrador ya se usó y se quitó de la lista');
+}
+
 function cargarBorrador(id) {
   cargarBorradores();
   var b = null;
   for(var i=0;i<borradores.length;i++){ if(borradores[i].id===id){b=borradores[i];break;} }
   if(!b) return;
+  borradorActivoId = b.id;
   cart = b.cart; sact = new Set(b.sact);
   tallerItems = b.tallerItems; tallerTipo = b.tallerTipo;
   pago = b.pago; rin = b.rin;
@@ -2315,6 +2333,7 @@ function limpiarTodo(skipConfirm){
   cart=[];
   sact=new Set();
   tallerItems=[];
+  borradorActivoId=null;
   yaGuardado=false;
   folioActual=null;
   folioNumeroActual=null;
@@ -2632,6 +2651,7 @@ function generarPDF(){
   var fechaStr=new Date().toLocaleDateString('es-MX');
 
   function continuarPDF(){
+    consumirBorradorActivo();   // la cotización salió en PDF: el borrador de donde vino ya no se ofrece
     construirYDescargarPDF(folioActual, cl, tel, vh, asesor, fechaStr, llantas, autoSvcs, extSvcs, tallerCart, btn);
   }
 
@@ -2889,6 +2909,7 @@ function copiar(){
   function ok(){
     if(btn){btn.textContent='¡Copiado!';btn.classList.add('done');setTimeout(function(){btn.textContent='Copiar para WhatsApp';btn.classList.remove('done');},2000);}
     habilitarYaLaEnvie();
+    consumirBorradorActivo();   // la cotización salió: el borrador de donde vino ya no se ofrece
     registrarCotizacion();   // copiar = guardar: la cotización queda registrada en Hoja1
   }
   if(navigator.clipboard){navigator.clipboard.writeText(wt.textContent).then(ok).catch(function(){fb(wt.textContent);ok();});}
