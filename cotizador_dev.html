@@ -335,6 +335,10 @@ input:focus,select:focus{
   overflow-y:auto;
 }
 
+/* Cotización enviada: se ve pero no se edita */
+#banner-enviada{display:none;background:#fff3cd;border:1.5px solid #e0a800;color:#5d4a00;border-radius:8px;padding:10px 12px;margin:8px 12px;font-size:13px;font-weight:600;line-height:1.4}
+#banner-enviada.on{display:block}
+.pnl[inert]{opacity:.55}
 /* Casilla "Sin nombre" y letrero de estado de guardado (reemplaza al botón Guardar en historial) */
 label.chk-sin-nombre{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:400;margin:6px 0 0;cursor:pointer}
 label.chk-sin-nombre input{width:20px;height:20px;padding:0;margin:0;flex:0 0 20px;border:2px solid var(--val-dark-blue);border-radius:4px;background:#fff;-webkit-appearance:none;appearance:none;position:relative;cursor:pointer}
@@ -1020,7 +1024,7 @@ var MODO_PRUEBA = (typeof window!=='undefined' && window.location && /[?&]test=1
 // Se detecta por el nombre del archivo: en dev, el aviso real a GHL pide confirmación explícita
 // (para no etiquetar clientes reales por accidente). También viaja en el aviso como "fuente".
 var ES_DEV = (typeof window!=='undefined' && window.location && /dev\.html?$/i.test(window.location.pathname||''));
-var VERSION_PAGINA = 'dev 2026-10-12 un folio = una cotizacion; borrador cargado empieza limpio; Ref en historial';
+var VERSION_PAGINA = 'dev 2026-10-12 cotizacion enviada se bloquea; boton OK no duplica; un folio = una cotizacion; Ref en historial';
 
 var RIN = {
   'a': {mon:85,  bal:80,  piv:20, h:'Montaje $85 - Balanceo $80 - Pivote $20 por llanta'},
@@ -1095,6 +1099,7 @@ var tallerTipo = 'Taller - Afinación';
 var tarifasMO = {};
 var tarifasMOTipos = {};
 var yaGuardado = false;
+var cotizacionEnviada = false;   // true después de copiar para WhatsApp o generar el PDF: la cotización ya salió y no se puede editar
 var refDelFolio = '';          // Ref (contenido) para el que ya se emitió el folio actual: ese folio NO se reutiliza para otro contenido
 var folioActual = null;       // un solo folio por cotización, se reutiliza entre Guardar y PDF
 var folioNumeroActual = null; // el número (para confirmar/consumir el folio solo si el guardado se verifica)
@@ -1485,7 +1490,10 @@ function pintarRecordatorioMargen() {
 }
 
 function addLlanta(btn) {
+  if(cotizacionEnviada){ toast(TEXTO_COTIZACION_ENVIADA); return; }
   var llaveBtn=btn.getAttribute('data-cve'), sp=separarLlave(llaveBtn), cve=sp.cve, it=null;
+  // Si esa llanta ya está en la cotización no se agrega otra línea: la cantidad se cambia en el carrito.
+  for(var q=0;q<cart.length;q++){ if(cart[q].t==='l' && cart[q].cve && (cart[q].llave||cart[q].cve)===llaveBtn){ toast('Ya está en la cotización, cambia la cantidad en el carrito'); return; } }
   var isAyala = cve && cve.indexOf('AY') === 0;
   var isVega = false;
   if (isAyala) {
@@ -2199,6 +2207,7 @@ function cargarBorradores() {
 }
 
 function guardarBorrador() {
+  if(cotizacionEnviada){ toast('Esa cotización ya se envió: no se guarda como borrador. Presiona Nueva cotización.'); return; }
   var cl = v('cli-nombre');
   var tel = v('cli-tel');
   var vh = getVehiculo();
@@ -2259,6 +2268,7 @@ function cargarBorrador(id) {
   for(var i=0;i<borradores.length;i++){ if(borradores[i].id===id){b=borradores[i];break;} }
   if(!b) return;
   borradorActivoId = b.id;
+  bloquearCotizacion(false);   // un borrador cargado es una cotización nueva: se puede editar
   // Una cotización cargada de un borrador es una cotización NUEVA: no hereda folio, Grupo ni versión de la que estaba en pantalla.
   yaGuardado=false; folioActual=null; folioNumeroActual=null; pdfYaSubidoDrive=false; refDelFolio='';
   guardadoInfo={ref:'',conFolio:false}; grupoRef=null; versionGuardada=0; camposRefPend=null;
@@ -2299,7 +2309,7 @@ function renderBorradores() {
   var panel = g('panel-borradores');
   var badge = g('badge-borradores');
   if(!panel) return;
-  if(badge) badge.textContent = borradores.length > 0 ? borradores.length : '';
+  if(badge){ badge.textContent = borradores.length > 0 ? borradores.length : ''; badge.style.display = borradores.length > 0 ? '' : 'none'; }   // sin borradores no se muestra el círculo rojo vacío
   if(!borradores.length){ panel.innerHTML='<div style="font-size:12px;color:#888;padding:8px">No hay borradores guardados</div>'; return; }
   var html = '';
   for(var i=0;i<borradores.length;i++){
@@ -2332,6 +2342,29 @@ function toggleBorradores() {
   if(!visible) renderBorradores();
 }
 
+// ── COTIZACIÓN ENVIADA (copiar para WhatsApp o generar PDF) ──
+// Al copiar o generar el PDF se entiende que la cotización YA SE ENVIÓ: se queda a la vista pero no se puede modificar.
+// Para hacer otra se presiona "Nueva cotización". Siguen activos: copiar, PDF, "Ya la envié" y "Nueva cotización".
+var TEXTO_COTIZACION_ENVIADA = 'Cotización enviada. Para hacer otra, presiona Nueva cotización.';
+function bloquearCotizacion(on){
+  cotizacionEnviada = !!on;
+  var banner = g('banner-enviada');
+  if(!banner){
+    var ref = g('p-llantas');
+    if(ref && ref.parentNode){
+      banner = document.createElement('div'); banner.id = 'banner-enviada'; banner.textContent = TEXTO_COTIZACION_ENVIADA;
+      ref.parentNode.insertBefore(banner, ref);
+    }
+  }
+  if(banner) banner.classList.toggle('on', cotizacionEnviada);
+  ['p-llantas','p-servicios','p-taller','p-cotizacion'].forEach(function(id){
+    var el = g(id); if(!el) return;
+    if(cotizacionEnviada) el.setAttribute('inert',''); else el.removeAttribute('inert');
+  });
+  var bb = document.querySelector('button[onclick="guardarBorrador()"]');
+  if(bb){ bb.disabled = cotizacionEnviada; bb.style.opacity = cotizacionEnviada ? '.45' : ''; bb.title = cotizacionEnviada ? 'La cotización ya se envió' : ''; }
+}
+
 function limpiarTodo(skipConfirm){
   if(!skipConfirm && !confirm('¿Iniciar una cotización nueva? Se borrarán todos los datos actuales.')) return;
   // Limpiar carrito
@@ -2339,6 +2372,7 @@ function limpiarTodo(skipConfirm){
   sact=new Set();
   tallerItems=[];
   borradorActivoId=null;
+  bloquearCotizacion(false);   // cotización nueva: se puede editar otra vez
   refDelFolio='';
   yaGuardado=false;
   folioActual=null;
@@ -2659,6 +2693,7 @@ function generarPDF(){
 
   function continuarPDF(){
     consumirBorradorActivo();   // la cotización salió en PDF: el borrador de donde vino ya no se ofrece
+    bloquearCotizacion(true);   // ya se envió: se ve pero no se edita
     construirYDescargarPDF(folioActual, cl, tel, vh, asesor, fechaStr, llantas, autoSvcs, extSvcs, tallerCart, btn);
   }
 
@@ -2917,6 +2952,7 @@ function copiar(){
     if(btn){btn.textContent='¡Copiado!';btn.classList.add('done');setTimeout(function(){btn.textContent='Copiar para WhatsApp';btn.classList.remove('done');},2000);}
     habilitarYaLaEnvie();
     consumirBorradorActivo();   // la cotización salió: el borrador de donde vino ya no se ofrece
+    bloquearCotizacion(true);   // ya se envió: se ve pero no se edita
     registrarCotizacion();   // copiar = guardar: la cotización queda registrada en Hoja1
   }
   if(navigator.clipboard){navigator.clipboard.writeText(wt.textContent).then(ok).catch(function(){fb(wt.textContent);ok();});}

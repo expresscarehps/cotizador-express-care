@@ -120,6 +120,16 @@ function hacerBorrador(r, precio, nombre) {
     r.w.cargarBorrador(id); r.w.copiar(); await esperar(250);
     ok('U16 en modo prueba también se quita al copiar', lista(r).length === 0, lista(r).length);
   }
+  console.log('\n=== BU-8. El círculo rojo de "Borradores" solo se ve cuando hay borradores ===');
+  {
+    const r = abrir(); await esperar(80);
+    const badge = $(r, 'badge-borradores');
+    ok('U17 sin borradores el círculo no se muestra', badge.style.display === 'none' && badge.textContent === '', [badge.style.display, badge.textContent]);
+    const id = hacerBorrador(r);
+    ok('U18 con 1 borrador se muestra con el número 1', badge.style.display !== 'none' && badge.textContent === '1', [badge.style.display, badge.textContent]);
+    r.w.cargarBorrador(id); r.w.copiar(); await esperar(250);
+    ok('U19 al usar el borrador y quedar la lista vacía, el círculo se esconde', badge.style.display === 'none' && badge.textContent === '', [badge.style.display, badge.textContent]);
+  }
   console.log('\n' + passed + ' pasaron, ' + failed + ' fallaron');
   process.exit(failed ? 1 : 0);
 })();
