@@ -59,7 +59,7 @@ const DATOS = {
   fecha: '6/10/2026 03:15 p.m.', asesor: ' Ana ', cliente: '  Jose   Alarcón ', telefono: '614-184 8835',
   vehiculo: 'Chevrolet Cheyenne 2007 8 cil', origen: 'WhatsApp', total: '2394.29',
   items: [
-    { tipo: 'Llantas', proveedor: 'AYALA', noParte: 'AY27890', producto: '165/65 R14', cant: 4, costo: '2467.00', margen: '25%', precio: '2146.29', subtotal: '8585.16' },
+    { tipo: 'Llantas', proveedor: 'AYALA', noParte: 'AY27890', producto: 'HANKOOK 165/65 R14', marca: ' HANKOOK ', cant: 4, costo: '2467.00', margen: '25%', precio: '2146.29', subtotal: '8585.16' },
     { tipo: 'Taller - Frenos', proveedor: '', noParte: '', producto: 'Mano de obra balatas', cant: 2, costo: '', margen: 'M.O.', precio: '550.00', subtotal: '1100.00' },
     { tipo: 'Taller - Frenos', proveedor: 'Autozone', noParte: 'C-1', producto: 'Filtro de cabina (opcional)', cant: 1, costo: '216.00', margen: '30%', precio: '308.57', subtotal: '(opcional)' },
     { tipo: 'Llantas', proveedor: '', noParte: '', producto: 'Montaje', cant: 0, costo: '', margen: '', precio: '120.00', subtotal: '120.00' }
@@ -81,6 +81,8 @@ console.log('\n=== A1. ARMADO DEL DOCUMENTO ===');
   const p0 = d.partidas[0], p1 = d.partidas[1], p2 = d.partidas[2], p3 = d.partidas[3];
   ok('Llanta: margenPct 25 numérico', p0.margenPct === 25 && p0.manoDeObra === false, p0);
   ok('Llanta: costo/precio/subtotal numéricos', p0.costo === 2467 && p0.precio === 2146.29 && p0.subtotal === 8585.16, p0);
+  ok('Llanta: guarda la marca (campo marca, recortado)', p0.marca === 'HANKOOK', p0.marca);
+  ok('Partidas sin marca (taller, montaje): marca vacía, no falta el campo', p1.marca === '' && p3.marca === '', [p1.marca, p3.marca]);
   ok('M.O.: manoDeObra true y margenPct null', p1.manoDeObra === true && p1.margenPct === null && p1.costo === null, p1);
   ok('Opcional: opcional true y subtotal null', p2.opcional === true && p2.subtotal === null, p2);
   ok('Sin margen: margenPct null', p3.margenPct === null);

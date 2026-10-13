@@ -1024,7 +1024,7 @@ var MODO_PRUEBA = (typeof window!=='undefined' && window.location && /[?&]test=1
 // Se detecta por el nombre del archivo: en dev, el aviso real a GHL pide confirmación explícita
 // (para no etiquetar clientes reales por accidente). También viaja en el aviso como "fuente".
 var ES_DEV = (typeof window!=='undefined' && window.location && /dev\.html?$/i.test(window.location.pathname||''));
-var VERSION_PAGINA = 'dev 2026-10-12 cotizacion enviada se bloquea; boton OK no duplica; un folio = una cotizacion; Ref en historial';
+var VERSION_PAGINA = 'dev 2026-10-12 cotizacion enviada se bloquea; boton OK no duplica; un folio = una cotizacion; Ref en historial; respaldo en Firebase guarda la marca';
 
 var RIN = {
   'a': {mon:85,  bal:80,  piv:20, h:'Montaje $85 - Balanceo $80 - Pivote $20 por llanta'},
@@ -3557,6 +3557,7 @@ window.addEventListener('load',function(){
       return {
         tipo:String(it.tipo||'').trim(), proveedor:String(it.proveedor||'').trim(),
         noParte:String(it.noParte||'').trim(), producto:String(it.producto||'').trim(),
+        marca:String(it.marca||'').trim(),
         cant:(aNum(it.cant)||1), costo:aNum(it.costo),
         margenPct:(mo||mg==='')?null:aNum(mg), manoDeObra:mo,
         precio:aNum(it.precio), subtotal:opc?null:aNum(sub), opcional:opc
