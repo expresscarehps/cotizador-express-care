@@ -145,9 +145,28 @@ const textoLetrero = r => $(r, 'estado-guardado').textContent;
     llenar(r, { marca: 'solo llantas', modelo: '', anio: '', cil: '' });
     ok('D3 marca "solo llantas" (cualquier mayúscula): ya no pide modelo, año ni cilindros', r.w.validarCampos().length === 0, r.w.validarCampos());
     ok('D4 getVehiculo devuelve "Solo llantas"', r.w.getVehiculo() === 'Solo llantas', r.w.getVehiculo());
-    conProducto(r);
+    // D5: ahora con una LLANTA real en el carrito (el atajo solo vale si la cotización es solo de llantas)
+    const q = $(r, 'qm'); q.value = '185/55R15'; q.dispatchEvent(new r.w.Event('input', { bubbles: true })); await esperar(80);
+    const bAdd = r.w.document.querySelector('#res .badd[data-cve]'); if (bAdd) bAdd.click(); await esperar(60);
+    ok('D4b hay una llanta en el carrito', r.w.cart.filter(c => c.t === 'l').length === 1, r.w.cart.length);
+    r.w.generarWA();
     await copiar(r);
     ok('D5 se guarda con vehículo "Solo llantas" (no "NA NA 1900")', r.sheet().length === 1 && r.sheet()[0].body.vehiculo === 'Solo llantas', r.sheet()[0] && r.sheet()[0].body.vehiculo);
+
+    // D6–D9: "SOLO LLANTAS" NO sirve si la cotización lleva taller (hueco reportado 13 oct)
+    const r2 = abrir(); await esperar(80);
+    llenar(r2, { marca: 'SOLO LLANTAS', modelo: '', anio: '', cil: '' });
+    conProducto(r2);   // un renglón de taller (mano de obra)
+    const e6 = r2.w.validarCampos();
+    ok('D6 con taller + "SOLO LLANTAS": se rechaza la Marca', e6.some(x => /Marca/.test(x)), e6);
+    ok('D7 con taller + "SOLO LLANTAS": también se piden modelo, año y cilindros', ['Modelo', 'Año', 'Cilindros'].every(x => e6.some(e => e.indexOf(x) >= 0)), e6);
+    ok('D8 el campo Marca se marca en rojo', $(r2, 'v-marca').classList.contains('field-error'));
+    await copiar(r2);
+    ok('D9 copiar/guardar queda bloqueado: no copia, no guarda y avisa', r2.copiados.length === 0 && r2.sheet().length === 0 && r2.alerts.some(a => /Faltan datos/.test(a) && /Marca/.test(a)), { c: r2.copiados.length, s: r2.sheet().length, a: r2.alerts });
+    llenar(r2, { marca: 'Nissan', modelo: 'Sentra', anio: '2020', cil: '4' });
+    ok('D10 con taller y datos reales del auto: pasa sin errores', r2.w.validarCampos().length === 0, r2.w.validarCampos());
+    await copiar(r2);
+    ok('D11 y entonces sí guarda, con el vehículo real', r2.sheet().length === 1 && /Nissan Sentra 2020/.test(r2.sheet()[0].body.vehiculo), r2.sheet()[0] && r2.sheet()[0].body.vehiculo);
   }
 
   // ══════════════════════════════════════════════════════════

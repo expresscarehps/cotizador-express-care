@@ -46,12 +46,13 @@ function tab(w, s) { w.setTallerSvc(s, null); }
   ok('A7 en Rectificado el proveedor dice que es opcional', /opcional/i.test(selRect.options[0].textContent));
   tab(w, 'aceite');
   ok('A8 Aceite: AutoZone, Chavitar y CAASA', JSON.stringify(opts(filaDe(w, 'Filtro de aceite').querySelector('select.prov-sel'))) === JSON.stringify(['AutoZone', 'Chavitar', 'CAASA']));
-  ok('A9 el aceite por litro (precio fijo) no lleva proveedor', !filaDe(w, 'Aceite (especificar viscosidad)').querySelector('select.prov-sel'));
+  ok('A9 el aceite por litro (precio fijo) SÍ lleva selector de proveedor', !!filaDe(w, 'Aceite (especificar viscosidad)').querySelector('select.prov-sel'));
   tab(w, 'afinacion');
-  ok('A10 Afinación: AutoZone, Octavio Vázquez, Mercado Libre, Chavitar y CAASA', JSON.stringify(opts(filaDe(w, 'Filtro de aire').querySelector('select.prov-sel'))) === JSON.stringify(['AutoZone', 'Octavio Vázquez', 'Mercado Libre', 'Chavitar', 'CAASA']));
+  ok('A10 Afinación: AutoZone, Octavio Vázquez, Mercado Libre, Chavitar, CAASA y ECOM', JSON.stringify(opts(filaDe(w, 'Filtro de aire').querySelector('select.prov-sel'))) === JSON.stringify(['AutoZone', 'Octavio Vázquez', 'Mercado Libre', 'Chavitar', 'CAASA', 'ECOM']));
+  ok('A10b las limpiezas (inyectores, cuerpo de aceleración) llevan selector con ECOM', ['Limpieza de inyectores', 'Limpieza cuerpo de aceleración'].every(n => { const s = filaDe(w, n).querySelector('select.prov-sel'); return !!s && opts(s).indexOf('ECOM') >= 0; }));
   tab(w, 'libre'); w.addTallerItem();
   const libreSel = $('#taller-items select.prov-sel');
-  const todosNombres = ['AutoZone', 'AutoZone EUA', 'Govi', 'Cosmos', 'Malpa', 'Octavio Vázquez', 'Dar', 'Maresa', 'Dasda', 'Corral Mantilla', 'Lumo', 'Chevrolet Agencia', 'Balatas y Embragues', 'Chavitar', 'Mercado Libre', 'CAASA'];
+  const todosNombres = ['AutoZone', 'AutoZone EUA', 'Govi', 'Cosmos', 'Malpa', 'Octavio Vázquez', 'Dar', 'Maresa', 'Dasda', 'Corral Mantilla', 'Lumo', 'Chevrolet Agencia', 'Balatas y Embragues', 'Chavitar', 'Mercado Libre', 'CAASA', 'ECOM'];
   ok('A11 Libre: renglón nuevo trae TODOS los proveedores', !!libreSel && JSON.stringify(opts(libreSel)) === JSON.stringify(todosNombres), libreSel && opts(libreSel));
   ok('A12 Libre incluye a todos los de los otros servicios', ['suspension', 'frenos', 'aceite', 'afinacion'].every(k => w.PROV_LISTAS[k].every(n => w.PROV_LISTAS.libre.indexOf(n) >= 0)));
 
@@ -88,6 +89,35 @@ function tab(w, s) { w.setTallerSvc(s, null); }
   ok('C10 un proveedor viejo de borrador (texto libre) no bloquea ni se pierde', !erroresProv(w).some(x => /Filtro de cabina/.test(x)));
   const sel10 = filaDe(w, 'Filtro de cabina').querySelector('select.prov-sel');
   ok('C11 y sigue visible en el select', sel10.value === 'AZ', sel10.value);
+
+  console.log('\n— C2. Aceite por litro y limpiezas también llevan proveedor (13 oct)');
+  w = abrir(); await wait(300);
+  tab(w, 'afinacion');
+  const lAcei = itemDe(w, 'Aceite (especificar viscosidad)'), lInyec = itemDe(w, 'Limpieza de inyectores'), lCuerpo = itemDe(w, 'Limpieza cuerpo de aceleración'), lMO = itemDe(w, 'Mano de obra afinación mayor');
+  ponerEnCotizacion(lAcei, 120); lAcei.qty = 4; ponerEnCotizacion(lInyec, 500); ponerEnCotizacion(lCuerpo, 450); ponerEnCotizacion(lMO, 800);
+  let e2 = erroresProv(w);
+  ok('C12 aceite por litro sin proveedor → aviso con servicio', e2.some(x => /«Aceite \(especificar viscosidad\)» \(Afinación\)/.test(x)), e2);
+  ok('C13 limpieza de inyectores y de cuerpo de aceleración sin proveedor → aviso', e2.some(x => /Limpieza de inyectores/.test(x)) && e2.some(x => /Limpieza cuerpo de aceleración/.test(x)), e2);
+  ok('C14 la mano de obra sigue sin proveedor y SIN aviso', !e2.some(x => /Mano de obra/.test(x)) && e2.length === 3, e2);
+  ok('C15 el selector del aceite se marca en rojo', filaDe(w, 'Aceite (especificar viscosidad)').querySelector('select.prov-sel').classList.contains('field-error'));
+  cambiar(w, filaDe(w, 'Aceite (especificar viscosidad)').querySelector('select.prov-sel'), 'Chavitar');
+  cambiar(w, filaDe(w, 'Limpieza de inyectores').querySelector('select.prov-sel'), 'ECOM');
+  e2 = erroresProv(w);
+  ok('C16 al elegir Chavitar y ECOM solo queda el aviso de la limpieza de cuerpo de aceleración', e2.length === 1 && /cuerpo de aceleración/.test(e2[0]), e2);
+  ok('C17 el proveedor queda guardado en el renglón', itemDe(w, 'Aceite (especificar viscosidad)').proveedor === 'Chavitar' && itemDe(w, 'Limpieza de inyectores').proveedor === 'ECOM');
+  // "Mismo proveedor" solo llena piezas, no aceite ni limpiezas
+  cambiar(w, $('#prov-todos-sel'), 'AutoZone');
+  ok('C18 "Mismo proveedor para todas las piezas" NO toca el aceite ni las limpiezas', itemDe(w, 'Limpieza cuerpo de aceleración').proveedor === '' && itemDe(w, 'Aceite (especificar viscosidad)').proveedor === 'Chavitar');
+  // Rectificado sigue siendo opcional
+  tab(w, 'frenos'); ponerEnCotizacion(itemDe(w, 'Rectificado de tambor'), 150);
+  ok('C19 Rectificado sigue siendo opcional', !erroresProv(w).some(x => /Rectificado/.test(x)));
+  // Copiar a WhatsApp se bloquea con todo y completo mientras falte uno
+  tab(w, 'afinacion');
+  w.document.getElementById('cli-nombre').value = 'Cliente Prueba'; w.document.getElementById('cli-tel').value = '6145550123'; w.document.getElementById('cli-origen').value = 'WhatsApp'; w.document.getElementById('asesor').value = 'Ana';
+  w.document.getElementById('v-marca').value = 'Nissan'; w.document.getElementById('v-modelo').value = 'Sentra'; w.document.getElementById('v-anio').value = '2020'; w.document.getElementById('v-cil').value = '4';
+  const alertas = []; w.alert = m => alertas.push(String(m));
+  w.generarWA(); w.copiar();
+  ok('C20 con una limpieza sin proveedor, "Copiar para WhatsApp" avisa y no deja pasar', alertas.length === 1 && /Faltan datos/.test(alertas[0]) && /cuerpo de aceleración/.test(alertas[0]), alertas);
 
   console.log('\n— D. "Mismo proveedor para todas las piezas"');
   w = abrir(); await wait(300);

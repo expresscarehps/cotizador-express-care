@@ -1037,7 +1037,7 @@ var MODO_PRUEBA = (typeof window!=='undefined' && window.location && /[?&]test=1
 // Se detecta por el nombre del archivo: en dev, el aviso real a GHL pide confirmación explícita
 // (para no etiquetar clientes reales por accidente). También viaja en el aviso como "fuente".
 var ES_DEV = (typeof window!=='undefined' && window.location && /dev\.html?$/i.test(window.location.pathname||''));
-var VERSION_PAGINA = 'dev 2026-10-12 cotizacion enviada se bloquea; boton OK no duplica; un folio = una cotizacion; Ref en historial; respaldo en Firebase guarda la marca; telefono inventado se bloquea; historial muestra No. de parte; proveedor en lista por servicio, obligatorio';
+var VERSION_PAGINA = 'dev 2026-10-12 cotizacion enviada se bloquea; boton OK no duplica; un folio = una cotizacion; Ref en historial; respaldo en Firebase guarda la marca; telefono inventado se bloquea; historial muestra No. de parte; proveedor en lista por servicio, obligatorio; "SOLO LLANTAS" no vale si hay taller; aceite y limpiezas llevan proveedor (ECOM)';
 
 var RIN = {
   'a': {mon:85,  bal:80,  piv:20, h:'Montaje $85 - Balanceo $80 - Pivote $20 por llanta'},
@@ -1760,8 +1760,8 @@ var PROV_BASE = {
   suspension: ['Govi','AutoZone','Dar','Maresa','Malpa','Octavio Vázquez','Dasda','Corral Mantilla','Chevrolet Agencia','Chavitar','AutoZone EUA','Mercado Libre'],
   frenos:     ['Malpa','AutoZone','Lumo','Balatas y Embragues','Corral Mantilla','Chavitar','Mercado Libre'],
   aceite:     ['AutoZone','Chavitar','CAASA'],
-  afinacion:  ['AutoZone','Octavio Vázquez','Mercado Libre','Chavitar','CAASA'],
-  libre:      ['AutoZone','AutoZone EUA','Govi','Cosmos','Malpa','Octavio Vázquez','Dar','Maresa','Dasda','Corral Mantilla','Lumo','Chevrolet Agencia','Balatas y Embragues','Chavitar','Mercado Libre','CAASA'],
+  afinacion:  ['AutoZone','Octavio Vázquez','Mercado Libre','Chavitar','CAASA','ECOM'],
+  libre:      ['AutoZone','AutoZone EUA','Govi','Cosmos','Malpa','Octavio Vázquez','Dar','Maresa','Dasda','Corral Mantilla','Lumo','Chevrolet Agencia','Balatas y Embragues','Chavitar','Mercado Libre','CAASA','ECOM'],
   rectificado:['Frenalex','Perea']
 };
 // Escrituras que ya se usaron y que NO deben crear un proveedor distinto
@@ -1836,7 +1836,9 @@ function provEvaluar(texto, opts){
   if(par) return {estado:'parecido', nombre:provFormato(t), sugerencia:par};
   return {estado:'ok', nombre:provFormato(t)};
 }
-function provRequiere(item){ return !!item && !item.mo && !item.precioFijo; }          // piezas: proveedor obligatorio
+function provEsPieza(item){ return !!item && !item.mo && !item.precioFijo; }                     // pieza normal (costo + margen)
+function provEsAceiteOLimpieza(item){ return !!item && !!item.precioFijo && /^\s*(aceite|limpieza)/i.test(item.concepto||''); }   // aceite por litro y limpiezas: también llevan proveedor
+function provRequiere(item){ return provEsPieza(item) || provEsAceiteOLimpieza(item); }          // proveedor obligatorio: piezas, aceite y limpiezas
 function provEsRectificado(item){ return !!item && !!item.precioFijo && /^\s*rectificado/i.test(item.concepto||''); }
 function provTipoDeItem(item, claveActual){
   if(provEsRectificado(item)) return 'rectificado';
@@ -1873,7 +1875,7 @@ function provRenderTodos(clave){
 function provAplicarATodos(clave, nombre){
   var n=0;
   tallerItems.forEach(function(it){
-    if(!provRequiere(it)) return;
+    if(!provEsPieza(it)) return;     // solo piezas: el aceite y las limpiezas se compran en otro lado y se eligen aparte
     if((it.tipo||clave)!==clave) return;
     if(String(it.proveedor||'').trim()) return;     // no pisa lo que ya eligieron
     it.proveedor=nombre; n++;
@@ -2198,7 +2200,8 @@ function renderTallerItems() {
       var qtyLabel = esAceiteItem ? 'Lts' : 'Cant';
       div.innerHTML=
         '<div class="tr-concepto"><input type="text" value="'+item.concepto+'" placeholder="Concepto..." data-id="'+item.id+'" data-f="concepto" class="ti">'+pend+
-          (provEsRectificado(item)?'<div style="margin-top:3px">'+provSelectHTML(item,'rectificado','Proveedor (opcional)','width:100%')+'</div>':'')+'</div>'+
+          (provEsRectificado(item)?'<div style="margin-top:3px">'+provSelectHTML(item,'rectificado','Proveedor (opcional)','width:100%')+'</div>':'')+
+          (provEsAceiteOLimpieza(item)?'<div style="margin-top:3px">'+provSelectHTML(item,provTipoDeItem(item,currentKey),'Proveedor…','width:100%')+'</div>':'')+'</div>'+
         '<span class="tr-mo-badge" style="background:#e0e0e0;color:#666">FIJO</span>'+
         (item.conQty ? '<div class="tr-qty"><div style="font-size:9px;color:#888;text-align:center;margin-bottom:1px">'+qtyLabel+'</div><input type="text" inputmode="numeric" value="'+(item.qty||'')+'" placeholder="0" data-id="'+item.id+'" data-f="qty" class="ti-num" style="width:100%;text-align:center"></div>' : '')+
         '<div class="tr-pvp'+(item.conQty?'-sm':'')+'"><div style="font-size:9px;color:#888;text-align:right;margin-bottom:1px">Precio</div><input type="text" inputmode="decimal" value="'+(item.precio||'')+'" placeholder="0" data-id="'+item.id+'" data-f="precio" class="ti-precio" style="width:100%"></div>'+
@@ -2738,7 +2741,10 @@ function validarCampos(){
     if(el) el.classList.remove('field-error');
   });
   var vehiculoFields = ['v-marca','v-modelo','v-anio'];
-  var soloLlantas = esSoloLlantas();   // con "SOLO LLANTAS" en Marca ya no se piden modelo, año ni cilindros
+  // El atajo "SOLO LLANTAS" solo vale si la cotización NO lleva nada de taller (piezas, mano de obra, aceite…)
+  var hayTaller = tallerItems.some(function(i){return i.concepto && i.precio!=='' && parseFloat(i.precio)>0 && parseFloat(i.qty)>0;});
+  var marcaSoloLlantasConTaller = esSoloLlantas() && hayTaller;
+  var soloLlantas = esSoloLlantas() && !hayTaller;   // con "SOLO LLANTAS" en Marca ya no se piden modelo, año ni cilindros
   var sinNombre = esSinNombre();
   campos.forEach(function(c){
     var el=g(c.id);
@@ -2750,6 +2756,8 @@ function validarCampos(){
     var invalido = !val || val==='-' || val==='0' || val==='--' || /^[-\s0]+$/.test(val) || (['v-marca','v-modelo'].indexOf(c.id)>=0 && val.length<2) || (esCil && (isNaN(cilNum)||cilNum<2||cilNum>16)) || (esAnio && (isNaN(anioNum)||val.length!==4||!/^(19|20)/.test(val)));
     var etiqueta=c.label;
     if(soloLlantas && (c.id==='v-modelo'||c.id==='v-anio'||c.id==='v-cil')) invalido=false;
+    // "SOLO LLANTAS" en una cotización con servicios de taller: se necesita el vehículo real
+    if(marcaSoloLlantasConTaller && c.id==='v-marca'){ invalido=true; etiqueta='Marca del vehículo (la cotización lleva servicios de taller: escribe la marca real del auto, no SOLO LLANTAS)'; }
     // Teléfono: exactamente 10 dígitos
     if(c.id==='cli-tel' && !/^[0-9]{10}$/.test(val)){ invalido=true; if(val) etiqueta='Teléfono del cliente (deben ser exactamente 10 dígitos)'; }
     if(c.id==='cli-tel' && /^[0-9]{10}$/.test(val) && telefonoFalso(val)){ invalido=true; etiqueta='Teléfono del cliente (ese número parece inventado, como 6140000000: pide el teléfono real del cliente)'; }
@@ -3426,6 +3434,7 @@ function telefonoFalso(tel){
   if(d.length!==10) return false;
   if(/^(\d)\1{6}$/.test(d.slice(3))) return true;
   if(/^(\d)\1{9}$/.test(d)) return true;
+  if(/0{6}$/.test(d)) return true;   // termina en 6 ceros (6141000000, 6142000000…): no es un teléfono real
   return d==='1234567890' || d==='0123456789' || d==='9876543210';
 }
 
