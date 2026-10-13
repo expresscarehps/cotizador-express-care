@@ -2198,10 +2198,14 @@ function renderTallerItems() {
       // Precio fijo: concepto + precio directo (sin costo ni margen)
       var esAceiteItem = item.concepto.toLowerCase().indexOf('aceite')>=0;
       var qtyLabel = esAceiteItem ? 'Lts' : 'Cant';
+      var provSel = provEsRectificado(item) ? provSelectHTML(item,'rectificado','Proveedor (opcional)')
+                  : (provEsAceiteOLimpieza(item) ? provSelectHTML(item,provTipoDeItem(item,currentKey),'Proveedor…') : '');
       div.innerHTML=
-        '<div class="tr-concepto"><input type="text" value="'+item.concepto+'" placeholder="Concepto..." data-id="'+item.id+'" data-f="concepto" class="ti">'+pend+
-          (provEsRectificado(item)?'<div style="margin-top:3px">'+provSelectHTML(item,'rectificado','Proveedor (opcional)','width:100%')+'</div>':'')+
-          (provEsAceiteOLimpieza(item)?'<div style="margin-top:3px">'+provSelectHTML(item,provTipoDeItem(item,currentKey),'Proveedor…','width:100%')+'</div>':'')+'</div>'+
+        '<div class="tr-concepto">'+
+          (provSel
+            ? '<div style="display:flex;gap:4px;align-items:center"><input type="text" value="'+item.concepto+'" placeholder="Concepto..." data-id="'+item.id+'" data-f="concepto" class="ti" style="flex:65">'+provSel+'</div>'   // concepto y proveedor en UN solo renglón
+            : '<input type="text" value="'+item.concepto+'" placeholder="Concepto..." data-id="'+item.id+'" data-f="concepto" class="ti">')+
+          pend+'</div>'+
         '<span class="tr-mo-badge" style="background:#e0e0e0;color:#666">FIJO</span>'+
         (item.conQty ? '<div class="tr-qty"><div style="font-size:9px;color:#888;text-align:center;margin-bottom:1px">'+qtyLabel+'</div><input type="text" inputmode="numeric" value="'+(item.qty||'')+'" placeholder="0" data-id="'+item.id+'" data-f="qty" class="ti-num" style="width:100%;text-align:center"></div>' : '')+
         '<div class="tr-pvp'+(item.conQty?'-sm':'')+'"><div style="font-size:9px;color:#888;text-align:right;margin-bottom:1px">Precio</div><input type="text" inputmode="decimal" value="'+(item.precio||'')+'" placeholder="0" data-id="'+item.id+'" data-f="precio" class="ti-precio" style="width:100%"></div>'+
