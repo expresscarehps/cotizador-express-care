@@ -354,7 +354,7 @@ async function parteB() {
     for (let i = 0; i < 60; i++) docs.push(mk(i, '10', 1 + (i % 28)));          // octubre: 60
     for (let i = 0; i < 40; i++) docs.push(mk(100 + i, '09', 1 + (i % 28)));    // septiembre: 40
     for (let i = 0; i < 30; i++) docs.push(mk(200 + i, '08', 1 + (i % 28)));    // agosto: 30
-    docs.push(mk(999, '07', 5, { cliente: 'Maria Buscada', telefono: '6143664406', partidas: [{ producto: 'Filtro de aire', proveedor: 'Autozone', cant: 1, costo: 296, precio: 422.86, subtotal: 422.86 }, { producto: 'Mano de obra', proveedor: '', cant: 1, costo: null, precio: 500, subtotal: 500 }] }));
+    docs.push(mk(999, '07', 5, { cliente: 'Maria Buscada', telefono: '6143664406', partidas: [{ producto: 'Filtro de aire', proveedor: 'Autozone', noParte: 'CA-9876', cant: 1, costo: 296, precio: 422.86, subtotal: 422.86 }, { producto: 'Mano de obra', proveedor: '', cant: 1, costo: null, precio: 500, subtotal: 500 }] }));
     const g = F.agruparPorMes(docs);
     ok('B6b agrupa por mes, más reciente primero', g.map(x => x.clave).join() === '2026-10,2026-09,2026-08,2026-07', g.map(x => x.clave).join());
     ok('B6b cada carpeta trae su conteo y total', g[0].docs.length === 60 && g[0].total === 6000 && g[3].docs.length === 1);
@@ -388,6 +388,8 @@ async function parteB() {
     w.document.getElementById('fb-q').dispatchEvent(new w.Event('input'));
     const part = res.querySelector('.fb-part');
     ok('B6b las partidas traen columnas Proveedor y Costo', /Proveedor/.test(part.textContent) && /Costo/.test(part.textContent) && /Autozone/.test(part.textContent) && /\$296\.00/.test(part.textContent), part.textContent);
+    ok('B6b las partidas traen la columna No. parte con su valor', /No\. parte/.test(part.textContent) && /CA-9876/.test(part.textContent), part.textContent);
+    ok('B6b partida sin No. parte muestra "—" en esa columna', part.querySelectorAll('tr')[2].querySelectorAll('td')[1].textContent === '—', part.querySelectorAll('tr')[2].textContent);
     ok('B6b sin proveedor o sin costo muestra "—"', (part.querySelectorAll('tr')[2].textContent.match(/—/g) || []).length >= 2, part.querySelectorAll('tr')[2].textContent);
     w.document.getElementById('fb-q').value = 'zzzz';
     w.document.getElementById('fb-q').dispatchEvent(new w.Event('input'));

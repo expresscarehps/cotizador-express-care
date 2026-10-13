@@ -44,6 +44,28 @@ service cloud.firestore {
       allow read: if esCotizador();
       allow write: if esAdmin();
     }
+    // Listas de proveedores por servicio ("listas" real, "listas_prueba" para dev).
+    // Las asesoras pueden AGREGAR proveedores (no quitar ni renombrar); solo un administrador reemplaza las listas.
+    function conservaLista(k) {
+      return request.resource.data.listas[k].hasAll(resource.data.listas[k]);
+    }
+    function listaValida(k) {
+      return request.resource.data.listas[k] is list && request.resource.data.listas[k].size() <= 60;
+    }
+    function listasValidas() {
+      return request.resource.data.listas is map
+        && listaValida('afinacion') && listaValida('aceite') && listaValida('frenos')
+        && listaValida('suspension') && listaValida('libre') && listaValida('rectificado');
+    }
+    match /proveedores/{id} {
+      allow read: if esCotizador();
+      allow create: if esCotizador() && id in ['listas', 'listas_prueba'] && listasValidas();
+      allow update: if esCotizador() && id in ['listas', 'listas_prueba'] && listasValidas()
+        && (esAdmin()
+            || (conservaLista('afinacion') && conservaLista('aceite') && conservaLista('frenos')
+                && conservaLista('suspension') && conservaLista('libre') && conservaLista('rectificado')));
+      allow delete: if false;
+    }
 
     // ── Usuarios y roles ────────────────────────────────────────
     // Superadministrador: administra a todos. Administrador: solo da de alta/baja

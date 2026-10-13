@@ -290,6 +290,13 @@ input:focus,select:focus{
 .ti-margen{width:44px !important;font-size:13px !important}
 .ti-precio{padding:7px 6px;font-size:13px;font-weight:600;text-align:right;color:var(--val-dark-blue)}
 .ti{font-size:12px}
+select.prov-sel{border:1.5px solid #ddd;border-radius:7px;padding:7px 4px;background:#fff;font-size:12px;color:#444;min-width:0;font-family:inherit}
+#prov-todos{display:flex;align-items:center;gap:6px;margin:2px 0 8px;font-size:12px;color:#444}
+#prov-todos label{flex:0 0 auto;font-weight:600}
+#prov-todos select{flex:1}
+.prov-adm-sec{margin:0 0 12px;padding-bottom:10px;border-bottom:1px solid #f0f0f0}
+.prov-chip{display:inline-flex;align-items:center;gap:2px;background:#f3f4f6;border-radius:14px;padding:3px 4px 3px 10px;margin:3px 4px 3px 0;font-size:12px}
+.prov-chip button{border:none;background:transparent;cursor:pointer;font-size:12px;padding:2px 5px;color:#555}
 
 /* ── RESUMEN COTIZACIÓN ─────────────────────────────────── */
 .csect{font-size:11px;font-weight:700;color:var(--val-dark-blue);text-transform:uppercase;letter-spacing:.5px;padding:8px 0 4px;border-top:1px solid #f0f0f0;margin-top:4px}
@@ -592,6 +599,7 @@ label.chk-sin-nombre input:checked + span{color:var(--val-dark-blue);font-weight
       <span style="flex:0 0 68px;text-align:right">PVP</span>
       <span style="flex:0 0 26px"></span>
     </div>
+    <div id="prov-todos"></div>
     <div id="taller-items"><div class="taller-row"><div class="tr-concepto"><div style="display:flex;gap:4px;align-items:center"><input type="text" value="Bujías (especificar tipo)" placeholder="Producto o servicio..." data-id="t0_1785042411669" data-f="concepto" class="ti" style="flex:65"><input type="text" value="" placeholder="No. de parte" data-id="t0_1785042411669" data-f="noParte" class="ti" style="flex:35;font-size:12px;color:#444"><input type="text" value="" placeholder="Proveedor" data-id="t0_1785042411669" data-f="proveedor" class="ti" style="flex:35;font-size:12px;color:#666"><button class="opc-btn opc-on" data-id="t0_1785042411669" title="Incluir en cotización">✓ </button></div><div style="font-size:10px;color:#f59e0b;margin-top:2px">⏳ Pendiente</div></div><div class="tr-costo"><div style="font-size:9px;color:#888;margin-bottom:1px">Costo</div><input type="text" inputmode="decimal" value="" placeholder="0" data-id="t0_1785042411669" data-f="costo" class="ti-num" style="width:100%"></div><div class="tr-margen"><div style="font-size:9px;color:#888;margin-bottom:1px">%</div><input type="text" inputmode="decimal" value="25" placeholder="30" data-id="t0_1785042411669" data-f="margen" class="ti-num ti-margen"><span style="font-size:11px;color:#888;flex-shrink:0"></span></div><div style="flex:0 0 36px"><div style="font-size:9px;color:#888;margin-bottom:1px">Cant</div><input type="text" inputmode="numeric" value="" placeholder="0" data-id="t0_1785042411669" data-f="qty" class="ti-num" style="width:100%;text-align:center"></div><div style="flex:0 0 40px"><div style="font-size:9px;color:#888;text-align:center;margin-bottom:1px">Desc %</div><input type="text" inputmode="decimal" value="" placeholder="0" data-id="t0_1785042411669" data-f="descuento" class="ti-num" style="width:100%;text-align:center"></div><div class="tr-pvp"><div style="font-size:9px;color:#888;text-align:right;margin-bottom:1px">PVP</div>-</div><button class="cx" data-id="t0_1785042411669">X</button></div><div class="taller-row"><div class="tr-concepto"><div style="display:flex;gap:4px;align-items:center"><input type="text" value="Filtro de aceite" placeholder="Producto o servicio..." data-id="t1_1785042411669" data-f="concepto" class="ti" style="flex:65"><input type="text" value="" placeholder="No. de parte" data-id="t1_1785042411669" data-f="noParte" class="ti" style="flex:35;font-size:12px;color:#444"><input type="text" value="" placeholder="Proveedor" data-id="t1_1785042411669" data-f="proveedor" class="ti" style="flex:35;font-size:12px;color:#666"><button class="opc-btn opc-on" data-id="t1_1785042411669" title="Incluir en cotización">✓ </button></div></div><div class="tr-costo"><div style="font-size:9px;color:#888;margin-bottom:1px">Costo</div><input type="text" inputmode="decimal" value="" placeholder="0" data-id="t1_1785042411669" data-f="costo" class="ti-num" style="width:100%"></div><div class="tr-margen"><div style="font-size:9px;color:#888;margin-bottom:1px">%</div><input type="text" inputmode="decimal" value="30" placeholder="30" data-id="t1_1785042411669" data-f="margen" class="ti-num ti-margen"><span style="font-size:11px;color:#888;flex-shrink:0"></span></div><div style="flex:0 0 36px"><div style="font-size:9px;color:#888;margin-bottom:1px">Cant</div><input type="text" inputmode="numeric" value="" placeholder="0" data-id="t1_1785042411669" data-f="qty" class="ti-num" style="width:100%;text-align:center"></div><div style="flex:0 0 40px"><div style="font-size:9px;color:#888;text-align:center;margin-bottom:1px">Desc %</div><input type="text" inputmode="decimal" value="" placeholder="0" data-id="t1_1785042411669" data-f="descuento" class="ti-num" style="width:100%;text-align:center"></div><div class="tr-pvp"><div style="font-size:9px;color:#888;text-align:right;margin-bottom:1px">PVP</div>-</div><button class="cx" data-id="t1_1785042411669">X</button></div><div class="taller-row"><div class="tr-concepto"><div style="display:flex;gap:4px;align-items:center"><input type="text" value="Filtro de aire" placeholder="Producto o servicio..." data-id="t2_1785042411669" data-f="concepto" class="ti" style="flex:65"><input type="text" value="" placeholder="No. de parte" data-id="t2_1785042411669" data-f="noParte" class="ti" style="flex:35;font-size:12px;color:#444"><input type="text" value="" placeholder="Proveedor" data-id="t2_1785042411669" data-f="proveedor" class="ti" style="flex:35;font-size:12px;color:#666"><button class="opc-btn opc-on" data-id="t2_1785042411669" title="Incluir en cotización">✓ </button></div></div><div class="tr-costo"><div style="font-size:9px;color:#888;margin-bottom:1px">Costo</div><input type="text" inputmode="decimal" value="" placeholder="0" data-id="t2_1785042411669" data-f="costo" class="ti-num" style="width:100%"></div><div class="tr-margen"><div style="font-size:9px;color:#888;margin-bottom:1px">%</div><input type="text" inputmode="decimal" value="30" placeholder="30" data-id="t2_1785042411669" data-f="margen" class="ti-num ti-margen"><span style="font-size:11px;color:#888;flex-shrink:0"></span></div><div style="flex:0 0 36px"><div style="font-size:9px;color:#888;margin-bottom:1px">Cant</div><input type="text" inputmode="numeric" value="" placeholder="0" data-id="t2_1785042411669" data-f="qty" class="ti-num" style="width:100%;text-align:center"></div><div style="flex:0 0 40px"><div style="font-size:9px;color:#888;text-align:center;margin-bottom:1px">Desc %</div><input type="text" inputmode="decimal" value="" placeholder="0" data-id="t2_1785042411669" data-f="descuento" class="ti-num" style="width:100%;text-align:center"></div><div class="tr-pvp"><div style="font-size:9px;color:#888;text-align:right;margin-bottom:1px">PVP</div>-</div><button class="cx" data-id="t2_1785042411669">X</button></div><div class="taller-row"><div class="tr-concepto"><div style="display:flex;gap:4px;align-items:center"><input type="text" value="Filtro de cabina" placeholder="Producto o servicio..." data-id="t3_1785042411669" data-f="concepto" class="ti" style="flex:65"><input type="text" value="" placeholder="No. de parte" data-id="t3_1785042411669" data-f="noParte" class="ti" style="flex:35;font-size:12px;color:#444"><input type="text" value="" placeholder="Proveedor" data-id="t3_1785042411669" data-f="proveedor" class="ti" style="flex:35;font-size:12px;color:#666"><button class="opc-btn" data-id="t3_1785042411669" title="Incluir en cotización">+ </button></div></div><div class="tr-costo"><div style="font-size:9px;color:#888;margin-bottom:1px">Costo</div><input type="text" inputmode="decimal" value="" placeholder="0" data-id="t3_1785042411669" data-f="costo" class="ti-num" style="width:100%"></div><div class="tr-margen"><div style="font-size:9px;color:#888;margin-bottom:1px">%</div><input type="text" inputmode="decimal" value="30" placeholder="30" data-id="t3_1785042411669" data-f="margen" class="ti-num ti-margen"><span style="font-size:11px;color:#888;flex-shrink:0"></span></div><div style="flex:0 0 36px"><div style="font-size:9px;color:#888;margin-bottom:1px">Cant</div><input type="text" inputmode="numeric" value="" placeholder="0" data-id="t3_1785042411669" data-f="qty" class="ti-num" style="width:100%;text-align:center"></div><div style="flex:0 0 40px"><div style="font-size:9px;color:#888;text-align:center;margin-bottom:1px">Desc %</div><input type="text" inputmode="decimal" value="" placeholder="0" data-id="t3_1785042411669" data-f="descuento" class="ti-num" style="width:100%;text-align:center"></div><div class="tr-pvp"><div style="font-size:9px;color:#888;text-align:right;margin-bottom:1px">PVP</div>-</div><button class="cx" data-id="t3_1785042411669">X</button></div><div class="taller-row"><div class="tr-concepto"><input type="text" value="Aceite (especificar viscosidad)" placeholder="Concepto..." data-id="t4_1785042411669" data-f="concepto" class="ti"></div><span class="tr-mo-badge" style="background:#e0e0e0;color:#666">FIJO</span><div class="tr-qty"><div style="font-size:9px;color:#888;text-align:center;margin-bottom:1px">Lts</div><input type="text" inputmode="numeric" value="" placeholder="0" data-id="t4_1785042411669" data-f="qty" class="ti-num" style="width:100%;text-align:center"></div><div class="tr-pvp-sm"><div style="font-size:9px;color:#888;text-align:right;margin-bottom:1px">Precio</div><input type="text" inputmode="decimal" value="" placeholder="0" data-id="t4_1785042411669" data-f="precio" class="ti-precio" style="width:100%"></div><button class="cx" data-id="t4_1785042411669">X</button></div><div class="taller-row"><div class="tr-concepto"><input type="text" value="Limpieza de inyectores" placeholder="Concepto..." data-id="t5_1785042411669" data-f="concepto" class="ti"></div><span class="tr-mo-badge" style="background:#e0e0e0;color:#666">FIJO</span><div class="tr-qty"><div style="font-size:9px;color:#888;text-align:center;margin-bottom:1px">Cant</div><input type="text" inputmode="numeric" value="" placeholder="0" data-id="t5_1785042411669" data-f="qty" class="ti-num" style="width:100%;text-align:center"></div><div class="tr-pvp-sm"><div style="font-size:9px;color:#888;text-align:right;margin-bottom:1px">Precio</div><input type="text" inputmode="decimal" value="" placeholder="0" data-id="t5_1785042411669" data-f="precio" class="ti-precio" style="width:100%"></div><button class="cx" data-id="t5_1785042411669">X</button></div><div class="taller-row"><div class="tr-concepto"><input type="text" value="Limpieza cuerpo de aceleración" placeholder="Concepto..." data-id="t6_1785042411669" data-f="concepto" class="ti"></div><span class="tr-mo-badge" style="background:#e0e0e0;color:#666">FIJO</span><div class="tr-qty"><div style="font-size:9px;color:#888;text-align:center;margin-bottom:1px">Cant</div><input type="text" inputmode="numeric" value="" placeholder="0" data-id="t6_1785042411669" data-f="qty" class="ti-num" style="width:100%;text-align:center"></div><div class="tr-pvp-sm"><div style="font-size:9px;color:#888;text-align:right;margin-bottom:1px">Precio</div><input type="text" inputmode="decimal" value="" placeholder="0" data-id="t6_1785042411669" data-f="precio" class="ti-precio" style="width:100%"></div><button class="cx" data-id="t6_1785042411669">X</button></div><div class="taller-row"><div class="tr-concepto"><input type="text" value="Mano de obra afinación mayor" placeholder="Mano de obra..." data-id="t7_1785042411669" data-f="concepto" class="ti"></div><span class="tr-mo-badge">M.O.</span><div class="tr-qty"><div style="font-size:9px;color:#888;text-align:center;margin-bottom:1px">Cant</div><input type="text" inputmode="numeric" value="" placeholder="0" data-id="t7_1785042411669" data-f="qty" class="ti-num" style="width:100%;text-align:center"></div><div style="flex:0 0 46px"><div style="font-size:9px;color:#888;text-align:center;margin-bottom:1px">Desc %</div><input type="text" inputmode="decimal" value="" placeholder="0" data-id="t7_1785042411669" data-f="descuento" class="ti-num" style="width:100%;text-align:center"></div><div class="tr-pvp-sm"><div style="font-size:9px;color:#888;text-align:right;margin-bottom:1px">Precio</div><input type="text" inputmode="decimal" value="1250" placeholder="$1250" data-id="t7_1785042411669" data-f="precio" class="ti-precio" style="width:100%"></div><button class="cx" data-id="t7_1785042411669">X</button></div><div class="taller-row"><div class="tr-concepto"><input type="text" value="Mano de obra afinación menor" placeholder="Mano de obra..." data-id="t8_1785042411669" data-f="concepto" class="ti"></div><span class="tr-mo-badge">M.O.</span><div class="tr-qty"><div style="font-size:9px;color:#888;text-align:center;margin-bottom:1px">Cant</div><input type="text" inputmode="numeric" value="" placeholder="0" data-id="t8_1785042411669" data-f="qty" class="ti-num" style="width:100%;text-align:center"></div><div style="flex:0 0 46px"><div style="font-size:9px;color:#888;text-align:center;margin-bottom:1px">Desc %</div><input type="text" inputmode="decimal" value="" placeholder="0" data-id="t8_1785042411669" data-f="descuento" class="ti-num" style="width:100%;text-align:center"></div><div class="tr-pvp-sm"><div style="font-size:9px;color:#888;text-align:right;margin-bottom:1px">Precio</div><input type="text" inputmode="decimal" value="930" placeholder="$930" data-id="t8_1785042411669" data-f="precio" class="ti-precio" style="width:100%"></div><button class="cx" data-id="t8_1785042411669">X</button></div></div>
     <button id="btn-add-taller">+ Agregar línea</button>
   </div>
@@ -730,6 +738,11 @@ label.chk-sin-nombre input:checked + span{color:var(--val-dark-blue);font-weight
 
 <!-- CONFIG -->
 <div id="p-config" class="pnl">
+  <div class="card" id="prov-admin" style="display:none">
+    <p class="st">Proveedores por servicio</p>
+    <p class="hint" style="margin-bottom:10px">Estas listas son las que ven las asesoras en cada renglón de piezas. Aquí puedes agregar, corregir el nombre o quitar proveedores. Las cotizaciones ya guardadas no cambian.</p>
+    <div id="prov-admin-lista"></div>
+  </div>
   <div class="card">
     <p class="st">Tarifas de mano de obra</p>
     <p class="hint" style="margin-bottom:10px">Estos precios se cargan automáticamente en los renglones de M.O. Puedes editarlos aquí y se guardan en este navegador.</p>
@@ -1024,7 +1037,7 @@ var MODO_PRUEBA = (typeof window!=='undefined' && window.location && /[?&]test=1
 // Se detecta por el nombre del archivo: en dev, el aviso real a GHL pide confirmación explícita
 // (para no etiquetar clientes reales por accidente). También viaja en el aviso como "fuente".
 var ES_DEV = (typeof window!=='undefined' && window.location && /dev\.html?$/i.test(window.location.pathname||''));
-var VERSION_PAGINA = 'dev 2026-10-12 cotizacion enviada se bloquea; boton OK no duplica; un folio = una cotizacion; Ref en historial; respaldo en Firebase guarda la marca; telefono inventado se bloquea';
+var VERSION_PAGINA = 'dev 2026-10-12 cotizacion enviada se bloquea; boton OK no duplica; un folio = una cotizacion; Ref en historial; respaldo en Firebase guarda la marca; telefono inventado se bloquea; historial muestra No. de parte; proveedor en lista por servicio, obligatorio';
 
 var RIN = {
   'a': {mon:85,  bal:80,  piv:20, h:'Montaje $85 - Balanceo $80 - Pivote $20 por llanta'},
@@ -1277,7 +1290,7 @@ function setTab(tabId) {
   var btn = g('tab-'+tabId), panel = g('p-'+tabId);
   if (btn) btn.classList.add('on');
   if (panel) panel.classList.add('on');
-  if(tabId === 'config') renderConfigTarifas();
+  if(tabId === 'config'){ renderConfigTarifas(); provRenderAdmin(); }
 }
 
 function setPago(p) {
@@ -1737,6 +1750,290 @@ function toggleSvc(btn) {
   renderSvc(); renderCarrito(); updateBadge();
 }
 
+// ── PROVEEDORES: una lista por tipo de servicio ──────────────────────────────
+// La asesora ELIGE el proveedor (no lo teclea). "Otro…" permite agregar uno nuevo, que queda en la
+// lista compartida (Firestore, colección "proveedores"), evitando variantes del mismo nombre.
+var PROV_CLAVES = ['afinacion','aceite','frenos','suspension','libre','rectificado'];
+var PROV_NOMBRES = {afinacion:'Afinación', aceite:'Aceite', frenos:'Frenos', suspension:'Suspensión', libre:'Libre', rectificado:'Rectificado'};
+var PROV_TIPO_CLAVE = {'Taller - Afinación':'afinacion','Taller - Aceite':'aceite','Taller - Frenos':'frenos','Taller - Suspensión':'suspension','Taller - Libre':'libre'};
+var PROV_BASE = {
+  suspension: ['Govi','AutoZone','Dar','Maresa','Malpa','Octavio Vázquez','Dasda','Corral Mantilla','Chevrolet Agencia','Chavitar','AutoZone EUA','Mercado Libre'],
+  frenos:     ['Malpa','AutoZone','Lumo','Balatas y Embragues','Corral Mantilla','Chavitar','Mercado Libre'],
+  aceite:     ['AutoZone','Chavitar','CAASA'],
+  afinacion:  ['AutoZone','Octavio Vázquez','Mercado Libre','Chavitar','CAASA'],
+  libre:      ['AutoZone','AutoZone EUA','Govi','Cosmos','Malpa','Octavio Vázquez','Dar','Maresa','Dasda','Corral Mantilla','Lumo','Chevrolet Agencia','Balatas y Embragues','Chavitar','Mercado Libre','CAASA'],
+  rectificado:['Frenalex','Perea']
+};
+// Escrituras que ya se usaron y que NO deben crear un proveedor distinto
+var PROV_ALIAS = {AZ:'AutoZone', ZONE:'AutoZone', AUTOZON:'AutoZone', COSMO:'Cosmos', DART:'Dar', OCTAVIO:'Octavio Vázquez', MERCADOLIBRE:'Mercado Libre'};
+var PROV_OTRO = '__otro__';
+var PROV_LISTAS = provClonar(PROV_BASE);
+var PROV_API = null, PROV_PERFIL = null, PROV_STOP = null;
+
+function provClonar(o){ var r={}; for(var k in o){ if(Object.prototype.hasOwnProperty.call(o,k)) r[k]=o[k].slice(); } return r; }
+function provEsc(x){ return String(x==null?'':x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function provKey(x){ return String(x==null?'':x).normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase().replace(/[^A-Z0-9]/g,''); }
+function provDocId(){ return (MODO_PRUEBA||ES_DEV) ? 'listas_prueba' : 'listas'; }   // dev y pruebas NO tocan la lista real
+function provClaveActual(){ return PROV_TIPO_CLAVE[tallerTipo]||'afinacion'; }
+function provListaDe(clave){ return PROV_LISTAS[clave]||[]; }
+function provTodos(){
+  var vistos={}, out=[];
+  PROV_CLAVES.forEach(function(c){ provListaDe(c).forEach(function(n){ var k=provKey(n); if(k&&!vistos[k]){ vistos[k]=true; out.push(n); } }); });
+  return out;
+}
+function provCanonico(texto){
+  var k=provKey(texto); if(!k) return null;
+  var t=provTodos();
+  for(var i=0;i<t.length;i++){ if(provKey(t[i])===k) return t[i]; }
+  if(PROV_ALIAS[k]) return PROV_ALIAS[k];
+  return null;
+}
+function provLev(a,b){
+  var m=a.length, n=b.length, d=[], i, j;
+  for(i=0;i<=m;i++){ d[i]=[i]; }
+  for(j=1;j<=n;j++){ d[0][j]=j; }
+  for(i=1;i<=m;i++){ for(j=1;j<=n;j++){
+    d[i][j]=Math.min(d[i-1][j]+1, d[i][j-1]+1, d[i-1][j-1]+(a.charAt(i-1)===b.charAt(j-1)?0:1));
+  } }
+  return d[m][n];
+}
+// ¿Se parece a un proveedor que ya existe (typo, abreviatura, nombre incluido)? Devuelve ese nombre.
+function provParecido(texto, excluirKey){
+  var k=provKey(texto); if(!k) return null;
+  var t=provTodos();
+  for(var i=0;i<t.length;i++){
+    var nk=provKey(t[i]); if(nk===k || nk===excluirKey) continue;
+    var lim=Math.max(k.length,nk.length)>=7?2:1;
+    if(provLev(k,nk)<=lim) return t[i];
+    if(Math.min(k.length,nk.length)>=4 && (nk.indexOf(k)>=0 || k.indexOf(nk)>=0)) return t[i];
+  }
+  return null;
+}
+function provFormato(texto){
+  var t=String(texto==null?'':texto).replace(/\s+/g,' ').trim();
+  return t.split(' ').map(function(w,i){
+    var l=w.toLocaleLowerCase('es');
+    if(i>0 && /^(y|e|de|del|la|el|los|las)$/.test(l)) return l;
+    return l.charAt(0).toLocaleUpperCase('es')+l.slice(1);
+  }).join(' ');
+}
+// Revisa un nombre escrito en "Otro…". estado: invalido | existe | parecido | ok
+function provEvaluar(texto, opts){
+  opts=opts||{};
+  var t=String(texto==null?'':texto).replace(/\s+/g,' ').trim();
+  var ign=opts.ignorar?provKey(opts.ignorar):'';
+  var ex=provCanonico(t);          // ya existe (o es una abreviatura conocida, como AZ)
+  if(ex){
+    if(ign && provKey(ex)===ign) return {estado:'ok', nombre:provFormato(t)};
+    return {estado:'existe', nombre:ex};
+  }
+  if(t.length<3) return {estado:'invalido', msg:'Escribe el nombre completo del proveedor (mínimo 3 letras).'};
+  if(t.length>40) return {estado:'invalido', msg:'El nombre es demasiado largo (máximo 40 letras).'};
+  if(/[0-9]/.test(t)) return {estado:'invalido', msg:'El nombre del proveedor no lleva números (el número de parte va en su propio campo).'};
+  if(!/^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ&.' -]+$/.test(t)) return {estado:'invalido', msg:'Usa solo letras en el nombre del proveedor.'};
+  if(provKey(t).length<3) return {estado:'invalido', msg:'Escribe el nombre completo del proveedor.'};
+  var par=provParecido(t, ign);
+  if(par) return {estado:'parecido', nombre:provFormato(t), sugerencia:par};
+  return {estado:'ok', nombre:provFormato(t)};
+}
+function provRequiere(item){ return !!item && !item.mo && !item.precioFijo; }          // piezas: proveedor obligatorio
+function provEsRectificado(item){ return !!item && !!item.precioFijo && /^\s*rectificado/i.test(item.concepto||''); }
+function provTipoDeItem(item, claveActual){
+  if(provEsRectificado(item)) return 'rectificado';
+  return item.tipo||claveActual||provClaveActual();
+}
+function provOpcionesHTML(clave, actual, placeholder){
+  var a=String(actual==null?'':actual).trim(), lista=provListaDe(clave), hay=false;
+  var h='<option value="">'+provEsc(placeholder||'Proveedor…')+'</option>';
+  lista.forEach(function(n){ if(n===a) hay=true; h+='<option value="'+provEsc(n)+'"'+(n===a?' selected':'')+'>'+provEsc(n)+'</option>'; });
+  if(a && !hay) h+='<option value="'+provEsc(a)+'" selected>'+provEsc(a)+'</option>';   // valor viejo (borrador): no se pierde
+  h+='<option value="'+PROV_OTRO+'">Otro…</option>';
+  return h;
+}
+function provSelectHTML(item, clave, placeholder, estilo){
+  return '<select class="prov-sel" data-prov-id="'+provEsc(item.id)+'" data-prov-k="'+clave+'" style="'+(estilo||'flex:35')+'">'+provOpcionesHTML(clave,item.proveedor,placeholder)+'</select>';
+}
+function provRefrescarSelects(){
+  var sels=document.querySelectorAll('select.prov-sel[data-prov-id]');
+  for(var i=0;i<sels.length;i++){
+    var it=null, id=sels[i].getAttribute('data-prov-id');
+    for(var j=0;j<tallerItems.length;j++){ if(tallerItems[j].id===id){ it=tallerItems[j]; break; } }
+    var ph=sels[i].options&&sels[i].options[0]?sels[i].options[0].textContent:'Proveedor…';
+    sels[i].innerHTML=provOpcionesHTML(sels[i].getAttribute('data-prov-k'), it?it.proveedor:'', ph);
+  }
+  var t=document.getElementById('prov-todos-sel');
+  if(t) t.innerHTML=provOpcionesHTML(t.getAttribute('data-prov-k'),'','Elegir proveedor…');
+  provRenderAdmin();
+}
+function provRenderTodos(clave){
+  var c=document.getElementById('prov-todos'); if(!c) return;
+  c.innerHTML='<label for="prov-todos-sel">Mismo proveedor para todas las piezas:</label>'+
+    '<select id="prov-todos-sel" class="prov-sel" data-prov-k="'+clave+'">'+provOpcionesHTML(clave,'','Elegir proveedor…')+'</select>';
+}
+function provAplicarATodos(clave, nombre){
+  var n=0;
+  tallerItems.forEach(function(it){
+    if(!provRequiere(it)) return;
+    if((it.tipo||clave)!==clave) return;
+    if(String(it.proveedor||'').trim()) return;     // no pisa lo que ya eligieron
+    it.proveedor=nombre; n++;
+  });
+  renderTallerItems();
+  toast(n ? (nombre+' puesto en '+n+(n===1?' pieza':' piezas')) : 'Todas las piezas ya tienen proveedor');
+  return n;
+}
+function provGuardarRemoto(clave, nombre){
+  if(!PROV_API || !PROV_PERFIL || !PROV_API.provAgregar) return Promise.resolve(false);
+  return PROV_API.provAgregar(provDocId(), clave, nombre, PROV_LISTAS, PROV_PERFIL.correo).then(function(){ return true; })
+    .catch(function(e){ try{console.warn('Proveedor no se guardó en la lista compartida:',e);}catch(x){} toast('⚠ El proveedor se usó, pero no se pudo guardar en la lista compartida'); return false; });
+}
+function provAgregarLista(clave, nombre){
+  var l=PROV_LISTAS[clave]; if(!l) l=PROV_LISTAS[clave]=[];
+  var k=provKey(nombre), ya=l.some(function(n){ return provKey(n)===k; });
+  if(!ya){ l.push(nombre); provRefrescarSelects(); provGuardarRemoto(clave, nombre); }
+  return !ya;
+}
+function provGuardarCompleto(){
+  if(!PROV_API || !PROV_PERFIL || !PROV_API.provReemplazar){ return Promise.resolve(false); }
+  return PROV_API.provReemplazar(provDocId(), PROV_LISTAS, PROV_PERFIL.correo).then(function(){ toast('Lista de proveedores guardada'); return true; })
+    .catch(function(e){ try{console.warn(e);}catch(x){} toast('⚠ No se pudo guardar la lista de proveedores'); return false; });
+}
+// Ventanita "Otro…": pide el nombre y revisa que no cree una variante de uno existente. cb(nombre) o cb(null).
+function provPedirOtro(clave, cb, opt){
+  opt=opt||{};
+  var viejo=document.getElementById('prov-modal'); if(viejo&&viejo.parentNode) viejo.parentNode.removeChild(viejo);
+  var m=document.createElement('div'); m.id='prov-modal';
+  m.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.45);z-index:10000;display:flex;align-items:center;justify-content:center;padding:16px';
+  var bOk='padding:8px 14px;font-size:13px;border:1.5px solid #111;border-radius:7px;background:#111;color:#fff;cursor:pointer;font-weight:600';
+  var bNo='padding:8px 14px;font-size:13px;border:1.5px solid #ddd;border-radius:7px;background:#fff;color:#111;cursor:pointer';
+  m.innerHTML='<div style="background:#fff;border-radius:12px;padding:16px;max-width:360px;width:100%;box-shadow:0 8px 30px rgba(0,0,0,.3)">'+
+    '<p style="font-weight:700;font-size:15px;margin:0 0 4px">'+provEsc(opt.titulo||'Proveedor nuevo')+' · '+provEsc(PROV_NOMBRES[clave]||'')+'</p>'+
+    '<p style="font-size:12px;color:#666;margin:0 0 8px">Escribe el nombre completo, sin números. Queda en la lista para todas las asesoras.</p>'+
+    '<input id="prov-modal-inp" type="text" maxlength="40" autocomplete="off" style="width:100%;box-sizing:border-box;padding:9px;font-size:14px;border:1.5px solid #ddd;border-radius:7px" value="'+provEsc(opt.valorInicial||'')+'">'+
+    '<p id="prov-modal-msg" style="font-size:12.5px;color:#b91c1c;min-height:16px;margin:8px 0"></p>'+
+    '<div id="prov-modal-btns" style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap"></div></div>';
+  document.body.appendChild(m);
+  var inp=m.querySelector('#prov-modal-inp'), msg=m.querySelector('#prov-modal-msg'), btns=m.querySelector('#prov-modal-btns');
+  function cerrar(res){ if(m.parentNode) m.parentNode.removeChild(m); cb(res); }
+  function botonesNormales(){
+    btns.innerHTML='<button type="button" id="prov-modal-cancel" style="'+bNo+'">Cancelar</button><button type="button" id="prov-modal-ok" style="'+bOk+'">'+(opt.boton||'Agregar')+'</button>';
+    btns.querySelector('#prov-modal-cancel').onclick=function(){ cerrar(null); };
+    btns.querySelector('#prov-modal-ok').onclick=intentar;
+  }
+  function intentar(){
+    var r=provEvaluar(inp.value,{ignorar:opt.ignorar});
+    if(r.estado==='invalido'){ msg.textContent=r.msg; return; }
+    if(r.estado==='existe'){
+      if(opt.ignorar){ msg.textContent='Ya existe «'+r.nombre+'» en la lista.'; return; }
+      cerrar(r.nombre); return;
+    }
+    if(r.estado==='parecido'){
+      msg.style.color='#92400e';
+      msg.innerHTML='Ya existe un proveedor parecido: «<b>'+provEsc(r.sugerencia)+'</b>». ¿Es el mismo?';
+      btns.innerHTML='<button type="button" id="prov-modal-cancel" style="'+bNo+'">Cancelar</button>'+
+        '<button type="button" id="prov-modal-no" style="'+bNo+'">No, es otro</button>'+
+        '<button type="button" id="prov-modal-si" style="'+bOk+'">Sí, es '+provEsc(r.sugerencia)+'</button>';
+      btns.querySelector('#prov-modal-cancel').onclick=function(){ cerrar(null); };
+      btns.querySelector('#prov-modal-no').onclick=function(){ cerrar(r.nombre); };
+      btns.querySelector('#prov-modal-si').onclick=function(){ cerrar(r.sugerencia); };
+      return;
+    }
+    cerrar(r.nombre);
+  }
+  inp.addEventListener('keydown',function(e){ if(e.key==='Enter'){ e.preventDefault(); intentar(); } else if(e.key==='Escape'){ cerrar(null); } });
+  inp.addEventListener('input',function(){ msg.textContent=''; msg.style.color='#b91c1c'; if(!btns.querySelector('#prov-modal-ok')) botonesNormales(); });
+  botonesNormales();
+  try{ inp.focus(); }catch(e){}
+}
+function provCambioSelect(sel){
+  var id=sel.getAttribute('data-prov-id'), clave=sel.getAttribute('data-prov-k');
+  var existe=tallerItems.some(function(i){ return i.id===id; });
+  if(!existe) return;
+  if(sel.value===PROV_OTRO){
+    provPedirOtro(clave,function(nombre){
+      if(nombre){ provAgregarLista(clave,nombre); updTallerField(id,'proveedor',nombre); }
+      provRefrescarSelects();      // si canceló, vuelve a mostrar lo que tenía
+    });
+    return;
+  }
+  sel.classList.remove('field-error');
+  updTallerField(id,'proveedor',sel.value);
+}
+function provCambioTodos(sel){
+  var clave=sel.getAttribute('data-prov-k');
+  if(sel.value===PROV_OTRO){
+    provPedirOtro(clave,function(nombre){
+      if(nombre){ provAgregarLista(clave,nombre); provAplicarATodos(clave,nombre); }
+      else provRefrescarSelects();
+    });
+    return;
+  }
+  if(sel.value) provAplicarATodos(clave, sel.value);
+}
+// Lista que llega de Firestore (o null si aún no existe: se usan las listas base)
+function provRecibir(data){
+  var L=data&&data.listas;
+  if(L&&typeof L==='object'){
+    PROV_CLAVES.forEach(function(c){
+      if(!Array.isArray(L[c])) return;
+      var vistos={}, arr=[];
+      L[c].forEach(function(n){ n=String(n==null?'':n).trim(); var k=provKey(n); if(n&&k&&!vistos[k]){ vistos[k]=true; arr.push(n); } });
+      PROV_LISTAS[c]=arr;
+    });
+  }
+  provRefrescarSelects();
+}
+function provEsAdmin(){
+  return !!MODO_PRUEBA || !!(PROV_PERFIL && (PROV_PERFIL.rol==='superadministrador'||PROV_PERFIL.rol==='administrador'));
+}
+// La conecta el módulo de Firebase cuando hay sesión con acceso: api = null si no hay sesión
+function provConectar(api, perfil){
+  if(PROV_STOP){ try{PROV_STOP();}catch(e){} PROV_STOP=null; }
+  PROV_API=api||null; PROV_PERFIL=(api&&perfil)?perfil:null;
+  if(PROV_API && PROV_PERFIL && PROV_API.provEscuchar){
+    try{
+      PROV_STOP=PROV_API.provEscuchar(provDocId(), provRecibir, function(e){ try{console.warn('Lista de proveedores no se pudo leer; se usan las listas base:',e);}catch(x){} });
+    }catch(e){}
+  }
+  provRenderAdmin();
+}
+function provRenderAdmin(){
+  var card=document.getElementById('prov-admin'), cont=document.getElementById('prov-admin-lista');
+  if(!card||!cont) return;
+  if(!provEsAdmin()){ card.style.display='none'; return; }
+  card.style.display='';
+  var h='';
+  PROV_CLAVES.forEach(function(c){
+    h+='<div class="prov-adm-sec"><div style="font-weight:700;font-size:13px;margin-bottom:4px">'+provEsc(PROV_NOMBRES[c])+(c==='rectificado'?' <span style="font-weight:400;color:#888;font-size:11px">(opcional en la cotización)</span>':'')+'</div>';
+    provListaDe(c).forEach(function(n){
+      h+='<span class="prov-chip">'+provEsc(n)+
+        '<button type="button" data-a="ren" data-k="'+c+'" data-n="'+provEsc(n)+'" title="Corregir nombre">✎</button>'+
+        '<button type="button" data-a="del" data-k="'+c+'" data-n="'+provEsc(n)+'" title="Quitar de esta lista">✕</button></span>';
+    });
+    h+='<div><button type="button" data-a="add" data-k="'+c+'" style="margin-top:4px;padding:5px 10px;font-size:12px;border:1.5px solid #ddd;border-radius:7px;background:#fff;cursor:pointer">+ Agregar proveedor</button></div></div>';
+  });
+  cont.innerHTML=h;
+}
+function provAccionAdmin(btn){
+  var a=btn.getAttribute('data-a'), c=btn.getAttribute('data-k'), n=btn.getAttribute('data-n')||'';
+  if(!provEsAdmin()) return;
+  if(a==='add'){
+    provPedirOtro(c,function(nombre){ if(!nombre) return; if(!provAgregarLista(c,nombre)) toast('«'+nombre+'» ya estaba en la lista de '+PROV_NOMBRES[c]); else provGuardarCompleto(); });
+  } else if(a==='del'){
+    if(!confirm('¿Quitar «'+n+'» de la lista de '+PROV_NOMBRES[c]+'?\n\nLas cotizaciones ya guardadas no cambian.')) return;
+    PROV_LISTAS[c]=provListaDe(c).filter(function(x){ return x!==n; });
+    provRefrescarSelects(); provGuardarCompleto();
+  } else if(a==='ren'){
+    provPedirOtro(c,function(nombre){
+      if(!nombre || nombre===n) return;
+      var kv=provKey(n);
+      PROV_CLAVES.forEach(function(cl){ PROV_LISTAS[cl]=provListaDe(cl).map(function(x){ return provKey(x)===kv?nombre:x; }); });
+      tallerItems.forEach(function(it){ if(it.proveedor===n) it.proveedor=nombre; });
+      provRefrescarSelects(); provGuardarCompleto();
+    },{titulo:'Corregir proveedor', valorInicial:n, ignorar:n, boton:'Guardar'});
+  }
+}
+
 // ── TALLER ───────────────────────────────────────────────
 function setTallerSvc(s, el) {
   document.querySelectorAll('.ttab').forEach(function(t){t.classList.remove('on');});
@@ -1879,6 +2176,7 @@ function renderTallerItems() {
   // Map tallerTipo to key
   var tipoKey={'Taller - Afinación':'afinacion','Taller - Aceite':'aceite','Taller - Frenos':'frenos','Taller - Suspensión':'suspension','Taller - Libre':'libre'};
   var currentKey = tipoKey[tallerTipo]||'afinacion';
+  provRenderTodos(currentKey);
   for(var i=0;i<tallerItems.length;i++){  if(tallerItems[i].tipo && tallerItems[i].tipo!==currentKey) continue;
     var item=tallerItems[i];
     var div=document.createElement('div');
@@ -1899,7 +2197,8 @@ function renderTallerItems() {
       var esAceiteItem = item.concepto.toLowerCase().indexOf('aceite')>=0;
       var qtyLabel = esAceiteItem ? 'Lts' : 'Cant';
       div.innerHTML=
-        '<div class="tr-concepto"><input type="text" value="'+item.concepto+'" placeholder="Concepto..." data-id="'+item.id+'" data-f="concepto" class="ti">'+pend+'</div>'+
+        '<div class="tr-concepto"><input type="text" value="'+item.concepto+'" placeholder="Concepto..." data-id="'+item.id+'" data-f="concepto" class="ti">'+pend+
+          (provEsRectificado(item)?'<div style="margin-top:3px">'+provSelectHTML(item,'rectificado','Proveedor (opcional)','width:100%')+'</div>':'')+'</div>'+
         '<span class="tr-mo-badge" style="background:#e0e0e0;color:#666">FIJO</span>'+
         (item.conQty ? '<div class="tr-qty"><div style="font-size:9px;color:#888;text-align:center;margin-bottom:1px">'+qtyLabel+'</div><input type="text" inputmode="numeric" value="'+(item.qty||'')+'" placeholder="0" data-id="'+item.id+'" data-f="qty" class="ti-num" style="width:100%;text-align:center"></div>' : '')+
         '<div class="tr-pvp'+(item.conQty?'-sm':'')+'"><div style="font-size:9px;color:#888;text-align:right;margin-bottom:1px">Precio</div><input type="text" inputmode="decimal" value="'+(item.precio||'')+'" placeholder="0" data-id="'+item.id+'" data-f="precio" class="ti-precio" style="width:100%"></div>'+
@@ -1912,7 +2211,7 @@ function renderTallerItems() {
             '<input type="text" value="'+item.concepto+'" placeholder="Producto o servicio..." data-id="'+item.id+'" data-f="concepto" class="ti" style="flex:65">'+
             '<input type="text" value="'+(item.noParte||'')+'" placeholder="No. de parte" data-id="'+item.id+'" data-f="noParte" class="ti" style="flex:35;font-size:12px;color:#444">'+
 
-            '<input type="text" value="'+(item.proveedor||'')+'" placeholder="Proveedor" data-id="'+item.id+'" data-f="proveedor" class="ti" style="flex:35;font-size:12px;color:#666">'+
+            provSelectHTML(item, provTipoDeItem(item,currentKey), 'Proveedor…')+
             '<button class="opc-btn'+(!item.opcional?' opc-on':'')+'" data-id="'+item.id+'" title="Incluir en cotización">'+(!item.opcional?'&#10003;':'+')+' </button>'+
           '</div>'+
         pend+'</div>'+
@@ -2460,6 +2759,16 @@ function validarCampos(){
       errores.push(etiqueta);
       if(el) el.classList.add('field-error');
     }
+  });
+  // Proveedor obligatorio en toda pieza que va en la cotización (no en mano de obra ni en renglones de precio fijo)
+  var selsProv=document.querySelectorAll('select.prov-sel.field-error');
+  for(var sp=0;sp<selsProv.length;sp++) selsProv[sp].classList.remove('field-error');
+  tallerItems.forEach(function(i){
+    if(!(i.concepto && i.precio!=='' && parseFloat(i.precio)>0 && parseFloat(i.qty)>0)) return;
+    if(!provRequiere(i) || String(i.proveedor||'').trim()) return;
+    errores.push('Proveedor de «'+String(i.concepto).trim()+'» ('+(PROV_NOMBRES[provTipoDeItem(i)]||'Taller')+')');
+    var elp=document.querySelector('select.prov-sel[data-prov-id="'+i.id+'"]');
+    if(elp) elp.classList.add('field-error');
   });
   return errores;
 }
@@ -3343,6 +3652,21 @@ window.addEventListener('load',function(){
       if(!id||!f) return;
       updTallerField(id,f,inp.value);
     });
+    // Proveedor: es una lista (select), no texto libre
+    tallerContainer.addEventListener('change',function(e){
+      var sel=e.target;
+      if(sel && sel.classList && sel.classList.contains('prov-sel') && sel.getAttribute('data-prov-id')) provCambioSelect(sel);
+    });
+    var provTodosEl=g('prov-todos');
+    if(provTodosEl) provTodosEl.addEventListener('change',function(e){
+      var sel=e.target;
+      if(sel && sel.id==='prov-todos-sel') provCambioTodos(sel);
+    });
+    var provAdminEl=g('prov-admin-lista');
+    if(provAdminEl) provAdminEl.addEventListener('click',function(e){
+      var b=e.target.closest?e.target.closest('button[data-a]'):null;
+      if(b) provAccionAdmin(b);
+    });
     // Click delegation for cx and opc-btn
     tallerContainer.addEventListener('click',function(e){
       var cx=e.target.closest('.cx');
@@ -3477,6 +3801,7 @@ window.addEventListener('load',function(){
   var COL_USR = 'usuarios';
   var ROLES = { superadministrador:'Superadministrador', administrador:'Administrador', usuario:'Usuario' };
   var COL = 'cotizaciones';
+  var COL_PROV = 'proveedores';
   var MAX_DOCS = 5000;
   var POR_PAGINA = 50;
 
@@ -3690,7 +4015,7 @@ window.addEventListener('load',function(){
       if(d.folio) partes.push('<b>'+esc(d.folio)+'</b>');
       else if(d.ref) partes.push('<b>'+esc(d.ref)+'</b>');   // copia de WhatsApp sin folio: se identifica por su Ref
       var filas=(d.partidas||[]).map(function(p){
-        return '<tr><td>'+esc(p.producto)+(p.opcional?' <i>(opcional)</i>':'')+'</td><td>'+(esc(p.proveedor)||'—')+'</td><td style="text-align:right">'+esc(p.cant)+'</td><td style="text-align:right">'+(p.costo==null?'—':dinero(p.costo))+'</td><td style="text-align:right">'+dinero(p.precio)+'</td><td style="text-align:right">'+(p.opcional?'—':dinero(p.subtotal))+'</td></tr>';
+        return '<tr><td>'+esc(p.producto)+(p.opcional?' <i>(opcional)</i>':'')+'</td><td>'+(esc(p.noParte)||'—')+'</td><td>'+(esc(p.proveedor)||'—')+'</td><td style="text-align:right">'+esc(p.cant)+'</td><td style="text-align:right">'+(p.costo==null?'—':dinero(p.costo))+'</td><td style="text-align:right">'+dinero(p.precio)+'</td><td style="text-align:right">'+(p.opcional?'—':dinero(p.subtotal))+'</td></tr>';
       }).join('');
       return '<div class="fb-row">'+
         '<div class="fb-l1"><b>'+esc(d.cliente||'Sin nombre')+'</b>'+(d.telefono?' · '+esc(d.telefono):' · <span style="color:#b91c1c">sin teléfono</span>')+'</div>'+
@@ -3698,7 +4023,7 @@ window.addEventListener('load',function(){
         '<div class="fb-l3">'+partes.join(' · ')+' · <b>'+dinero(d.total)+'</b></div>'+
         '<button class="fb-det" data-i="'+i+'">Ver partidas</button>'+
         '<div class="fb-part" id="fb-part-'+i+'" style="display:none"><table>'+
-        '<tr><th style="text-align:left">Producto</th><th style="text-align:left">Proveedor</th><th>Cant</th><th>Costo</th><th>Precio</th><th>Subtotal</th></tr>'+filas+'</table></div>'+
+        '<tr><th style="text-align:left">Producto</th><th style="text-align:left">No. parte</th><th style="text-align:left">Proveedor</th><th>Cant</th><th>Costo</th><th>Precio</th><th>Subtotal</th></tr>'+filas+'</table></div>'+
       '</div>';
     }
     cont.innerHTML=grupos.map(function(g,gi){
@@ -3753,6 +4078,7 @@ window.addEventListener('load',function(){
   function despuesDeVerificar(){
     if(perfil){ escuchar(); if(puedeAdministrar(perfil)) escucharUsr(); else dejarUsr(); }
     else { dejarDeEscuchar(); dejarUsr(); }
+    try{ if(typeof provConectar==='function') provConectar(perfil?api:null, perfil); }catch(e){}
     pintarEstado();
   }
   // Decide si la cuenta con sesión tiene acceso. El superadministrador
@@ -3841,6 +4167,21 @@ window.addEventListener('load',function(){
         salir:function(){ return au.signOut(auth); },
         leerPerfil:function(mail){ return fs.getDoc(fs.doc(db,COL_USR,mail)).then(function(sn){ return sn.exists()?sn.data():null; }); },
         guardarUsuario:function(mail,docu){ return fs.setDoc(fs.doc(db,COL_USR,mail),docu,{merge:true}); },
+        // Lista compartida de proveedores por servicio (colección "proveedores"; documento "listas", o "listas_prueba" en dev)
+        provEscuchar:function(id,cb,errcb){
+          return fs.onSnapshot(fs.doc(db,COL_PROV,id),function(sn){ cb(sn.exists()?sn.data():null); },errcb);
+        },
+        provAgregar:function(id,tipo,nombre,listas,por){
+          var ref=fs.doc(db,COL_PROV,id), ahora=fechaISOChihuahua();
+          return fs.getDoc(ref).then(function(sn){
+            if(!sn.exists()) return fs.setDoc(ref,{listas:listas,actualizado:ahora,por:por});
+            var u={actualizado:ahora,por:por}; u['listas.'+tipo]=fs.arrayUnion(nombre);
+            return fs.updateDoc(ref,u);
+          });
+        },
+        provReemplazar:function(id,listas,por){
+          return fs.setDoc(fs.doc(db,COL_PROV,id),{listas:listas,actualizado:fechaISOChihuahua(),por:por});
+        },
         escucharUsuarios:function(cb,errcb){
           return fs.onSnapshot(fs.collection(db,COL_USR),function(snap){
             var arr=[]; snap.forEach(function(d){ var x=d.data(); x._id=d.id; arr.push(x); }); cb(arr);
