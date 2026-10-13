@@ -248,7 +248,7 @@ async function parteB() {
   const esperar = ms => new Promise(r => setTimeout(r, ms));
   function llenarYGuardar(w, boton) {
     const set = (id, v) => { w.document.getElementById(id).value = v; };
-    set('cli-nombre', 'Cliente de Prueba Integración'); set('cli-tel', '6140000000'); set('cli-origen', 'WhatsApp');
+    set('cli-nombre', 'Cliente de Prueba Integración'); set('cli-tel', '6145550123'); set('cli-origen', 'WhatsApp');
     set('asesor', 'Ana'); set('v-marca', 'Nissan'); set('v-modelo', 'Sentra'); set('v-anio', '2020'); set('v-cil', '4');
     w.tallerItems = [{ id: 't1', concepto: 'Mano de obra prueba', costo: '', margen: 30, precio: '550', mo: true, precioFijo: false, pend: false, opcional: false, qty: 2, conQty: true, descuento: 0, proveedor: '' }];
     w.generarWA();   // la app regenera el texto (y habilita "Copiar") cada vez que cambia una partida
@@ -280,7 +280,7 @@ async function parteB() {
     ok('B2 el Sheet recibe el mismo cliente', sheet[0] && sheet[0].body.cliente === 'Cliente de Prueba Integración');
     ok('B2 se respalda 1 documento en Firestore', escritos.length === 1, escritos.length);
     const d = escritos[0] && escritos[0].d;
-    ok('B2 documento: cliente, teléfono, vehículo, asesor', d && d.cliente === 'Cliente de Prueba Integración' && d.telefono === '6140000000' && /Nissan Sentra 2020/.test(d.vehiculo) && d.asesor === 'Ana', d);
+    ok('B2 documento: cliente, teléfono, vehículo, asesor', d && d.cliente === 'Cliente de Prueba Integración' && d.telefono === '6145550123' && /Nissan Sentra 2020/.test(d.vehiculo) && d.asesor === 'Ana', d);
     ok('B2 documento: partida de mano de obra', d && d.partidas.length === 1 && d.partidas[0].manoDeObra === true && d.partidas[0].cant === 2 && d.partidas[0].precio === 550 && d.partidas[0].subtotal === 1100, d && d.partidas);
     ok('B2 documento: total = 1100', d && d.total === 1100, d && d.total);
     ok('B2 el letrero queda en "Guardada"', /✅ Guardada/.test(w.document.getElementById('estado-guardado').textContent), w.document.getElementById('estado-guardado').textContent);

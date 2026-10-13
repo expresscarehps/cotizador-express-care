@@ -46,7 +46,7 @@ function abrir(query, opc) {
 const $ = (r, id) => r.w.document.getElementById(id);
 function llenar(r) {
   const set = (id, v) => { $(r, id).value = v; };
-  set('cli-nombre', 'Cliente de Prueba'); set('cli-tel', '6140000000'); set('cli-origen', 'WhatsApp'); set('asesor', 'Ana');
+  set('cli-nombre', 'Cliente de Prueba'); set('cli-tel', '6145550123'); set('cli-origen', 'WhatsApp'); set('asesor', 'Ana');
   set('v-marca', 'Nissan'); set('v-modelo', 'Sentra'); set('v-anio', '2020'); set('v-cil', '4');
 }
 function conProducto(r, precio) {

@@ -56,7 +56,7 @@ function abrir(opc) {
 }
 const $ = (r, id) => r.w.document.getElementById(id);
 function llenar(r, o) {
-  o = Object.assign({ nombre: 'Cliente de Prueba', tel: '6140000000', origen: 'WhatsApp', asesor: 'Ana', marca: 'Nissan', modelo: 'Sentra', anio: '2020', cil: '4' }, o || {});
+  o = Object.assign({ nombre: 'Cliente de Prueba', tel: '6145550123', origen: 'WhatsApp', asesor: 'Ana', marca: 'Nissan', modelo: 'Sentra', anio: '2020', cil: '4' }, o || {});
   const set = (id, v) => { $(r, id).value = v; };
   set('cli-nombre', o.nombre); set('cli-tel', o.tel); set('cli-origen', o.origen); set('asesor', o.asesor);
   set('v-marca', o.marca); set('v-modelo', o.modelo); set('v-anio', o.anio); set('v-cil', o.cil);
@@ -128,9 +128,9 @@ const textoLetrero = r => $(r, 'estado-guardado').textContent;
     const wa = $(r, 'wt').textContent;
     ok('C7 el texto al cliente no dice "Sin" como si fuera su nombre', !/paciencia, Sin/.test(wa) && /Gracias por tu paciencia\. Aquí está tu presupuesto/.test(wa), wa.slice(0, 120));
     await copiar(r);
-    ok('C8 el Sheet recibe cliente "Sin nombre" y el teléfono', r.sheet()[0] && r.sheet()[0].body.cliente === 'Sin nombre' && r.sheet()[0].body.telefono === '6140000000', r.sheet()[0] && r.sheet()[0].body.cliente);
+    ok('C8 el Sheet recibe cliente "Sin nombre" y el teléfono', r.sheet()[0] && r.sheet()[0].body.cliente === 'Sin nombre' && r.sheet()[0].body.telefono === '6145550123', r.sheet()[0] && r.sheet()[0].body.cliente);
     $(r, 'btn-ya-envie').click(); await esperar(30);
-    ok('C9 el aviso a GHL de "Sin nombre" va con cliente vacío (nunca el teléfono)', r.aviso().length === 1 && r.aviso()[0].body.cliente === '' && r.aviso()[0].body.telefono === '6140000000', r.aviso()[0] && r.aviso()[0].body);
+    ok('C9 el aviso a GHL de "Sin nombre" va con cliente vacío (nunca el teléfono)', r.aviso().length === 1 && r.aviso()[0].body.cliente === '' && r.aviso()[0].body.telefono === '6145550123', r.aviso()[0] && r.aviso()[0].body);
     $(r, 'cli-sin-nombre').click();
     ok('C10 desmarcar la casilla libera y limpia el campo', $(r, 'cli-nombre').disabled === false && $(r, 'cli-nombre').value === '');
   }
@@ -164,7 +164,7 @@ const textoLetrero = r => $(r, 'estado-guardado').textContent;
     ok('E4 el Sheet recibe un Ref con formato MMDD-XXXXX', RE_REF.test(ref || ''), ref);
     ok('E5 grupo = el mismo Ref y versión 1', s[0] && s[0].body.grupo === ref && s[0].body.version === 1, s[0] && { g: s[0].body.grupo, v: s[0].body.version });
     ok('E6 el texto copiado termina con "Ref <código>" y es el mismo Ref que se guardó', r.copiados.length === 1 && r.copiados[0].endsWith('\n\nRef ' + ref), r.copiados[0] && r.copiados[0].slice(-40));
-    ok('E7 el guardado conserva los datos de siempre (cliente, teléfono, vehículo, partidas, total)', s[0] && s[0].body.cliente === 'Cliente de Prueba' && s[0].body.telefono === '6140000000' && /Nissan Sentra 2020/.test(s[0].body.vehiculo) && s[0].body.items.length === 1 && s[0].body.total === '$1,100.00' || (s[0] && s[0].body.items && s[0].body.items.length === 1), s[0] && s[0].body.total);
+    ok('E7 el guardado conserva los datos de siempre (cliente, teléfono, vehículo, partidas, total)', s[0] && s[0].body.cliente === 'Cliente de Prueba' && s[0].body.telefono === '6145550123' && /Nissan Sentra 2020/.test(s[0].body.vehiculo) && s[0].body.items.length === 1 && s[0].body.total === '$1,100.00' || (s[0] && s[0].body.items && s[0].body.items.length === 1), s[0] && s[0].body.total);
     ok('E8 el letrero queda en "Guardada" con el Ref', /✅ Guardada/.test(textoLetrero(r)) && textoLetrero(r).indexOf(ref) >= 0, textoLetrero(r));
     ok('E9 "Ya la envié" se habilita tras copiar', $(r, 'btn-ya-envie').disabled === false);
     await copiar(r);
@@ -195,7 +195,7 @@ const textoLetrero = r => $(r, 'estado-guardado').textContent;
     ok('F1 tres clics seguidos = UN solo aviso a GHL', r.aviso().length === 1, r.aviso().length);
     ok('F2 el botón queda deshabilitado y dice "Aviso enviado"', bye.disabled === true && /Aviso enviado/.test(bye.textContent), bye.textContent);
     const p = r.aviso()[0] && r.aviso()[0].body;
-    ok('F3 el aviso conserva telefono / cliente / folio (formato que lee el n8n actual)', p && p.telefono === '6140000000' && p.cliente === 'Cliente de Prueba' && p.folio === '', p);
+    ok('F3 el aviso conserva telefono / cliente / folio (formato que lee el n8n actual)', p && p.telefono === '6145550123' && p.cliente === 'Cliente de Prueba' && p.folio === '', p);
     ok('F4 el aviso trae asesor, total, ref, grupo, fuente y versión de la página', p && p.asesor === 'Ana' && p.total === 1100 && p.ref === ref && p.grupo === ref && p.fuente === 'dev' && typeof p.version === 'string' && p.version.length > 0, p);
     ok('F5 hubo una confirmación antes del aviso', r.confirms.length === 1 && /REAL/.test(r.confirms[0]), r.confirms);
     await copiar(r);
@@ -216,7 +216,7 @@ const textoLetrero = r => $(r, 'estado-guardado').textContent;
     const r = abrir({ url: URL_PROD, confirm: true }); await esperar(80);
     llenar(r); conProducto(r); await copiar(r);
     $(r, 'btn-ya-envie').click(); await esperar(30);
-    ok('F10 prod: pregunta por el cliente y el teléfono, y manda fuente "prod"', r.aviso().length === 1 && r.aviso()[0].body.fuente === 'prod' && /6140000000/.test(r.confirms[0]) && !/versión de prueba/i.test(r.confirms[0]), r.confirms[0]);
+    ok('F10 prod: pregunta por el cliente y el teléfono, y manda fuente "prod"', r.aviso().length === 1 && r.aviso()[0].body.fuente === 'prod' && /6145550123/.test(r.confirms[0]) && !/versión de prueba/i.test(r.confirms[0]), r.confirms[0]);
     const r2 = abrir({ url: URL_PROD, confirm: false }); await esperar(80);
     llenar(r2); conProducto(r2); await copiar(r2);
     $(r2, 'btn-ya-envie').click(); await esperar(30);

@@ -86,7 +86,7 @@ function abrir(query, folios) {
 }
 const $ = (r, id) => r.w.document.getElementById(id);
 function llenar(r, o) {
-  o = Object.assign({ nombre: 'Cliente de Prueba', tel: '6140000000', origen: 'WhatsApp', asesor: 'Ana', marca: 'Nissan', modelo: 'Sentra', anio: '2020', cil: '4' }, o || {});
+  o = Object.assign({ nombre: 'Cliente de Prueba', tel: '6145550123', origen: 'WhatsApp', asesor: 'Ana', marca: 'Nissan', modelo: 'Sentra', anio: '2020', cil: '4' }, o || {});
   const set = (id, v) => { $(r, id).value = v; };
   set('cli-nombre', o.nombre); set('cli-tel', o.tel); set('cli-origen', o.origen); set('asesor', o.asesor);
   set('v-marca', o.marca); set('v-modelo', o.modelo); set('v-anio', o.anio); set('v-cil', o.cil);

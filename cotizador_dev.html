@@ -1024,7 +1024,7 @@ var MODO_PRUEBA = (typeof window!=='undefined' && window.location && /[?&]test=1
 // Se detecta por el nombre del archivo: en dev, el aviso real a GHL pide confirmación explícita
 // (para no etiquetar clientes reales por accidente). También viaja en el aviso como "fuente".
 var ES_DEV = (typeof window!=='undefined' && window.location && /dev\.html?$/i.test(window.location.pathname||''));
-var VERSION_PAGINA = 'dev 2026-10-12 cotizacion enviada se bloquea; boton OK no duplica; un folio = una cotizacion; Ref en historial; respaldo en Firebase guarda la marca';
+var VERSION_PAGINA = 'dev 2026-10-12 cotizacion enviada se bloquea; boton OK no duplica; un folio = una cotizacion; Ref en historial; respaldo en Firebase guarda la marca; telefono inventado se bloquea';
 
 var RIN = {
   'a': {mon:85,  bal:80,  piv:20, h:'Montaje $85 - Balanceo $80 - Pivote $20 por llanta'},
@@ -2453,6 +2453,7 @@ function validarCampos(){
     if(soloLlantas && (c.id==='v-modelo'||c.id==='v-anio'||c.id==='v-cil')) invalido=false;
     // Teléfono: exactamente 10 dígitos
     if(c.id==='cli-tel' && !/^[0-9]{10}$/.test(val)){ invalido=true; if(val) etiqueta='Teléfono del cliente (deben ser exactamente 10 dígitos)'; }
+    if(c.id==='cli-tel' && /^[0-9]{10}$/.test(val) && telefonoFalso(val)){ invalido=true; etiqueta='Teléfono del cliente (ese número parece inventado, como 6140000000: pide el teléfono real del cliente)'; }
     // Nombre: no puede ser solo números (un teléfono no es un nombre). Sin nombre => casilla "Sin nombre".
     if(c.id==='cli-nombre' && !sinNombre && val && /^[0-9\s+()\-.]+$/.test(val)){ invalido=true; etiqueta='Nombre del cliente (no puede ser solo números; si no trae nombre marca "Sin nombre")'; }
     if(invalido){
@@ -3106,6 +3107,17 @@ function normalizarTelefono(txt){
   if(d.length>=13 && d.indexOf('521')===0) d=d.slice(3);
   else if(d.length>=12 && d.indexOf('52')===0) d=d.slice(2);
   return d.slice(0,10);
+}
+
+// Teléfono obviamente inventado (tiene 10 dígitos pero no es de un cliente): ceros u otro dígito repetido
+// después de la lada (6140000000, 1230000000, 6145555555), todos los dígitos iguales (1111111111),
+// o secuencias típicas (1234567890, 0123456789, 9876543210). No toca números reales.
+function telefonoFalso(tel){
+  var d=String(tel||'').replace(/[^0-9]/g,'');
+  if(d.length!==10) return false;
+  if(/^(\d)\1{6}$/.test(d.slice(3))) return true;
+  if(/^(\d)\1{9}$/.test(d)) return true;
+  return d==='1234567890' || d==='0123456789' || d==='9876543210';
 }
 
 // "Sin nombre": casilla debajo del campo Nombre (o el texto "Sin nombre" escrito/restaurado).
