@@ -335,6 +335,10 @@ input:focus,select:focus{
   overflow-y:auto;
 }
 
+/* Cotización enviada: se ve pero no se edita */
+#banner-enviada{display:none;background:#fff3cd;border:1.5px solid #e0a800;color:#5d4a00;border-radius:8px;padding:10px 12px;margin:8px 12px;font-size:13px;font-weight:600;line-height:1.4}
+#banner-enviada.on{display:block}
+.pnl[inert]{opacity:.55}
 /* Casilla "Sin nombre" y letrero de estado de guardado (reemplaza al botón Guardar en historial) */
 label.chk-sin-nombre{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:400;margin:6px 0 0;cursor:pointer}
 label.chk-sin-nombre input{width:20px;height:20px;padding:0;margin:0;flex:0 0 20px;border:2px solid var(--val-dark-blue);border-radius:4px;background:#fff;-webkit-appearance:none;appearance:none;position:relative;cursor:pointer}
@@ -1020,7 +1024,7 @@ var MODO_PRUEBA = (typeof window!=='undefined' && window.location && /[?&]test=1
 // Se detecta por el nombre del archivo: en dev, el aviso real a GHL pide confirmación explícita
 // (para no etiquetar clientes reales por accidente). También viaja en el aviso como "fuente".
 var ES_DEV = (typeof window!=='undefined' && window.location && /dev\.html?$/i.test(window.location.pathname||''));
-var VERSION_PAGINA = 'prod 2026-10-09 margen fijo y marcas Llaselesa';
+var VERSION_PAGINA = 'prod 2026-10-12 cotizacion enviada se bloquea; boton OK no duplica; un folio = una cotizacion; Ref en historial';
 
 var RIN = {
   'a': {mon:85,  bal:80,  piv:20, h:'Montaje $85 - Balanceo $80 - Pivote $20 por llanta'},
@@ -1086,6 +1090,7 @@ var rin = 'a';
 var pago = 'contado';
 var borradores = [];
 var borradores = [];  // Array of saved draft cotizaciones
+var borradorActivoId = null;  // id del borrador cargado en pantalla (se quita de la lista cuando la cotización se usa: copiar o PDF)
 var cart = [];
 var sact = new Set();
 var tallerItems = [];
@@ -1094,6 +1099,8 @@ var tallerTipo = 'Taller - Afinación';
 var tarifasMO = {};
 var tarifasMOTipos = {};
 var yaGuardado = false;
+var cotizacionEnviada = false;   // true después de copiar para WhatsApp o generar el PDF: la cotización ya salió y no se puede editar
+var refDelFolio = '';          // Ref (contenido) para el que ya se emitió el folio actual: ese folio NO se reutiliza para otro contenido
 var folioActual = null;       // un solo folio por cotización, se reutiliza entre Guardar y PDF
 var folioNumeroActual = null; // el número (para confirmar/consumir el folio solo si el guardado se verifica)
 var pdfYaSubidoDrive = false; // evita subir el mismo PDF más de una vez a Drive
@@ -1315,6 +1322,11 @@ function pvpAyala(lista) {
   return lista * desc * 1.16;
 }
 function pvpItem(costo, margen) { return margen > 0 ? costo / (1 - margen / 100) : costo; }
+// Claves que existen a la vez en Servillantas y en Vega (con precios distintos): se distinguen por proveedor
+// para que el botón "+" agregue la llanta que se está viendo. Las demás llantas siguen con su clave normal.
+var CVE_DUP = (function(){ var s={}, d={}, i; for(i=0;i<DATA.length;i++) s[DATA[i].cve]=1; for(i=0;i<VEGA.length;i++) if(s[VEGA[i].cve]) d[VEGA[i].cve]=1; return d; })();
+function llaveLlanta(cve, prov){ return CVE_DUP[cve] ? cve+'@'+prov : cve; }
+function separarLlave(llave){ var p=String(llave||'').split('@'); return {cve:p[0], prov:p[1]||''}; }
 
 // ── LLANTAS ──────────────────────────────────────────────
 // Filtro de DEMANDA (rotación de la marca: alta / media / baja). Vacío = todas.
@@ -1412,7 +1424,8 @@ function buscar() {
     var pvpX = x.proveedor === 'AYALA' ? pvpAyala(x.lista) : pvpLlanta(x.proveedor==='VEGA'?x.pb:x.precio, x.marca);
     var badge = '<span style="font-size:9px;font-weight:700;padding:1px 4px;border-radius:3px;margin-left:4px;background:'+(x.proveedor==='AYALA'?'#1a56db':x.proveedor==='VEGA'?'#b45309':'#166534')+';color:#fff">'+x.proveedor+'</span>';
     var _p=x.pais||'';var _g=x.gama||'';var _rot=ROTACION_DB&&ROTACION_DB[x.marca]?ROTACION_DB[x.marca]:{emoji:'',rotacion:''}; var infoTag=(_p&&_g)?'<span style="font-size:12px;color:#6B7280;margin-left:8px">'+_p+' · '+_g+'</span>'+(_rot.emoji?'<span style="font-size:16px;margin-left:4px">'+_rot.emoji+'</span>':''):'';
-    html += '<div class="ri"><div><div class="rd"><input type="checkbox" class="ochk" data-cve="'+x.cve+'" title="Marcar para cotizar varias opciones de esta medida" style="width:16px;height:16px;padding:0;margin:0 6px 0 0;display:inline-block;vertical-align:middle;cursor:pointer;-webkit-appearance:checkbox;appearance:auto;accent-color:#1a56db"'+(opcSel.indexOf(x.cve)>=0?' checked':'')+'>'+x.desc+badge+infoTag+'</div><div class="rm">'+x.marca+'</div></div><div class="rp">'+fmt(pvpX)+'</div><button class="badd" data-cve="'+x.cve+'">+</button></div>';
+    var llaveX=llaveLlanta(x.cve,x.proveedor);
+    html += '<div class="ri"><div><div class="rd"><input type="checkbox" class="ochk" data-cve="'+llaveX+'" title="Marcar para cotizar varias opciones de esta medida" style="width:16px;height:16px;padding:0;margin:0 6px 0 0;display:inline-block;vertical-align:middle;cursor:pointer;-webkit-appearance:checkbox;appearance:auto;accent-color:#1a56db"'+(opcSel.indexOf(llaveX)>=0?' checked':'')+'>'+x.desc+badge+infoTag+'</div><div class="rm">'+x.marca+'</div></div><div class="rp">'+fmt(pvpX)+'</div><button class="badd" data-cve="'+llaveX+'">+</button></div>';
   }
   if (r.length > 60) html += '<p class="hint" style="text-align:center;padding:8px">Primeros 60 de '+r.length+(sinMedida?' · escribe una medida para ver las demás':'')+'</p>';
   html += '<div style="margin-top:10px;padding-top:10px;border-top:1px dashed #ddd">'+
@@ -1477,20 +1490,23 @@ function pintarRecordatorioMargen() {
 }
 
 function addLlanta(btn) {
-  var cve=btn.getAttribute('data-cve'), it=null;
+  if(cotizacionEnviada){ toast(TEXTO_COTIZACION_ENVIADA); return; }
+  var llaveBtn=btn.getAttribute('data-cve'), sp=separarLlave(llaveBtn), cve=sp.cve, it=null;
+  // Si esa llanta ya está en la cotización no se agrega otra línea: la cantidad se cambia en el carrito.
+  for(var q=0;q<cart.length;q++){ if(cart[q].t==='l' && cart[q].cve && (cart[q].llave||cart[q].cve)===llaveBtn){ toast('Ya está en la cotización, cambia la cantidad en el carrito'); return; } }
   var isAyala = cve && cve.indexOf('AY') === 0;
   var isVega = false;
   if (isAyala) {
     for(var i=0;i<AYALA.length;i++){if(AYALA[i].cve===cve){it=AYALA[i];break;}}
   } else {
-    for(var i=0;i<VEGA.length;i++){if(VEGA[i].cve===cve){it=VEGA[i];isVega=true;break;}}
-    if(!it) for(var i=0;i<DATA.length;i++){if(DATA[i].cve===cve){it=DATA[i];break;}}
+    if(sp.prov!=='SERV') for(var i=0;i<VEGA.length;i++){if(VEGA[i].cve===cve){it=VEGA[i];isVega=true;break;}}
+    if(!it && sp.prov!=='VEGA') for(var i=0;i<DATA.length;i++){if(DATA[i].cve===cve){it=DATA[i];break;}}
   }
   if(!it) return;
   var id='l'+Date.now();
   var pvp = isAyala ? pvpAyala(it.lista) : pvpLlanta(isVega ? it.costo : it.precio, it.marca);
   var pb  = isAyala ? it.lista : (isVega ? it.costo : it.precio);
-  cart.push({id:id, t:'l', desc:it.desc, marca:it.marca, precio:pvp, precioBase:pvp, pb:pb, qty:1, cve:cve, pid:null, isAyala:isAyala, isVega:isVega, rinCat:rin});
+  cart.push({id:id, t:'l', desc:it.desc, marca:it.marca, precio:pvp, precioBase:pvp, pb:pb, qty:1, cve:cve, llave:llaveBtn, pid:null, isAyala:isAyala, isVega:isVega, rinCat:rin});
   recalcInstalacionLlantas();
   renderCarrito(); updateBadge();   // renderCarrito pinta el botón en verde "OK" de forma fija
 }
@@ -1591,12 +1607,13 @@ function textoRangoOpc(){
   var t=totalesOpciones().lista.map(function(x){ return x.total; });
   return t.length ? fmt(Math.min.apply(null,t))+' a '+fmt(Math.max.apply(null,t)) : fmt(0);
 }
-function buscarItemCatalogo(cve){
+function buscarItemCatalogo(llave){
+  var sp=separarLlave(llave), cve=sp.cve;
   var isAyala=!!(cve && cve.indexOf('AY')===0), it=null, isVega=false, i;
   if(isAyala){ for(i=0;i<AYALA.length;i++){ if(AYALA[i].cve===cve){ it=AYALA[i]; break; } } }
   else {
-    for(i=0;i<VEGA.length;i++){ if(VEGA[i].cve===cve){ it=VEGA[i]; isVega=true; break; } }
-    if(!it) for(i=0;i<DATA.length;i++){ if(DATA[i].cve===cve){ it=DATA[i]; break; } }
+    if(sp.prov!=='SERV') for(i=0;i<VEGA.length;i++){ if(VEGA[i].cve===cve){ it=VEGA[i]; isVega=true; break; } }
+    if(!it && sp.prov!=='VEGA') for(i=0;i<DATA.length;i++){ if(DATA[i].cve===cve){ it=DATA[i]; break; } }
   }
   return it ? {it:it, isAyala:isAyala, isVega:isVega} : null;
 }
@@ -1656,7 +1673,7 @@ function agregarOpciones(){
     var it=f.it, isAyala=f.isAyala, isVega=f.isVega;
     var pvp = isAyala ? pvpAyala(it.lista) : pvpLlanta(isVega ? it.costo : it.precio, it.marca);
     var pb  = isAyala ? it.lista : (isVega ? it.costo : it.precio);
-    cart.push({id:'l'+(base+n), t:'l', op:ya+n+1, desc:it.desc, marca:it.marca, precio:pvp, precioBase:pvp, pb:pb, qty:qty, cve:cve, pid:null, isAyala:isAyala, isVega:isVega, rinCat:rin});
+    cart.push({id:'l'+(base+n), t:'l', op:ya+n+1, desc:it.desc, marca:it.marca, precio:pvp, precioBase:pvp, pb:pb, qty:qty, cve:separarLlave(cve).cve, llave:cve, pid:null, isAyala:isAyala, isVega:isVega, rinCat:rin});
     n++;
   });
   opcSel=[];
@@ -1944,7 +1961,7 @@ function marcarLlantasEnCarrito(){
   var btns=document.querySelectorAll('#res .badd[data-cve]');
   if(!btns.length) return;
   var enc={};
-  for(var i=0;i<cart.length;i++){ if(cart[i].t==='l' && cart[i].cve) enc[cart[i].cve]=true; }
+  for(var i=0;i<cart.length;i++){ if(cart[i].t==='l' && cart[i].cve) enc[cart[i].llave||cart[i].cve]=true; }
   for(var k=0;k<btns.length;k++){
     var cv=btns[k].getAttribute('data-cve');
     if(enc[cv]){ btns[k].textContent='OK'; btns[k].style.background='#2e7d32'; btns[k].style.fontSize='13px'; btns[k].title='Ya está en la cotización'; }
@@ -2112,7 +2129,7 @@ function generarWA() {
     }
   }
   if(pago==='meses' && (llantas.length||extSvcs.length)){
-    txt+='\n💳 *Precio a meses sin intereses (3, 6 y 9 meses con tarjetas participantes)*\n\n';
+    txt+='\n💳 *Precio a meses sin intereses (3 y 6 meses con tarjetas participantes)*\n\n';
   } else if(llantas.length||extSvcs.length){
     txt+='\n💵 *Precios de contado.* En caso de que prefieras realizar tu compra a meses sin intereses, se aplicará un incremento del 5% sobre el precio cotizado.\n\n';
   }
@@ -2190,6 +2207,7 @@ function cargarBorradores() {
 }
 
 function guardarBorrador() {
+  if(cotizacionEnviada){ toast('Esa cotización ya se envió: no se guarda como borrador. Presiona Nueva cotización.'); return; }
   var cl = v('cli-nombre');
   var tel = v('cli-tel');
   var vh = getVehiculo();
@@ -2228,11 +2246,33 @@ function guardarBorrador() {
   limpiarTodo(true);
 }
 
+// Cuando la cotización cargada desde un borrador YA SE USÓ (se copió para WhatsApp o se generó el PDF),
+// el borrador se quita de la lista: si el cliente regresa, se arma una cotización nueva desde cero.
+// Si solo se cargó y se revisó, el borrador se queda en la lista.
+function consumirBorradorActivo() {
+  if(!borradorActivoId) return;
+  var id = borradorActivoId;
+  borradorActivoId = null;
+  cargarBorradores();
+  var antes = borradores.length;
+  borradores = borradores.filter(function(b){ return b.id !== id; });
+  if(borradores.length === antes) return;
+  try{ localStorage.setItem('expresscare_borradores', JSON.stringify(borradores)); }catch(e){}
+  renderBorradores();
+  toast('📋 Este borrador ya se usó y se quitó de la lista');
+}
+
 function cargarBorrador(id) {
   cargarBorradores();
   var b = null;
   for(var i=0;i<borradores.length;i++){ if(borradores[i].id===id){b=borradores[i];break;} }
   if(!b) return;
+  borradorActivoId = b.id;
+  bloquearCotizacion(false);   // un borrador cargado es una cotización nueva: se puede editar
+  // Una cotización cargada de un borrador es una cotización NUEVA: no hereda folio, Grupo ni versión de la que estaba en pantalla.
+  yaGuardado=false; folioActual=null; folioNumeroActual=null; pdfYaSubidoDrive=false; refDelFolio='';
+  guardadoInfo={ref:'',conFolio:false}; grupoRef=null; versionGuardada=0; camposRefPend=null;
+  estadoGuardado=''; errorGuardadoRef=''; esperaGuardado=[]; refCopiado=''; refVigente='';
   cart = b.cart; sact = new Set(b.sact);
   tallerItems = b.tallerItems; tallerTipo = b.tallerTipo;
   pago = b.pago; rin = b.rin;
@@ -2269,7 +2309,7 @@ function renderBorradores() {
   var panel = g('panel-borradores');
   var badge = g('badge-borradores');
   if(!panel) return;
-  if(badge) badge.textContent = borradores.length > 0 ? borradores.length : '';
+  if(badge){ badge.textContent = borradores.length > 0 ? borradores.length : ''; badge.style.display = borradores.length > 0 ? '' : 'none'; }   // sin borradores no se muestra el círculo rojo vacío
   if(!borradores.length){ panel.innerHTML='<div style="font-size:12px;color:#888;padding:8px">No hay borradores guardados</div>'; return; }
   var html = '';
   for(var i=0;i<borradores.length;i++){
@@ -2302,12 +2342,38 @@ function toggleBorradores() {
   if(!visible) renderBorradores();
 }
 
+// ── COTIZACIÓN ENVIADA (copiar para WhatsApp o generar PDF) ──
+// Al copiar o generar el PDF se entiende que la cotización YA SE ENVIÓ: se queda a la vista pero no se puede modificar.
+// Para hacer otra se presiona "Nueva cotización". Siguen activos: copiar, PDF, "Ya la envié" y "Nueva cotización".
+var TEXTO_COTIZACION_ENVIADA = 'Cotización enviada. Para hacer otra, presiona Nueva cotización.';
+function bloquearCotizacion(on){
+  cotizacionEnviada = !!on;
+  var banner = g('banner-enviada');
+  if(!banner){
+    var ref = g('p-llantas');
+    if(ref && ref.parentNode){
+      banner = document.createElement('div'); banner.id = 'banner-enviada'; banner.textContent = TEXTO_COTIZACION_ENVIADA;
+      ref.parentNode.insertBefore(banner, ref);
+    }
+  }
+  if(banner) banner.classList.toggle('on', cotizacionEnviada);
+  ['p-llantas','p-servicios','p-taller','p-cotizacion'].forEach(function(id){
+    var el = g(id); if(!el) return;
+    if(cotizacionEnviada) el.setAttribute('inert',''); else el.removeAttribute('inert');
+  });
+  var bb = document.querySelector('button[onclick="guardarBorrador()"]');
+  if(bb){ bb.disabled = cotizacionEnviada; bb.style.opacity = cotizacionEnviada ? '.45' : ''; bb.title = cotizacionEnviada ? 'La cotización ya se envió' : ''; }
+}
+
 function limpiarTodo(skipConfirm){
   if(!skipConfirm && !confirm('¿Iniciar una cotización nueva? Se borrarán todos los datos actuales.')) return;
   // Limpiar carrito
   cart=[];
   sact=new Set();
   tallerItems=[];
+  borradorActivoId=null;
+  bloquearCotizacion(false);   // cotización nueva: se puede editar otra vez
+  refDelFolio='';
   yaGuardado=false;
   folioActual=null;
   folioNumeroActual=null;
@@ -2536,6 +2602,50 @@ function obtenerFolioJSONP(cb){
   document.body.appendChild(script);
 }
 
+// Candado de cotización repetida: pregunta al Sheet si este Ref ya tiene folio EXPCARE.
+// cb(folio) → 'EXPCARE-0NN/26' si ya existe, '' si no existe, null si no se pudo consultar
+// (en ese caso el PDF sigue como siempre: nunca se bloquea el trabajo por una falla de red).
+function buscarFolioPorRefJSONP(ref, cb){
+  if(!ref){ cb(''); return; }
+  var done=false;
+  var cbName='_refFolioCb'+Date.now();
+  var script=document.createElement('script');
+  function limpiar(){ if(window[cbName]) delete window[cbName]; if(script.parentNode) script.parentNode.removeChild(script); }
+  window[cbName]=function(data){
+    if(done) return; done=true; limpiar();
+    cb(data && data.status==='ok' ? (data.found && data.folio ? data.folio : '') : null);
+  };
+  script.onerror=function(){ if(done) return; done=true; limpiar(); cb(null); };
+  setTimeout(function(){ if(done) return; done=true; limpiar(); cb(null); }, 5000);
+  script.src=SCRIPT_URL+'?action=refFolio&ref='+encodeURIComponent(ref)+'&callback='+cbName;
+  document.body.appendChild(script);
+}
+
+// Candado para CUALQUIER cotización (copiar para WhatsApp / guardado normal): pregunta al Sheet si este Ref ya está guardado.
+// cb(info) → {found, folio, version, fecha, asesor, cliente}; cb(null) si no se pudo consultar
+// (en ese caso se guarda como siempre: nunca se bloquea el trabajo por una falla de red; el Apps Script también lo vigila).
+function buscarRefExisteJSONP(ref, cb){
+  if(!ref){ cb({found:false}); return; }
+  var done=false;
+  var cbName='_refExisteCb'+Date.now();
+  var script=document.createElement('script');
+  function limpiar(){ if(window[cbName]) delete window[cbName]; if(script.parentNode) script.parentNode.removeChild(script); }
+  window[cbName]=function(data){
+    if(done) return; done=true; limpiar();
+    cb(data && data.status==='ok' ? data : null);
+  };
+  script.onerror=function(){ if(done) return; done=true; limpiar(); cb(null); };
+  setTimeout(function(){ if(done) return; done=true; limpiar(); cb(null); }, 5000);
+  script.src=SCRIPT_URL+'?action=refExiste&ref='+encodeURIComponent(ref)+'&callback='+cbName;
+  document.body.appendChild(script);
+}
+function avisarCotizacionRepetida(info){
+  var cuando=info.fecha?(' el '+info.fecha):'';
+  var quien=info.asesor?(' por '+info.asesor):'';
+  alert('Cotización repetida\n\nEsta misma cotización (Ref '+refVigente+') ya estaba guardada'+cuando+quien+
+        (info.folio?(' con el folio '+info.folio):'')+'.\n\nNo se guardó otra vez: no se crea otro renglón en el historial.');
+}
+
 // Confirma/consume el folio propuesto para el PDF. Se llama justo después de proponerlo
 // (no espera a verificar el guardado — el folio es exclusivo del PDF, así que se consume
 // en cuanto se decide usarlo para generar uno).
@@ -2571,6 +2681,7 @@ function generarPDF(){
   if(errores.length>0){alert('Faltan datos obligatorios:\n\n'+errores.join('\n'));setTab('cotizacion');return;}
 
   generarWA();   // el Ref debe corresponder al contenido de este momento
+  liberarFolioSiCambioContenido();   // si el contenido cambió después de emitir un folio, esta cotización pide el suyo
   var btn=g('btn-pdf');
   if(btn){btn.textContent='Generando...';btn.disabled=true;}
 
@@ -2581,11 +2692,13 @@ function generarPDF(){
   var fechaStr=new Date().toLocaleDateString('es-MX');
 
   function continuarPDF(){
+    consumirBorradorActivo();   // la cotización salió en PDF: el borrador de donde vino ya no se ofrece
+    bloquearCotizacion(true);   // ya se envió: se ve pero no se edita
     construirYDescargarPDF(folioActual, cl, tel, vh, asesor, fechaStr, llantas, autoSvcs, extSvcs, tallerCart, btn);
   }
 
   function guardarConFolioYContinuar(){
-    if(MODO_PRUEBA){ guardadoInfo={ref:refVigente, conFolio:true}; pintarEstadoGuardado(); continuarPDF(); return; }
+    if(MODO_PRUEBA){ guardadoInfo={ref:refVigente, conFolio:true}; refDelFolio=refVigente; pintarEstadoGuardado(); continuarPDF(); return; }
     var datos=armarDatosCotizacion(llantas, autoSvcs, extSvcs, tallerCart);
     nuevaVersionParaGuardar();   // el PDF queda como una versión nueva del mismo Ref, ahora con folio
     var refEnviada=refVigente;
@@ -2594,7 +2707,7 @@ function generarPDF(){
       method:'POST',mode:'no-cors',
       headers:{'Content-Type':'text/plain;charset=utf-8'},
       body: JSON.stringify(cuerpo)
-    }).then(function(){ guardadoInfo={ref:refEnviada, conFolio:true}; if(errorGuardadoRef===refEnviada) errorGuardadoRef=''; pintarEstadoGuardado(); continuarPDF(); },
+    }).then(function(){ guardadoInfo={ref:refEnviada, conFolio:true}; refDelFolio=refEnviada; if(errorGuardadoRef===refEnviada) errorGuardadoRef=''; pintarEstadoGuardado(); continuarPDF(); },
       function(){ errorGuardadoRef=refEnviada; versionGuardada=Math.max(0,versionGuardada-1); pintarEstadoGuardado(); continuarPDF(); }); // si no se pudo guardar, el PDF se genera igual y el letrero rojo lo avisa (el error al armar el PDF ya no se confunde con un guardado fallido)
   }
 
@@ -2607,10 +2720,23 @@ function generarPDF(){
     folioActual='PRUEBA-'+Date.now();
     guardarConFolioYContinuar();   // en modo prueba solo marca el letrero; no toca el Sheet
   } else {
-    obtenerFolioJSONP(function(folio){
-      folioActual=folio;
-      confirmarFolioJSONP(folioNumeroActual, function(){
-        guardarConFolioYContinuar();
+    // Candado: si esta misma cotización (mismo Ref = mismo día, teléfono y contenido) ya tiene folio,
+    // no se pide folio nuevo ni se guarda otro renglón: se avisa y se vuelve a bajar el mismo PDF.
+    buscarFolioPorRefJSONP(refVigente, function(folioExistente){
+      if(folioExistente){
+        alert('Cotización repetida\n\nEsta cotización ya se generó antes con el folio '+folioExistente+'.\nNo se crea un folio nuevo: se vuelve a bajar el mismo PDF.');
+        folioActual=folioExistente;
+        guardadoInfo={ref:refVigente, conFolio:true}; refDelFolio=refVigente;
+        pdfYaSubidoDrive=true;   // ese PDF ya se subió a Drive cuando se generó con ese folio
+        pintarEstadoGuardado();
+        continuarPDF();
+        return;
+      }
+      obtenerFolioJSONP(function(folio){
+        folioActual=folio;
+        confirmarFolioJSONP(folioNumeroActual, function(){
+          guardarConFolioYContinuar();
+        });
       });
     });
   }
@@ -2825,6 +2951,8 @@ function copiar(){
   function ok(){
     if(btn){btn.textContent='¡Copiado!';btn.classList.add('done');setTimeout(function(){btn.textContent='Copiar para WhatsApp';btn.classList.remove('done');},2000);}
     habilitarYaLaEnvie();
+    consumirBorradorActivo();   // la cotización salió: el borrador de donde vino ya no se ofrece
+    bloquearCotizacion(true);   // ya se envió: se ve pero no se edita
     registrarCotizacion();   // copiar = guardar: la cotización queda registrada en Hoja1
   }
   if(navigator.clipboard){navigator.clipboard.writeText(wt.textContent).then(ok).catch(function(){fb(wt.textContent);ok();});}
@@ -2863,7 +2991,7 @@ function nuevaCotizacionConCandado(){
       registrarCotizacion(function(exito){
         if(!exito && !confirm('⚠️ No se pudo guardar esta cotización en el historial.\n\n¿Borrarla de todos modos?\n\nAceptar = borrar.\nCancelar = conservarla para reintentar.')) return;
         continuarNuevaCotizacion();
-      });
+      }, {silencioso:true});   // al limpiar, una cotización ya guardada no necesita aviso
       return;
     }
   }
@@ -3033,7 +3161,17 @@ function calcularRef(texto, tel){
 }
 
 // ── Guardado automático ──
+// Un folio pertenece a UNA sola cotización (un contenido = una Ref). Si después de emitir el folio la cotización
+// cambia (aunque sea una pieza) la nueva ya no puede usar ese folio: es una cotización nueva, con su propio
+// folio y su propio Grupo. El folio anterior queda tal cual, ligado a la cotización que sí se emitió.
+function liberarFolioSiCambioContenido(){
+  if(refDelFolio && refDelFolio!==refVigente){
+    folioActual=null; folioNumeroActual=null; pdfYaSubidoDrive=false;
+    grupoRef=null; versionGuardada=0; refDelFolio='';
+  }
+}
 function nuevaVersionParaGuardar(){
+  liberarFolioSiCambioContenido();
   if(!grupoRef) grupoRef=refVigente;
   versionGuardada++;
   camposRefPend={ref:refVigente, grupo:grupoRef, version:versionGuardada};
@@ -3042,7 +3180,7 @@ function camposRef(){ return camposRefPend||{}; }
 
 // Guarda en Hoja1 la cotización actual si todavía no está guardada con su Ref actual.
 // alTerminar(exito, motivo) es opcional. Nunca bloquea el copiado (copiar ya ocurrió).
-function registrarCotizacion(alTerminar){
+function registrarCotizacion(alTerminar, opciones){
   function fin(exito,motivo){ if(typeof alTerminar==='function') alTerminar(exito,motivo); }
   generarWA();   // el Ref debe corresponder al contenido de este momento
   if(!hayProductos()){ fin(true); return; }
@@ -3053,18 +3191,32 @@ function registrarCotizacion(alTerminar){
   var refEnviada=refVigente;
   estadoGuardado='guardando'; errorGuardadoRef='';
   pintarEstadoGuardado();
-  nuevaVersionParaGuardar();
-  yaGuardado=false;   // es una versión nueva: guardarCotizacion no debe bloquearla
-  function terminar(exito){
+  function terminar(exito,motivo){
     estadoGuardado='';
-    if(exito){ guardadoInfo={ref:refEnviada, conFolio:false}; errorGuardadoRef=''; }
+    if(exito){ guardadoInfo={ref:refEnviada, conFolio:!!(motivo && motivo.conFolio)}; errorGuardadoRef=''; }
     else { errorGuardadoRef=refEnviada; versionGuardada=Math.max(0,versionGuardada-1); }
     pintarEstadoGuardado();
     var cbs=esperaGuardado; esperaGuardado=[];
-    fin(exito,exito?'':'error');
-    cbs.forEach(function(cb){ cb(exito,exito?'':'error'); });
+    var m=exito?((motivo&&motivo.repetida)?'repetida':''):'error';
+    fin(exito,m);
+    cbs.forEach(function(cb){ cb(exito,m); });
   }
-  guardarCotizacion(function(){ terminar(true); }, function(){ terminar(false); });
+  function guardarVersionNueva(){
+    nuevaVersionParaGuardar();
+    yaGuardado=false;   // es una versión nueva: guardarCotizacion no debe bloquearla
+    guardarCotizacion(function(){ terminar(true); }, function(){ terminar(false); });
+  }
+  // Candado para CUALQUIER cotización: si este Ref ya está en el Sheet (otra sesión, otra pantalla), no se guarda otro renglón.
+  // En modo de prueba (?test=1) no se consulta nada: ese modo no toca el Sheet real.
+  if(MODO_PRUEBA){ guardarVersionNueva(); return; }
+  buscarRefExisteJSONP(refEnviada, function(info){
+    if(info && info.found){
+      if(!(opciones && opciones.silencioso)) avisarCotizacionRepetida(info);
+      terminar(true,{repetida:true, conFolio:!!info.folio});
+      return;
+    }
+    guardarVersionNueva();
+  });
 }
 
 // Letrero de estado (reemplaza al botón "Guardar en historial").
@@ -3329,6 +3481,7 @@ window.addEventListener('load',function(){
   var cacheListo = false;
   var cacheError = '';
   var datosPend = null;    // últimos datos armados que aún no se respaldan
+  var refPend = '';        // Ref de esos datos (para mostrarla en el historial cuando no hay folio)
   var mostrar = POR_PAGINA;
   var detener = null;      // función para dejar de escuchar el historial
 
@@ -3453,7 +3606,7 @@ window.addEventListener('load',function(){
     if(!tokens.length) return lista;
     return lista.filter(function(d){
       var h=d._h;
-      if(!h){ h=d._h=normBusq([d.cliente,d.vehiculo,d.folio,d.asesor].join(' '))+' '+soloDigitos(d.telefono); }
+      if(!h){ h=d._h=normBusq([d.cliente,d.vehiculo,d.folio,d.ref,d.asesor].join(' '))+' '+soloDigitos(d.telefono); }
       return tokens.every(function(t){ return h.indexOf(t)>=0; });
     });
   }
@@ -3522,6 +3675,7 @@ window.addEventListener('load',function(){
       var partes=[fechaLegible(d.fecha)];
       if(d.asesor) partes.push(esc(d.asesor));
       if(d.folio) partes.push('<b>'+esc(d.folio)+'</b>');
+      else if(d.ref) partes.push('<b>'+esc(d.ref)+'</b>');   // copia de WhatsApp sin folio: se identifica por su Ref
       var filas=(d.partidas||[]).map(function(p){
         return '<tr><td>'+esc(p.producto)+(p.opcional?' <i>(opcional)</i>':'')+'</td><td>'+(esc(p.proveedor)||'—')+'</td><td style="text-align:right">'+esc(p.cant)+'</td><td style="text-align:right">'+(p.costo==null?'—':dinero(p.costo))+'</td><td style="text-align:right">'+dinero(p.precio)+'</td><td style="text-align:right">'+(p.opcional?'—':dinero(p.subtotal))+'</td></tr>';
       }).join('');
@@ -3701,6 +3855,7 @@ window.addEventListener('load',function(){
     if(typeof MODO_PRUEBA!=='undefined' && MODO_PRUEBA){ aviso('🧪 PRUEBA — no se respaldó en Firebase'); return null; }
     if(!api||!perfil){ aviso('⚠ No se respaldó en Firebase: inicia sesión en la pestaña Historial'); return null; }
     var docu=conCreador(armarDocumento(pend,folio),perfil), id=nuevoId();
+    if(refPend) docu.ref=refPend;
     return api.escribir(id,docu).then(function(){ aviso('☁ Respaldada en Firebase'); return id; })
       .catch(function(e){ try{console.warn('Respaldo Firebase falló:',e);}catch(x){} aviso('⚠ No se pudo respaldar en Firebase ('+((e&&e.code)||'error')+')'); return null; });
   }
@@ -3710,7 +3865,7 @@ window.addEventListener('load',function(){
   function envolver(){
     if(typeof armarDatosCotizacion==='function'){
       var o1=armarDatosCotizacion;
-      armarDatosCotizacion=function(){ var d=o1.apply(this,arguments); datosPend=d; return d; };
+      armarDatosCotizacion=function(){ var d=o1.apply(this,arguments); datosPend=d; refPend=(typeof refVigente==='string')?refVigente:''; return d; };
     }
     if(typeof guardarCotizacion==='function'){
       var o2=guardarCotizacion;
