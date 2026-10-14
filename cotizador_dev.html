@@ -273,6 +273,9 @@ input:focus,select:focus{
   color:var(--white);
 }
 .ttab:hover:not(.on){border-color:var(--val-light-blue);color:var(--val-dark-blue)}
+.ttab{position:relative}
+.ttab.ttab-err:not(.on){border-color:var(--val-red);color:var(--val-red);background:#fff5f5}
+.ttab.ttab-err::after{content:'!';position:absolute;top:-7px;right:-7px;width:16px;height:16px;border-radius:50%;background:#fff;color:var(--val-red);border:2px solid var(--val-red);font-size:10px;line-height:12px;text-align:center;font-weight:800}
 
 /* ── TALLER ROWS ────────────────────────────────────────── */
 .taller-hdr{display:grid;grid-template-columns:2fr 70px 50px 64px 26px;gap:5px;padding:4px 0;border-bottom:2px solid var(--val-dark-blue);font-size:10px;color:var(--val-dark-blue);font-weight:700;text-transform:uppercase;letter-spacing:.3px;margin-bottom:4px}
@@ -1947,6 +1950,26 @@ function provPedirOtro(clave, cb, opt){
   botonesNormales();
   try{ inp.focus(); }catch(e){}
 }
+// Proveedores que faltan segun la ultima validacion: id de renglon -> true. Se recuerdan aunque el renglon
+// no este en pantalla (otra pestaña), para marcarlos en rojo cuando se muestren y marcar tambien la pestaña.
+var provErrIds = {};
+function provSincronizarErrores(){
+  var porTab = {};
+  Object.keys(provErrIds).forEach(function(id){
+    var it=null;
+    for(var j=0;j<tallerItems.length;j++){ if(tallerItems[j].id===id){ it=tallerItems[j]; break; } }
+    if(!it || !provRequiere(it) || String(it.proveedor||'').trim()){ delete provErrIds[id]; return; }   // ya lo llenaron o ya no existe
+    porTab[it.tipo||'afinacion']=true;
+  });
+  var sels=document.querySelectorAll('select.prov-sel[data-prov-id]');
+  for(var i=0;i<sels.length;i++){
+    sels[i].classList.toggle('field-error', !!provErrIds[sels[i].getAttribute('data-prov-id')]);
+  }
+  var tabs=document.querySelectorAll('.ttab[data-s]');
+  for(var k=0;k<tabs.length;k++){
+    tabs[k].classList.toggle('ttab-err', !!porTab[tabs[k].getAttribute('data-s')]);
+  }
+}
 function provCambioSelect(sel){
   var id=sel.getAttribute('data-prov-id'), clave=sel.getAttribute('data-prov-k');
   var existe=tallerItems.some(function(i){ return i.id===id; });
@@ -1960,6 +1983,7 @@ function provCambioSelect(sel){
   }
   sel.classList.remove('field-error');
   updTallerField(id,'proveedor',sel.value);
+  provSincronizarErrores();
 }
 function provCambioTodos(sel){
   var clave=sel.getAttribute('data-prov-k');
@@ -2234,6 +2258,7 @@ function renderTallerItems() {
   }
   // Attach listeners
   // All events handled via delegation on #taller-items
+  provSincronizarErrores();   // las marcas rojas de proveedor faltante se conservan al cambiar de pestaña
 }
 
 // ── CARRITO UNIFICADO ────────────────────────────────────
@@ -2776,13 +2801,16 @@ function validarCampos(){
   // Proveedor obligatorio en toda pieza que va en la cotización (no en mano de obra ni en renglones de precio fijo)
   var selsProv=document.querySelectorAll('select.prov-sel.field-error');
   for(var sp=0;sp<selsProv.length;sp++) selsProv[sp].classList.remove('field-error');
+  provErrIds = {};
   tallerItems.forEach(function(i){
     if(!(i.concepto && i.precio!=='' && parseFloat(i.precio)>0 && parseFloat(i.qty)>0)) return;
     if(!provRequiere(i) || String(i.proveedor||'').trim()) return;
     errores.push('Proveedor de «'+String(i.concepto).trim()+'» ('+(PROV_NOMBRES[provTipoDeItem(i)]||'Taller')+')');
+    provErrIds[i.id]=true;
     var elp=document.querySelector('select.prov-sel[data-prov-id="'+i.id+'"]');
     if(elp) elp.classList.add('field-error');
   });
+  provSincronizarErrores();
   return errores;
 }
 

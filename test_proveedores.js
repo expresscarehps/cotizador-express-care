@@ -119,6 +119,65 @@ function tab(w, s) { w.setTallerSvc(s, null); }
   w.generarWA(); w.copiar();
   ok('C20 con una limpieza sin proveedor, "Copiar para WhatsApp" avisa y no deja pasar', alertas.length === 1 && /Faltan datos/.test(alertas[0]) && /cuerpo de aceleración/.test(alertas[0]), alertas);
 
+  console.log('\n— C3. Marcas rojas de proveedor en TODAS las pestañas (14 oct)');
+  w = abrir(); await wait(300);
+  $('#cli-nombre').value = 'Cliente Prueba'; $('#cli-tel').value = '6144567890'; $('#v-marca').value = 'Nissan'; $('#v-modelo').value = 'Sentra'; $('#v-anio').value = '2022'; $('#v-cil').value = '4';
+  const origen = $('#cli-origen'); if (origen && origen.options.length > 1) origen.selectedIndex = 1;
+  $('#asesor').value = 'XEN';
+  const rojosVisibles = () => $$(w, 'select.prov-sel.field-error').map(s => s.getAttribute('data-prov-id'));
+  const tabsMarcadas = () => $$(w, '.ttab.ttab-err').map(t => t.getAttribute('data-s')).sort();
+  const poner = (svc, nombre, campo, valor) => { tab(w, svc); const it = w.tallerItems.find(i => i.tipo === svc && i.concepto === nombre); w.updTallerField(it.id, campo, valor); w.updTallerField(it.id, 'qty', '1'); return it; };
+  const iFiltro = poner('afinacion', 'Filtro de aceite', 'costo', '100');
+  const iAceite = poner('afinacion', 'Aceite (especificar viscosidad)', 'precio', '130');
+  const iBalata = poner('frenos', 'Balatas delanteras', 'costo', '200');
+  const iRect = poner('frenos', 'Rectificado de discos', 'precio', '300');
+  const iHorq = poner('suspension', 'Horquilla', 'costo', '123');
+  tab(w, 'suspension');   // como en la prueba de Carlos: se copia estando en Suspensión
+  ok('C21 sin errores de proveedor antes de validar no hay marcas', rojosVisibles().length === 0 && tabsMarcadas().length === 0);
+  let eC3 = erroresProv(w);
+  ok('C22 la validación reporta las 4 faltantes (pieza, aceite, balatas, horquilla) y NO el rectificado', eC3.length === 4 && !eC3.some(x => /Rectificado/.test(x)), eC3);
+  ok('C23 en la pestaña visible (Suspensión) la Horquilla sale en rojo', rojosVisibles().length === 1 && rojosVisibles()[0] === iHorq.id, rojosVisibles());
+  ok('C24 las pestañas con faltantes quedan marcadas: Afinación, Frenos y Suspensión (Aceite y Libre no)', JSON.stringify(tabsMarcadas()) === JSON.stringify(['afinacion', 'frenos', 'suspension']), tabsMarcadas());
+  tab(w, 'afinacion');
+  const rojosAf = $$(w, '#taller-items .taller-row').filter(r => r.querySelector('select.prov-sel.field-error')).map(r => r.querySelector('input[data-f="concepto"]').value);
+  ok('C25 al abrir Afinación el filtro y el aceite por litro salen en rojo (y los demás renglones no)', JSON.stringify(rojosAf) === JSON.stringify(['Filtro de aceite', 'Aceite (especificar viscosidad)']), rojosAf);
+  $('#ttab-frenos').click();   // clic real en el botón de la pestaña (el ayudante tab() no marca la pestaña activa)
+  const rojosFr = $$(w, '#taller-items .taller-row').filter(r => r.querySelector('select.prov-sel.field-error')).map(r => r.querySelector('input[data-f="concepto"]').value);
+  ok('C26 al abrir Frenos solo las balatas salen en rojo, el rectificado opcional no', JSON.stringify(rojosFr) === JSON.stringify(['Balatas delanteras']), rojosFr);
+  ok('C27 la pestaña actual sigue activa (.on) y la marca de error no la reemplaza', $('#ttab-frenos').classList.contains('on') && $('#ttab-frenos').classList.contains('ttab-err'));
+  // elegir proveedor quita SOLO la marca de ese renglón
+  cambiar(w, filaDe(w, 'Balatas delanteras').querySelector('select.prov-sel'), 'AutoZone');
+  ok('C28 al elegir proveedor se quita la marca del renglón y la pestaña Frenos deja de estar marcada', rojosVisibles().length === 0 && tabsMarcadas().indexOf('frenos') < 0, tabsMarcadas());
+  ok('C29 Afinación y Suspensión siguen marcadas', JSON.stringify(tabsMarcadas()) === JSON.stringify(['afinacion', 'suspension']), tabsMarcadas());
+  tab(w, 'afinacion');
+  cambiar(w, filaDe(w, 'Filtro de aceite').querySelector('select.prov-sel'), 'AutoZone');
+  ok('C30 con un renglón de Afinación pendiente, la pestaña sigue marcada', tabsMarcadas().indexOf('afinacion') >= 0 && rojosVisibles().length === 1);
+  cambiar(w, filaDe(w, 'Aceite (especificar viscosidad)').querySelector('select.prov-sel'), 'Chavitar');
+  ok('C31 al completar el aceite por litro la pestaña Afinación se desmarca', tabsMarcadas().indexOf('afinacion') < 0 && rojosVisibles().length === 0, tabsMarcadas());
+  // "Mismo proveedor" también limpia
+  tab(w, 'suspension');
+  cambiar(w, $('#prov-todos-sel'), 'Govi');
+  ok('C32 "Mismo proveedor" en Suspensión quita la marca y la pestaña', tabsMarcadas().length === 0 && rojosVisibles().length === 0, tabsMarcadas());
+  ok('C33 con todos los proveedores puestos, validar no devuelve errores de proveedor', erroresProv(w).length === 0 && tabsMarcadas().length === 0);
+  // borrar el renglón pendiente quita su marca; limpiar todo quita todas
+  iHorq.proveedor = ''; w.validarCampos();
+  ok('C34 si se vuelve a vaciar, vuelve a marcarse la pestaña Suspensión', tabsMarcadas().join() === 'suspension', tabsMarcadas());
+  w.tallerItems = w.tallerItems.filter(i => i.id !== iHorq.id); w.renderTallerItems();
+  ok('C35 si se elimina el renglón pendiente, ya no queda marca en la pestaña', tabsMarcadas().length === 0, tabsMarcadas());
+  iBalata.proveedor = ''; w.validarCampos();
+  ok('C36 de nuevo con un faltante hay marca', tabsMarcadas().join() === 'frenos');
+  w.limpiarTodo(true);
+  ok('C37 "Nueva cotización" limpia todas las marcas', tabsMarcadas().length === 0 && rojosVisibles().length === 0 && Object.keys(w.provErrIds).length === 0, tabsMarcadas());
+  // copiar real: con faltantes en otra pestaña sigue bloqueando
+  w = abrir(); await wait(300);
+  const alertas3 = []; w.alert = m => alertas3.push(String(m));
+  $('#cli-nombre').value = 'Cliente Prueba'; $('#cli-tel').value = '6144567890'; $('#v-marca').value = 'Nissan'; $('#v-modelo').value = 'Sentra'; $('#v-anio').value = '2022'; $('#v-cil').value = '4';
+  { const o = $('#cli-origen'); if (o && o.options.length > 1) o.selectedIndex = 1; } $('#asesor').value = 'XEN';
+  { const it = poner('frenos', 'Balatas delanteras', 'costo', '200'); }
+  tab(w, 'libre');
+  w.copiar();
+  ok('C38 al copiar desde Libre con faltante en Frenos: avisa, y la pestaña Frenos queda marcada', alertas3.length === 1 && /Balatas delanteras/.test(alertas3[0]) && tabsMarcadas().join() === 'frenos', { alertas3, tabs: tabsMarcadas() });
+
   console.log('\n— D. "Mismo proveedor para todas las piezas"');
   w = abrir(); await wait(300);
   tab(w, 'suspension');
