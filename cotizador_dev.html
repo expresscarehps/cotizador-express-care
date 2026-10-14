@@ -1767,6 +1767,7 @@ var PROV_BASE = {
 // Escrituras que ya se usaron y que NO deben crear un proveedor distinto
 var PROV_ALIAS = {AZ:'AutoZone', ZONE:'AutoZone', AUTOZON:'AutoZone', COSMO:'Cosmos', DART:'Dar', OCTAVIO:'Octavio Vázquez', MERCADOLIBRE:'Mercado Libre'};
 var PROV_OTRO = '__otro__';
+var PROV_ANCHO_OPC = 22.4;   // ancho (px) que ocupa el botón ✓/+ de las piezas; se deja ese hueco en aceite/limpiezas/rectificado para que el proveedor quede alineado
 var PROV_LISTAS = provClonar(PROV_BASE);
 var PROV_API = null, PROV_PERFIL = null, PROV_STOP = null;
 
@@ -2200,16 +2201,25 @@ function renderTallerItems() {
       var qtyLabel = esAceiteItem ? 'Lts' : 'Cant';
       var provSel = provEsRectificado(item) ? provSelectHTML(item,'rectificado','Proveedor (opcional)')
                   : (provEsAceiteOLimpieza(item) ? provSelectHTML(item,provTipoDeItem(item,currentKey),'Proveedor…') : '');
+      var qtyHTML = item.conQty ? '<div class="tr-qty"><div style="font-size:9px;color:#888;text-align:center;margin-bottom:1px">'+qtyLabel+'</div><input type="text" inputmode="numeric" value="'+(item.qty||'')+'" placeholder="0" data-id="'+item.id+'" data-f="qty" class="ti-num" style="width:100%;text-align:center"></div>' : '';
+      if(provSel){
+        // Con proveedor: las columnas quedan ALINEADAS con las de las piezas (concepto, proveedor, cantidad, precio bajo PVP, X)
+        div.innerHTML=
+          '<div class="tr-concepto"><div style="display:flex;gap:4px;align-items:center"><input type="text" value="'+item.concepto+'" placeholder="Concepto..." data-id="'+item.id+'" data-f="concepto" class="ti" style="flex:65"><input type="text" class="ti" disabled tabindex="-1" aria-hidden="true" style="flex:35;font-size:12px;visibility:hidden">'+provSel+'<span style="flex:0 0 '+PROV_ANCHO_OPC+'px"></span></div>'+pend+'</div>'+
+          '<div class="tr-costo" style="text-align:center"><span class="tr-mo-badge" style="background:#e0e0e0;color:#666">FIJO</span></div>'+
+          '<div class="tr-margen"></div>'+
+          (item.conQty ? qtyHTML : '<div style="flex:0 0 36px"></div>')+
+          '<div style="flex:0 0 40px"></div>'+
+          '<div class="tr-pvp"><div style="font-size:9px;color:#888;text-align:right;margin-bottom:1px">Precio</div><input type="text" inputmode="decimal" value="'+(item.precio||'')+'" placeholder="0" data-id="'+item.id+'" data-f="precio" class="ti-precio" style="width:100%"></div>'+
+          '<button class="cx" data-id="'+item.id+'">X</button>';
+      } else {
       div.innerHTML=
-        '<div class="tr-concepto">'+
-          (provSel
-            ? '<div style="display:flex;gap:4px;align-items:center"><input type="text" value="'+item.concepto+'" placeholder="Concepto..." data-id="'+item.id+'" data-f="concepto" class="ti" style="flex:65">'+provSel+'</div>'   // concepto y proveedor en UN solo renglón
-            : '<input type="text" value="'+item.concepto+'" placeholder="Concepto..." data-id="'+item.id+'" data-f="concepto" class="ti">')+
-          pend+'</div>'+
+        '<div class="tr-concepto"><input type="text" value="'+item.concepto+'" placeholder="Concepto..." data-id="'+item.id+'" data-f="concepto" class="ti">'+pend+'</div>'+
         '<span class="tr-mo-badge" style="background:#e0e0e0;color:#666">FIJO</span>'+
-        (item.conQty ? '<div class="tr-qty"><div style="font-size:9px;color:#888;text-align:center;margin-bottom:1px">'+qtyLabel+'</div><input type="text" inputmode="numeric" value="'+(item.qty||'')+'" placeholder="0" data-id="'+item.id+'" data-f="qty" class="ti-num" style="width:100%;text-align:center"></div>' : '')+
+        qtyHTML+
         '<div class="tr-pvp'+(item.conQty?'-sm':'')+'"><div style="font-size:9px;color:#888;text-align:right;margin-bottom:1px">Precio</div><input type="text" inputmode="decimal" value="'+(item.precio||'')+'" placeholder="0" data-id="'+item.id+'" data-f="precio" class="ti-precio" style="width:100%"></div>'+
         '<button class="cx" data-id="'+item.id+'">X</button>';
+      }
     } else {
       // Parte/refacción: concepto + costo + margen + PVP calculado
       div.innerHTML=
