@@ -273,6 +273,9 @@ input:focus,select:focus{
   color:var(--white);
 }
 .ttab:hover:not(.on){border-color:var(--val-light-blue);color:var(--val-dark-blue)}
+.ttab{position:relative}
+.ttab.ttab-err:not(.on){border-color:var(--val-red);color:var(--val-red);background:#fff5f5}
+.ttab.ttab-err::after{content:'!';position:absolute;top:-7px;right:-7px;width:16px;height:16px;border-radius:50%;background:#fff;color:var(--val-red);border:2px solid var(--val-red);font-size:10px;line-height:12px;text-align:center;font-weight:800}
 
 /* ── TALLER ROWS ────────────────────────────────────────── */
 .taller-hdr{display:grid;grid-template-columns:2fr 70px 50px 64px 26px;gap:5px;padding:4px 0;border-bottom:2px solid var(--val-dark-blue);font-size:10px;color:var(--val-dark-blue);font-weight:700;text-transform:uppercase;letter-spacing:.3px;margin-bottom:4px}
@@ -609,7 +612,7 @@ label.chk-sin-nombre input:checked + span{color:var(--val-dark-blue);font-weight
 <div id="p-servicios" class="pnl">
   <div class="card">
     <p class="st">Toca para agregar o quitar</p>
-    <div class="sg" id="sg"><button class="sb" data-k="ALI01"><span>Alineacion auto 4 ruedas</span><span class="sp">$402.00</span></button><button class="sb" data-k="ALI02"><span>Alineacion camion 3/4</span><span class="sp">$518.00</span></button><button class="sb" data-k="BAL01"><span>Balanceo rin 13-15</span><span class="sp">$80.00</span></button><button class="sb" data-k="BAL02"><span>Balanceo rin 16-19</span><span class="sp">$103.00</span></button><button class="sb" data-k="BAL03"><span>Balanceo rin 20+</span><span class="sp">$172.00</span></button><button class="sb" data-k="CAM02"><span>Cambio de llanta</span><span class="sp">$125.00</span></button><button class="sb" data-k="MON01"><span>Montaje rin 13-16</span><span class="sp">$88.00</span></button><button class="sb" data-k="MON02"><span>Montaje rin 17-19</span><span class="sp">$125.00</span></button><button class="sb" data-k="MON03"><span>Montaje rin 20-22</span><span class="sp">$250.00</span></button><button class="sb" data-k="ONZ01"><span>Onzas plomo adhesivas</span><span class="sp">$25.00</span></button><button class="sb" data-k="ONZ02"><span>Onzas plomo grapa</span><span class="sp">$25.00</span></button><button class="sb" data-k="PAQ01"><span>Paquete 4 ruedas compra llantas</span><span class="sp">$540.00</span></button><button class="sb" data-k="PAQ02"><span>Paquete 2 ruedas compra llantas</span><span class="sp">$420.00</span></button><button class="sb" data-k="PAQ03"><span>Paquete 4 ruedas serv directo</span><span class="sp">$780.00</span></button><button class="sb" data-k="PIV13"><span>Pivote TR413</span><span class="sp">$25.00</span></button><button class="sb" data-k="PIV15"><span>Pivote TR-415</span><span class="sp">$25.00</span></button><button class="sb" data-k="PIV18"><span>Pivote TR-418</span><span class="sp">$25.00</span></button><button class="sb" data-k="ROT"><span>Rotacion de llantas</span><span class="sp">$240.00</span></button></div>
+    <div class="sg" id="sg"><button class="sb" data-k="ALI01"><span>Alineacion auto 4 ruedas</span><span class="sp">$402.00</span></button><button class="sb" data-k="ALI02"><span>Alineacion camion 3/4</span><span class="sp">$518.00</span></button><button class="sb" data-k="BAL01"><span>Balanceo rin 13-15</span><span class="sp">$80.00</span></button><button class="sb" data-k="BAL02"><span>Balanceo rin 16-19</span><span class="sp">$103.00</span></button><button class="sb" data-k="BAL03"><span>Balanceo rin 20+</span><span class="sp">$172.00</span></button><button class="sb" data-k="CAM02"><span>Cambio de llanta</span><span class="sp">$125.00</span></button><button class="sb" data-k="MON01"><span>Montaje rin 13-16</span><span class="sp">$88.00</span></button><button class="sb" data-k="MON02"><span>Montaje rin 17-19</span><span class="sp">$125.00</span></button><button class="sb" data-k="MON03"><span>Montaje rin 20-22</span><span class="sp">$250.00</span></button><button class="sb" data-k="ONZ01"><span>Onzas plomo adhesivas</span><span class="sp">$25.00</span></button><button class="sb" data-k="ONZ02"><span>Onzas plomo grapa</span><span class="sp">$25.00</span></button><button class="sb" data-k="PAQ01"><span>Paquete 4 ruedas compra llantas</span><span class="sp">$480.00</span></button><button class="sb" data-k="PAQ02"><span>Paquete 2 ruedas compra llantas</span><span class="sp">$380.00</span></button><button class="sb" data-k="PAQ03"><span>Paquete 4 ruedas serv directo</span><span class="sp">$780.00</span></button><button class="sb" data-k="PIV13"><span>Pivote TR413</span><span class="sp">$25.00</span></button><button class="sb" data-k="PIV15"><span>Pivote TR-415</span><span class="sp">$25.00</span></button><button class="sb" data-k="PIV18"><span>Pivote TR-418</span><span class="sp">$25.00</span></button><button class="sb" data-k="ROT"><span>Rotacion de llantas</span><span class="sp">$240.00</span></button></div>
   </div>
 </div>
 
@@ -852,7 +855,7 @@ function marcasUnicas(catalogo){
 var MARCAS=marcasUnicas(DATA);
 var MARCAS_AYALA=marcasUnicas(AYALA);
 var MARCAS_VEGA=marcasUnicas(VEGA);
-var SVC=[{"clave":"ALI01","nombre":"Alineacion auto 4 ruedas","precio":405},{"clave":"ALI02","nombre":"Alineacion camion 3/4","precio":518},{"clave":"BAL01","nombre":"Balanceo rin 13-15","precio":80},{"clave":"BAL02","nombre":"Balanceo rin 16-19","precio":105},{"clave":"BAL03","nombre":"Balanceo rin 20+","precio":170},{"clave":"CAM02","nombre":"Cambio de llanta","precio":95},{"clave":"MON01","nombre":"Montaje rin 13-16","precio":85},{"clave":"MON02","nombre":"Montaje rin 17-19","precio":120},{"clave":"MON03","nombre":"Montaje rin 20-22","precio":240},{"clave":"ONZ01","nombre":"Onzas plomo adhesivas","precio":20},{"clave":"ONZ02","nombre":"Onzas plomo grapa","precio":20},{"clave":"PAQ01","nombre":"Paquete compra 4 llantas — Incluye montaje, balanceo y pivotes","precio":540},{"clave":"PAQ02","nombre":"Paquete compra 2 llantas — Incluye montaje, balanceo y pivotes","precio":420},{"clave":"PAQ03","nombre":"Paquete 4 llantas servicio directo — Incluye montaje, balanceo y pivotes","precio":780},{"clave":"PIV13","nombre":"Pivote TR413","precio":20},{"clave":"PIV15","nombre":"Pivote TR-415","precio":20},{"clave":"PIV18","nombre":"Pivote TR-418","precio":20},{"clave":"ROT","nombre":"Rotacion de llantas","precio":230}];
+var SVC=[{"clave":"ALI01","nombre":"Alineacion auto 4 ruedas","precio":405},{"clave":"ALI02","nombre":"Alineacion camion 3/4","precio":518},{"clave":"BAL01","nombre":"Balanceo rin 13-15","precio":80},{"clave":"BAL02","nombre":"Balanceo rin 16-19","precio":105},{"clave":"BAL03","nombre":"Balanceo rin 20+","precio":170},{"clave":"CAM02","nombre":"Cambio de llanta","precio":95},{"clave":"MON01","nombre":"Montaje rin 13-16","precio":85},{"clave":"MON02","nombre":"Montaje rin 17-19","precio":120},{"clave":"MON03","nombre":"Montaje rin 20-22","precio":240},{"clave":"ONZ01","nombre":"Onzas plomo adhesivas","precio":20},{"clave":"ONZ02","nombre":"Onzas plomo grapa","precio":20},{"clave":"PAQ01","nombre":"Paquete compra 4 llantas — Incluye montaje, balanceo y pivotes","precio":480},{"clave":"PAQ02","nombre":"Paquete compra 2 llantas — Incluye montaje, balanceo y pivotes","precio":380},{"clave":"PAQ03","nombre":"Paquete 4 llantas servicio directo — Incluye montaje, balanceo y pivotes","precio":780},{"clave":"PIV13","nombre":"Pivote TR413","precio":20},{"clave":"PIV15","nombre":"Pivote TR-415","precio":20},{"clave":"PIV18","nombre":"Pivote TR-418","precio":20},{"clave":"ROT","nombre":"Rotacion de llantas","precio":230}];
 
 
 
@@ -1037,7 +1040,7 @@ var MODO_PRUEBA = (typeof window!=='undefined' && window.location && /[?&]test=1
 // Se detecta por el nombre del archivo: en dev, el aviso real a GHL pide confirmación explícita
 // (para no etiquetar clientes reales por accidente). También viaja en el aviso como "fuente".
 var ES_DEV = (typeof window!=='undefined' && window.location && /dev\.html?$/i.test(window.location.pathname||''));
-var VERSION_PAGINA = 'prod 2026-10-14 cotizacion enviada se bloquea; boton OK no duplica; un folio = una cotizacion; Ref en historial; respaldo en Firebase guarda la marca; telefono inventado se bloquea; historial muestra No. de parte; proveedor en lista por servicio, obligatorio; "SOLO LLANTAS" no vale si hay taller; aceite y limpiezas llevan proveedor (ECOM)';
+var VERSION_PAGINA = 'prod 2026-10-15 cotizacion enviada se bloquea; boton OK no duplica; un folio = una cotizacion; Ref en historial; respaldo en Firebase guarda la marca; telefono inventado se bloquea; historial muestra No. de parte; proveedor en lista por servicio, obligatorio; "SOLO LLANTAS" no vale si hay taller; aceite y limpiezas llevan proveedor (ECOM); marcas rojas de proveedor en todas las pestanas; balatas margen 30; paquetes llantas 480/380 e instalacion +120/+190 por llanta';
 
 var RIN = {
   'a': {mon:85,  bal:80,  piv:20, h:'Montaje $85 - Balanceo $80 - Pivote $20 por llanta'},
@@ -1073,8 +1076,8 @@ var TALLER_TEMPLATES = {
   frenos: {
     tipo: 'Taller - Frenos',
     items: [
-      {concepto:'Balatas delanteras',                  costo:'', margen:32.5, mo:false, pend:true,  qty:0},
-      {concepto:'Balatas / zapatas traseras',          costo:'', margen:32.5, mo:false, pend:true,  qty:0},
+      {concepto:'Balatas delanteras',                  costo:'', margen:30,   mo:false, pend:true,  qty:0},
+      {concepto:'Balatas / zapatas traseras',          costo:'', margen:30,   mo:false, pend:true,  qty:0},
       {concepto:'Rectificado de discos',               costo:'', margen:0,  mo:false, pend:false, precioFijo:true, qty:0, conQty:true},
       {concepto:'Rectificado de tambor',               costo:'', margen:0,  mo:false, pend:false, precioFijo:true, qty:0, conQty:true},
       {concepto:'Mano de obra balatas delanteras',     costo:'', margen:0,  mo:true,  pend:false, qty:0, descuento:0},
@@ -1537,8 +1540,8 @@ function recalcPVP() {
 
 // ── INSTALACIÓN DE LLANTAS (montaje/balanceo/pivote) ──────
 // Regla de negocio (ago-2026):
-//  · 4+ llantas en la cotización → +$135 al precio unitario de CADA llanta (base: paquete de $540 ÷ 4), sin línea de Montaje/Balanceo/Pivote ni "Paquete" por separado.
-//  · 2 o 3 llantas → +$210 al precio unitario de CADA llanta (base: paquete de $420 ÷ 2), sin línea por separado.
+//  · 4+ llantas en la cotización → +$120 al precio unitario de CADA llanta (base: paquete de $480 ÷ 4; antes $135 con paquete de $540, cambio 14-oct-2026), sin línea de Montaje/Balanceo/Pivote ni "Paquete" por separado.
+//  · 2 o 3 llantas → +$190 al precio unitario de CADA llanta (base: paquete de $380 ÷ 2; antes $210 con paquete de $420, cambio 14-oct-2026), sin línea por separado.
 //  · 1 sola llanta → precio de la llanta sin cambio; Montaje + Balanceo + Pivote se cotizan como líneas individuales, como antes.
 // Se recalcula cada vez que se agrega/quita una llanta, cambia su cantidad, o cambia el margen (recalcPVP).
 function recalcInstalacionLlantas() {
@@ -1550,8 +1553,8 @@ function recalcInstalacionLlantas() {
   if (_opc.length) totalQty = (parseFloat(_opc[0].qty) || 0);
 
   var recargo = 0;
-  if (totalQty >= 4) recargo = 135;
-  else if (totalQty === 2 || totalQty === 3) recargo = 210;
+  if (totalQty >= 4) recargo = 120;
+  else if (totalQty === 2 || totalQty === 3) recargo = 190;
   // totalQty === 1 (o 0): recargo queda en 0, precio de la llanta sin cambio
 
   // Quitar las líneas de instalación (montaje/balanceo/pivote) ligadas a llantas.
@@ -1947,6 +1950,26 @@ function provPedirOtro(clave, cb, opt){
   botonesNormales();
   try{ inp.focus(); }catch(e){}
 }
+// Proveedores que faltan segun la ultima validacion: id de renglon -> true. Se recuerdan aunque el renglon
+// no este en pantalla (otra pestaña), para marcarlos en rojo cuando se muestren y marcar tambien la pestaña.
+var provErrIds = {};
+function provSincronizarErrores(){
+  var porTab = {};
+  Object.keys(provErrIds).forEach(function(id){
+    var it=null;
+    for(var j=0;j<tallerItems.length;j++){ if(tallerItems[j].id===id){ it=tallerItems[j]; break; } }
+    if(!it || !provRequiere(it) || String(it.proveedor||'').trim()){ delete provErrIds[id]; return; }   // ya lo llenaron o ya no existe
+    porTab[it.tipo||'afinacion']=true;
+  });
+  var sels=document.querySelectorAll('select.prov-sel[data-prov-id]');
+  for(var i=0;i<sels.length;i++){
+    sels[i].classList.toggle('field-error', !!provErrIds[sels[i].getAttribute('data-prov-id')]);
+  }
+  var tabs=document.querySelectorAll('.ttab[data-s]');
+  for(var k=0;k<tabs.length;k++){
+    tabs[k].classList.toggle('ttab-err', !!porTab[tabs[k].getAttribute('data-s')]);
+  }
+}
 function provCambioSelect(sel){
   var id=sel.getAttribute('data-prov-id'), clave=sel.getAttribute('data-prov-k');
   var existe=tallerItems.some(function(i){ return i.id===id; });
@@ -1960,6 +1983,7 @@ function provCambioSelect(sel){
   }
   sel.classList.remove('field-error');
   updTallerField(id,'proveedor',sel.value);
+  provSincronizarErrores();
 }
 function provCambioTodos(sel){
   var clave=sel.getAttribute('data-prov-k');
@@ -2234,6 +2258,7 @@ function renderTallerItems() {
   }
   // Attach listeners
   // All events handled via delegation on #taller-items
+  provSincronizarErrores();   // las marcas rojas de proveedor faltante se conservan al cambiar de pestaña
 }
 
 // ── CARRITO UNIFICADO ────────────────────────────────────
@@ -2776,13 +2801,16 @@ function validarCampos(){
   // Proveedor obligatorio en toda pieza que va en la cotización (no en mano de obra ni en renglones de precio fijo)
   var selsProv=document.querySelectorAll('select.prov-sel.field-error');
   for(var sp=0;sp<selsProv.length;sp++) selsProv[sp].classList.remove('field-error');
+  provErrIds = {};
   tallerItems.forEach(function(i){
     if(!(i.concepto && i.precio!=='' && parseFloat(i.precio)>0 && parseFloat(i.qty)>0)) return;
     if(!provRequiere(i) || String(i.proveedor||'').trim()) return;
     errores.push('Proveedor de «'+String(i.concepto).trim()+'» ('+(PROV_NOMBRES[provTipoDeItem(i)]||'Taller')+')');
+    provErrIds[i.id]=true;
     var elp=document.querySelector('select.prov-sel[data-prov-id="'+i.id+'"]');
     if(elp) elp.classList.add('field-error');
   });
+  provSincronizarErrores();
   return errores;
 }
 
