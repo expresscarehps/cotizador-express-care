@@ -44,6 +44,19 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   w.setQty(llanta().id, 2); await wait(30);
   ok('9 el total de 2 llantas sube exactamente 2 × $190 = $380 sobre el precio base', Math.abs(llanta().precio * 2 - (base * 2 + 380)) < 0.001, [llanta().precio, base]);
 
+  console.log('\n— Nota de precios de instalación según el rin (15 oct 2026: la nota inicial decía $88/$25)');
+  const hint = () => (doc.getElementById('rh') || {}).textContent;
+  const rinInicial = w.RIN[w.rin];
+  // La nota se lee de la pantalla recién abierta (antes de tocar un rin), pero ya se tocaron cosas arriba; se verifica contra el HTML original.
+  const hintHtml = (html.match(/<p class="hint" id="rh">([^<]*)<\/p>/) || [])[1];
+  ok('10 al abrir la página la nota dice lo mismo que el rin elegido por defecto (13-16): $85 / $80 / $20', hintHtml === rinInicial.h && /Montaje \$85 - Balanceo \$80 - Pivote \$20/.test(hintHtml), [hintHtml, rinInicial.h]);
+  for (const k of ['a', 'b', 'c']) {
+    doc.querySelector('.rb[data-r="' + k + '"]').click(); await wait(20);
+    const r = w.RIN[k];
+    ok('11' + k + ' rin ' + k + ': la nota muestra los mismos montos que se cobran (Montaje $' + r.mon + ', Balanceo $' + r.bal + ', Pivote $' + r.piv + ')', hint() === 'Montaje $' + r.mon + ' - Balanceo $' + r.bal + ' - Pivote $' + r.piv + ' por llanta', hint());
+  }
+  doc.querySelector('.rb[data-r="a"]').click(); await wait(20);
+
   console.log('\n=============================================\n' + passed + ' pasaron, ' + failed + ' fallaron');
   process.exit(failed ? 1 : 0);
 })();
