@@ -55,8 +55,8 @@ const r2 = x => Math.round(x * 100) / 100;
       if (!l) { difC.push(d.id + ' no entró al carrito'); continue; }
       const esperado = pago === 'meses' ? d.precio_meses : d.precio_contado;
       if (Math.abs(l.precioBase - esperado) > 1e-9) (pago === 'meses' ? difM : difC).push([d.id, l.precioBase, esperado]);
-      // Instalación: 1 → sin cambio; 2 y 3 → +210; 4 → +135, sumada al precio unitario
-      for (const [q, rec] of [[1, 0], [2, 210], [3, 210], [4, 135], [8, 135]]) {
+      // Instalación: 1 → sin cambio; 2 y 3 → +190; 4 o más → +120, sumada al precio unitario (cambio 14 oct 2026: paquetes $380 y $480)
+      for (const [q, rec] of [[1, 0], [2, 190], [3, 190], [4, 120], [8, 120]]) {
         l.qty = q; w.recalcInstalacionLlantas();
         const lq = w.cart.find(c => c.t === 'l');
         if (Math.abs(lq.precio - (esperado + rec)) > 1e-9) difI.push([d.id, pago, q, lq.precio, esperado + rec]);
@@ -66,8 +66,8 @@ const r2 = x => Math.round(x * 100) / 100;
   w.pago = 'contado';
   ok('12 ' + n + ' pruebas de carrito (' + muestra.length + ' llantas × contado/meses): precio base idéntico en contado', difC.length === 0, difC.slice(0, 3));
   ok('13 ... y en meses', difM.length === 0, difM.slice(0, 3));
-  ok('14 instalación 1 / 2 / 3 / 4 / 8 llantas: precio unitario = catálogo + $0 / $210 / $210 / $135 / $135 (contado y meses)', difI.length === 0, difI.slice(0, 3));
-  ok('15 reglas_precios_bot.json trae las mismas cifras de instalación que el cotizador', reg.instalacion_por_llanta.cuatro_o_mas === 135 && reg.instalacion_por_llanta.dos_o_tres === 210 && reg.instalacion_por_llanta.una === 0);
+  ok('14 instalación 1 / 2 / 3 / 4 / 8 llantas: precio unitario = catálogo + $0 / $190 / $190 / $120 / $120 (contado y meses)', difI.length === 0, difI.slice(0, 3));
+  ok('15 reglas_precios_bot.json trae las mismas cifras de instalación que el cotizador', reg.instalacion_por_llanta.cuatro_o_mas === 120 && reg.instalacion_por_llanta.dos_o_tres === 190 && reg.instalacion_por_llanta.una === 0);
   console.log('  ℹ️ claves repetidas entre proveedores: ' + dupCve.size + ' · llantas de la muestra no probadas por eso: ' + sinProbar);
   console.log('\n' + passed + ' pasaron, ' + failed + ' fallaron');
   process.exit(failed ? 1 : 0);

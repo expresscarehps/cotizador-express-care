@@ -31,10 +31,23 @@ w.DATA.forEach(d => agrega('SERV', d, 'costo', d.precio, () => w.pvpLlanta(d.pre
 w.VEGA.forEach(d => agrega('VEGA', d, 'costo', d.costo, () => w.pvpLlanta(d.costo, d.marca), w.margenLlanta(d.marca)));
 w.AYALA.forEach(d => agrega('AYALA', d, 'lista', d.lista, () => w.pvpAyala(d.lista), null));
 
+// Recargo de instalación por llanta: se LEE del cotizador (recalcInstalacionLlantas), no se escribe a mano.
+// Así, si cambian los paquetes (14 oct 2026: $480 ÷ 4 = $120 y $380 ÷ 2 = $190), el bot se actualiza solo al regenerar.
+function recargoInstalacion(cantidad) {
+  const guardado = w.cart;
+  try {
+    w.cart = [{ id: '__regla__', t: 'l', qty: cantidad, precio: 0, precioBase: 0 }];
+    w.recalcInstalacionLlantas();
+    return w.instalacionInfo.recargo;
+  } finally { w.cart = guardado; w.recalcInstalacionLlantas(); }
+}
+const INST = { cuatro_o_mas: recargoInstalacion(4), dos_o_tres: recargoInstalacion(2), una: recargoInstalacion(1) };
+if (recargoInstalacion(3) !== INST.dos_o_tres || recargoInstalacion(8) !== INST.cuatro_o_mas) throw new Error('El recargo de instalación del cotizador no es consistente por escalones: ' + JSON.stringify(INST));
+
 const reglas = {
   version_cotizador: version, actualizado: hoy,
   descripcion: 'Reglas que el bot debe aplicar SOBRE precio_contado / precio_meses de cada llanta. Fuente: cotizador. No recalcular margenes ni descuentos en el bot.',
-  instalacion_por_llanta: { cuatro_o_mas: 135, dos_o_tres: 210, una: 0,
+  instalacion_por_llanta: { cuatro_o_mas: INST.cuatro_o_mas, dos_o_tres: INST.dos_o_tres, una: INST.una,
     nota: 'Se SUMA al precio unitario DESPUES del margen y DESPUES del recargo de meses. La cantidad es el total de llantas de la cotizacion. Con 1 llanta se cotizan aparte Montaje/Balanceo/Pivote segun rin (tabla abajo).' },
   una_llanta_lineas_por_rin: w.RIN ? Object.fromEntries(Object.entries(w.RIN).map(([k, v]) => [k, { montaje: v.mon, balanceo: v.bal, pivote: v.piv }])) : null,
   categorias_rin: { a: 'rin 13 a 16', b: 'rin 17 a 19', c: 'rin 20 o mas', nota: 'Define cual fila de una_llanta_lineas_por_rin aplica cuando se cotiza UNA sola llanta (el cotizador la elige el asesor con los botones de rin).' },

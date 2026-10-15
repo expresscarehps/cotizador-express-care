@@ -56,7 +56,8 @@ test('BAL01 = $80',    ()=>svc.BAL01?.precio===80);
 test('BAL02 = $105',   ()=>svc.BAL02?.precio===105);
 test('ROT   = $230',   ()=>svc.ROT?.precio===230);
 test('ONZ01 = $20',    ()=>svc.ONZ01?.precio===20);
-test('PAQ01 = $540',   ()=>svc.PAQ01?.precio===540);
+test('PAQ01 = $480 (paquete compra 4 llantas, antes $540)',   ()=>svc.PAQ01?.precio===480);
+test('PAQ02 = $380 (paquete compra 2 llantas, antes $420)',   ()=>svc.PAQ02?.precio===380);
 test('PAQ01 incluye pivotes', ()=>svc.PAQ01?.nombre?.includes('pivotes'));
 
 // ══════════════════════════════════════════════════════════

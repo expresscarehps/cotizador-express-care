@@ -535,7 +535,7 @@ const textoLetrero = r => $(r, 'estado-guardado').textContent;
       const tires = r.w.cart.filter(c => c.t === 'l');
       ok('P1 los resultados traen casillas y al marcar 3 aparece la barra "Cotizar opciones"', cves.length === 3 && $(r, 'opc-bar') !== null, cves);
       ok('P2 quedan 3 opciones numeradas 1-2-3, cada una con 4 piezas', tires.length === 3 && tires.map(t => t.op).join() === '1,2,3' && tires.every(t => t.qty === 4), tires.map(t => [t.op, t.qty]));
-      ok('P3 con 4 piezas: instalación incluida (+$135 c/u) y SIN líneas sueltas de Montaje/Balanceo/Pivote', r.w.instalacionInfo.recargo === 135 && r.w.cart.filter(c => c.pid).length === 0 && tires.every(t => Math.abs(t.precio - (t.precioBase + 135)) < 0.001));
+      ok('P3 con 4 piezas: instalación incluida (+$120 c/u) y SIN líneas sueltas de Montaje/Balanceo/Pivote', r.w.instalacionInfo.recargo === 120 && r.w.cart.filter(c => c.pid).length === 0 && tires.every(t => Math.abs(t.precio - (t.precioBase + 120)) < 0.001));
       const T = r.w.totalesOpciones();
       ok('P4 cada opción tiene su propio total = su llanta × 4 (no se suman entre sí)', T.lista.length === 3 && T.lista.every(x => Math.abs(x.total - x.l.precio * 4) < 0.01) && new Set(T.lista.map(x => x.total.toFixed(2))).size >= 2, T.lista.map(x => x.total));
       r.w.generarWA(); const wa = $(r, 'wt').textContent;
@@ -548,7 +548,7 @@ const textoLetrero = r => $(r, 'estado-guardado').textContent;
 
       // P11: cantidad compartida
       r.w.setQty(tires[1].id, 2);
-      ok('P11 al cambiar la cantidad de una opción cambia la de todas (y recalcula la instalación: 2 piezas = +$210)', r.w.cart.filter(c => c.t === 'l').every(t => t.qty === 2) && r.w.instalacionInfo.recargo === 210);
+      ok('P11 al cambiar la cantidad de una opción cambia la de todas (y recalcula la instalación: 2 piezas = +$190)', r.w.cart.filter(c => c.t === 'l').every(t => t.qty === 2) && r.w.instalacionInfo.recargo === 190);
       r.w.setQty(tires[0].id, 4);
 
       // P12–P14: Sheet y GHL
