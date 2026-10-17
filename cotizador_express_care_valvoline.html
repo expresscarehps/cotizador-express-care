@@ -1040,7 +1040,7 @@ var MODO_PRUEBA = (typeof window!=='undefined' && window.location && /[?&]test=1
 // Se detecta por el nombre del archivo: en dev, el aviso real a GHL pide confirmación explícita
 // (para no etiquetar clientes reales por accidente). También viaja en el aviso como "fuente".
 var ES_DEV = (typeof window!=='undefined' && window.location && /dev\.html?$/i.test(window.location.pathname||''));
-var VERSION_PAGINA = 'prod 2026-10-17 telefono opcional si el origen es Facebook/Instagram; cotizacion enviada se bloquea; boton OK no duplica; un folio = una cotizacion; Ref en historial; respaldo en Firebase guarda la marca; telefono inventado se bloquea; historial muestra No. de parte; proveedor en lista por servicio, obligatorio; "SOLO LLANTAS" no vale si hay taller; aceite y limpiezas llevan proveedor (ECOM); marcas rojas de proveedor en todas las pestanas; balatas margen 30; paquetes llantas 480/380 e instalacion +120/+190 por llanta; nota de precios de instalacion del rin 13-16 corregida ($85/$80/$20)';
+var VERSION_PAGINA = 'prod 2026-10-17 telefono opcional si el origen es Facebook/Instagram (nombre obligatorio, casilla Sin nombre desactivada); cotizacion enviada se bloquea; boton OK no duplica; un folio = una cotizacion; Ref en historial; respaldo en Firebase guarda la marca; telefono inventado se bloquea; historial muestra No. de parte; proveedor en lista por servicio, obligatorio; "SOLO LLANTAS" no vale si hay taller; aceite y limpiezas llevan proveedor (ECOM); marcas rojas de proveedor en todas las pestanas; balatas margen 30; paquetes llantas 480/380 e instalacion +120/+190 por llanta; nota de precios de instalacion del rin 13-16 corregida ($85/$80/$20)';
 
 var RIN = {
   'a': {mon:85,  bal:80,  piv:20, h:'Montaje $85 - Balanceo $80 - Pivote $20 por llanta'},
@@ -2802,6 +2802,11 @@ function validarCampos(){
       if(el) el.classList.add('field-error');
     }
   });
+  // Facebook/Instagram: el nombre siempre es obligatorio ("Sin nombre" no vale; ahí el teléfono puede ir vacío)
+  if(sinNombre && telefonoOpcional()){
+    errores.push('Nombre del cliente (en Facebook/Instagram el nombre es obligatorio: quita "Sin nombre" y escribe el nombre)');
+    var elN=g('cli-nombre'); if(elN) elN.classList.add('field-error');
+  }
   // Proveedor obligatorio en toda pieza que va en la cotización (no en mano de obra ni en renglones de precio fijo)
   var selsProv=document.querySelectorAll('select.prov-sel.field-error');
   for(var sp=0;sp<selsProv.length;sp++) selsProv[sp].classList.remove('field-error');
@@ -3482,6 +3487,13 @@ function actualizarTelefonoObligatorio(){
     tel.required=!opc;
     tel.placeholder=opc?'Opcional (Facebook/Instagram)':'614 000 0000';
     if(opc) tel.classList.remove('field-error');
+  }
+  // En Facebook/Instagram la casilla "Sin nombre" se desactiva: el nombre se pide a fuerza
+  var cbSN=g('cli-sin-nombre');
+  if(cbSN){
+    if(opc && (cbSN.checked || v('cli-nombre').toLowerCase()==='sin nombre')){ cbSN.checked=false; alternarSinNombre(); }
+    cbSN.disabled=opc;
+    var lbSN=cbSN.parentNode; if(lbSN) lbSN.style.opacity=opc?'0.45':'';
   }
 }
 function telefonoFalso(tel){
