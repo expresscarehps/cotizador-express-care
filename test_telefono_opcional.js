@@ -73,6 +73,28 @@ function abrir() {
   tel.value = '6141234567'; w.habilitarYaLaEnvie();
   ok('F3 con teléfono el botón sí se habilita (comportamiento de siempre)', bye.disabled === false, bye.textContent);
 
+  console.log('\n— H. Facebook/Instagram: la casilla "Sin nombre" se desactiva y el nombre es obligatorio');
+  const cb = $('cli-sin-nombre'), nom = $('cli-nombre');
+  const marcar = v => { cb.checked = v; cb.dispatchEvent(new w.Event('change', { bubbles: true })); };
+  base('WhatsApp'); marcar(true);
+  ok('H0 en WhatsApp la casilla funciona normal (activa, y pone "Sin nombre")', cb.disabled === false && nom.value === 'Sin nombre' && nom.disabled === true);
+  cambiarOrigen('Facebook');
+  ok('H1 al cambiar a Facebook la casilla se desmarca y se desactiva', cb.checked === false && cb.disabled === true, [cb.checked, cb.disabled]);
+  ok('H2 el campo nombre se libera y se borra el "Sin nombre"', nom.disabled === false && nom.value === '', [nom.disabled, nom.value]);
+  tel.value = '';
+  ok('H3 Facebook sin nombre escrito: se rechaza el nombre vacío', w.validarCampos().some(e => /^Nombre del cliente/.test(e)), w.validarCampos());
+  nom.value = 'Sin nombre';
+  ok('H4 aunque escriban a mano "Sin nombre" en Facebook se rechaza con aviso claro', w.validarCampos().some(e => /Nombre del cliente.*obligatorio/.test(e)), w.validarCampos());
+  nom.value = 'Maria Perez';
+  ok('H5 Facebook + nombre real + sin teléfono: se acepta', w.validarCampos().length === 0, w.validarCampos());
+  tel.value = '6141234567'; nom.value = 'Sin nombre';
+  ok('H6 aunque haya teléfono, en Facebook "Sin nombre" tampoco vale', w.validarCampos().some(e => /Nombre del cliente.*obligatorio/.test(e)), w.validarCampos());
+  nom.value = ''; tel.value = '';
+  cambiarOrigen('WhatsApp');
+  ok('H7 al volver a WhatsApp la casilla se reactiva', cb.disabled === false);
+  w.limpiarTodo(); await wait(30);
+  ok('H8 después de limpiar la casilla está activa y desmarcada', cb.disabled === false && cb.checked === false);
+
   console.log('\n— G. Lo que ya existía no cambió');
   ok('G1 normalizarTelefono sigue limpiando', w.normalizarTelefono('+52 (614) 123-4567') === '6141234567');
   console.log('\n=============================================\n' + passed + ' pasaron, ' + failed + ' fallaron');
