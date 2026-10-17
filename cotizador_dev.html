@@ -632,6 +632,7 @@ label.chk-sin-nombre input:checked + span{color:var(--val-dark-blue);font-weight
           <option value="">- Selecciona -</option>
           <option value="WhatsApp">WhatsApp</option>
           <option value="Facebook">Facebook</option>
+          <option value="Instagram">Instagram</option>
           <option value="Llamada">Llamada telefónica</option>
           <option value="Visita">Visita al taller</option>
           <option value="Cliente de casa">Cliente de casa</option>
@@ -3050,6 +3051,11 @@ function generarPDF(){
   var vh=(typeof getVehiculo==='function'?getVehiculo():'')||'Sin vehículo';
   var asesor=v('asesor')||'';
   var fechaStr=new Date().toLocaleDateString('es-MX');
+  // Datos de la hoja capturados AL CLIC (igual que los del PDF): si mientras se pide el folio el asesor
+  // limpia la pantalla o empieza otra cotización, el renglón que se guarda sigue siendo el de esta cotización.
+  var refClic=refVigente;
+  var datosClic=MODO_PRUEBA?null:armarDatosCotizacion(llantas, autoSvcs, extSvcs, tallerCart);
+  var camposRefClic={ref:refClic, grupo:(grupoRef||refClic), version:versionGuardada+1};
 
   function continuarPDF(){
     consumirBorradorActivo();   // la cotización salió en PDF: el borrador de donde vino ya no se ofrece
@@ -3059,10 +3065,16 @@ function generarPDF(){
 
   function guardarConFolioYContinuar(){
     if(MODO_PRUEBA){ guardadoInfo={ref:refVigente, conFolio:true}; refDelFolio=refVigente; pintarEstadoGuardado(); continuarPDF(); return; }
-    var datos=armarDatosCotizacion(llantas, autoSvcs, extSvcs, tallerCart);
-    nuevaVersionParaGuardar();   // el PDF queda como una versión nueva del mismo Ref, ahora con folio
-    var refEnviada=refVigente;
-    var cuerpo=Object.assign({action:'saveCotizacion', folio:folioActual}, datos, camposRef());
+    var datos=datosClic;
+    var camposGuardar;
+    if(refVigente===refClic){
+      nuevaVersionParaGuardar();   // el PDF queda como una versión nueva del mismo Ref, ahora con folio
+      camposGuardar=camposRef();
+    } else {
+      camposGuardar=camposRefClic;   // la pantalla ya cambió: se guarda la cotización del clic sin tocar el estado de la nueva
+    }
+    var refEnviada=refClic;
+    var cuerpo=Object.assign({action:'saveCotizacion', folio:folioActual}, datos, camposGuardar);
     fetch(SCRIPT_URL,{
       method:'POST',mode:'no-cors',
       headers:{'Content-Type':'text/plain;charset=utf-8'},

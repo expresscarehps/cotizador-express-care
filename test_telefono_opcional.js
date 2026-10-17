@@ -44,10 +44,14 @@ function abrir() {
 
   console.log('\n— C. Instagram (aunque la lista aún no tenga la opción, la regla ya la cubre)');
   ok('C0 la lista de orígenes actual: ' + opciones.join(', '), opciones.indexOf('Facebook') >= 0);
-  const op = d.createElement('option'); op.value = 'Instagram'; op.textContent = 'Instagram'; origen.appendChild(op);
+  ok('C0b "Instagram" ya está en la lista de origen, junto a Facebook', opciones.indexOf('Instagram') === opciones.indexOf('Facebook') + 1, opciones);
   base('Instagram'); tel.value = '';
   ok('C1 Instagram + teléfono vacío: no pide teléfono', errTel().length === 0 && w.validarCampos().length === 0, w.validarCampos());
-  origen.removeChild(op);
+  ok('C2 Instagram: el asterisco se oculta y el campo no es requerido', $('req-tel').style.display === 'none' && tel.required === false);
+  const cbI = $('cli-sin-nombre'); ok('C3 Instagram: la casilla "Sin nombre" se desactiva', cbI.disabled === true);
+  set('cli-nombre', 'Sin nombre');
+  ok('C4 Instagram: "Sin nombre" escrito a mano se rechaza', w.validarCampos().some(e => /Nombre del cliente.*obligatorio/.test(e)), w.validarCampos());
+  set('cli-nombre', 'Cliente Prueba');
 
   console.log('\n— D. Los demás orígenes siguen pidiendo teléfono');
   for (const o of ['WhatsApp', 'Llamada', 'Visita', 'Cliente de casa', 'Auto en servicio']) {
