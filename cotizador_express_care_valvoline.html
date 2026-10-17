@@ -623,7 +623,7 @@ label.chk-sin-nombre input:checked + span{color:var(--val-dark-blue);font-weight
     <div class="g2">
       <div><label>Nombre <span class="req">*</span></label><input type="text" id="cli-nombre" required="" placeholder="Nombre del cliente">
         <label class="chk-sin-nombre"><input type="checkbox" id="cli-sin-nombre"><span>Sin nombre (solo trae teléfono)</span></label></div>
-      <div><label>Teléfono (10 dígitos) <span class="req">*</span></label><input type="tel" id="cli-tel" required="" oninput="this.value=normalizarTelefono(this.value)" maxlength="16" placeholder="614 000 0000" inputmode="numeric" pattern="[0-9]{10}"></div>
+      <div><label id="lbl-tel">Teléfono (10 dígitos) <span class="req" id="req-tel">*</span></label><input type="tel" id="cli-tel" required="" oninput="this.value=normalizarTelefono(this.value)" maxlength="16" placeholder="614 000 0000" inputmode="numeric" pattern="[0-9]{10}"></div>
     </div>
     <div class="g2">
       <div>
@@ -1040,7 +1040,7 @@ var MODO_PRUEBA = (typeof window!=='undefined' && window.location && /[?&]test=1
 // Se detecta por el nombre del archivo: en dev, el aviso real a GHL pide confirmación explícita
 // (para no etiquetar clientes reales por accidente). También viaja en el aviso como "fuente".
 var ES_DEV = (typeof window!=='undefined' && window.location && /dev\.html?$/i.test(window.location.pathname||''));
-var VERSION_PAGINA = 'prod 2026-10-15 cotizacion enviada se bloquea; boton OK no duplica; un folio = una cotizacion; Ref en historial; respaldo en Firebase guarda la marca; telefono inventado se bloquea; historial muestra No. de parte; proveedor en lista por servicio, obligatorio; "SOLO LLANTAS" no vale si hay taller; aceite y limpiezas llevan proveedor (ECOM); marcas rojas de proveedor en todas las pestanas; balatas margen 30; paquetes llantas 480/380 e instalacion +120/+190 por llanta; nota de precios de instalacion del rin 13-16 corregida ($85/$80/$20)';
+var VERSION_PAGINA = 'prod 2026-10-17 telefono opcional si el origen es Facebook/Instagram; cotizacion enviada se bloquea; boton OK no duplica; un folio = una cotizacion; Ref en historial; respaldo en Firebase guarda la marca; telefono inventado se bloquea; historial muestra No. de parte; proveedor en lista por servicio, obligatorio; "SOLO LLANTAS" no vale si hay taller; aceite y limpiezas llevan proveedor (ECOM); marcas rojas de proveedor en todas las pestanas; balatas margen 30; paquetes llantas 480/380 e instalacion +120/+190 por llanta; nota de precios de instalacion del rin 13-16 corregida ($85/$80/$20)';
 
 var RIN = {
   'a': {mon:85,  bal:80,  piv:20, h:'Montaje $85 - Balanceo $80 - Pivote $20 por llanta'},
@@ -2618,6 +2618,7 @@ function cargarBorrador(id) {
   if(g('cli-origen')) g('cli-origen').value = b.campos.origen||'';
   if(g('asesor')) g('asesor').value = b.campos.asesor||'';
   if(g('orden-servicio')) g('orden-servicio').value = b.campos.orden||'';
+  actualizarTelefonoObligatorio();
   document.querySelectorAll('.rb[data-r]').forEach(function(b2){b2.classList.toggle('on',b2.getAttribute('data-r')===rin);});
   document.querySelectorAll('.rb[data-p]').forEach(function(b2){b2.classList.toggle('on',b2.getAttribute('data-p')===pago);});
   var tipoMap2 = {'afinacion':'Taller - Afinación','aceite':'Taller - Aceite','frenos':'Taller - Frenos','suspension':'Taller - Suspensión','libre':'Taller - Libre'};
@@ -2722,6 +2723,7 @@ function limpiarTodo(skipConfirm){
   var cil=g('v-cil'); if(cil) cil.selectedIndex=0;
   var origen=g('cli-origen'); if(origen) origen.selectedIndex=0;
   var ordenRow=g('orden-row'); if(ordenRow) ordenRow.style.display='none';
+  actualizarTelefonoObligatorio();
   // Limpiar campos de busqueda llantas
   var qm=g('qm'); if(qm) qm.value='';
   var qk=g('qk'); if(qk) qk.value='';
@@ -2785,11 +2787,13 @@ function validarCampos(){
     var anioNum = esAnio ? parseInt(val) : 0;
     var invalido = !val || val==='-' || val==='0' || val==='--' || /^[-\s0]+$/.test(val) || (['v-marca','v-modelo'].indexOf(c.id)>=0 && val.length<2) || (esCil && (isNaN(cilNum)||cilNum<2||cilNum>16)) || (esAnio && (isNaN(anioNum)||val.length!==4||!/^(19|20)/.test(val)));
     var etiqueta=c.label;
+    var telOpcional = c.id==='cli-tel' && telefonoOpcional() && !val;   // Facebook/Instagram: el teléfono puede ir vacío
     if(soloLlantas && (c.id==='v-modelo'||c.id==='v-anio'||c.id==='v-cil')) invalido=false;
     // "SOLO LLANTAS" en una cotización con servicios de taller: se necesita el vehículo real
     if(marcaSoloLlantasConTaller && c.id==='v-marca'){ invalido=true; etiqueta='Marca del vehículo (la cotización lleva servicios de taller: escribe la marca real del auto, no SOLO LLANTAS)'; }
     // Teléfono: exactamente 10 dígitos
-    if(c.id==='cli-tel' && !/^[0-9]{10}$/.test(val)){ invalido=true; if(val) etiqueta='Teléfono del cliente (deben ser exactamente 10 dígitos)'; }
+    if(c.id==='cli-tel' && telOpcional){ invalido=false; }
+    else if(c.id==='cli-tel' && !/^[0-9]{10}$/.test(val)){ invalido=true; if(val) etiqueta='Teléfono del cliente (deben ser exactamente 10 dígitos)'; }
     if(c.id==='cli-tel' && /^[0-9]{10}$/.test(val) && telefonoFalso(val)){ invalido=true; etiqueta='Teléfono del cliente (ese número parece inventado, como 6140000000: pide el teléfono real del cliente)'; }
     // Nombre: no puede ser solo números (un teléfono no es un nombre). Sin nombre => casilla "Sin nombre".
     if(c.id==='cli-nombre' && !sinNombre && val && /^[0-9\s+()\-.]+$/.test(val)){ invalido=true; etiqueta='Nombre del cliente (no puede ser solo números; si no trae nombre marca "Sin nombre")'; }
@@ -3319,6 +3323,7 @@ function habilitarYaLaEnvie(){
     bye.disabled=true;bye.classList.remove('enabled');bye.classList.add('done');bye.textContent='✅ Aviso ya enviado';
     return;
   }
+  if(bye && !v('cli-tel')){bye.disabled=true;bye.classList.remove('enabled','done');bye.textContent='✅ Ya la envié (sin teléfono, no se avisa)';return;}
   if(bye){bye.disabled=false;bye.classList.add('enabled');bye.classList.remove('done');bye.textContent='✅ Ya la envié';}
 }
 // Se dispara SOLO cuando el asesor confirma que sí mandó la cotización por
@@ -3362,6 +3367,7 @@ function continuarNuevaCotizacion(){
 function yaLaEnvie(){
   var btn=g('btn-ya-envie');
   if(!btn || btn.disabled) return;
+  if(!v('cli-tel')) return;   // sin teléfono no hay a quién avisar en GHL
   // El aviso lleva el Ref del texto que se copió; si la cotización cambió después, hay que copiar de nuevo.
   if(refCopiado && refCopiado!==refVigente){
     alert('La cotización cambió después de copiarla.\n\nPresiona "Copiar para WhatsApp" otra vez y después "Ya la envié".');
@@ -3462,6 +3468,22 @@ function normalizarTelefono(txt){
 // Teléfono obviamente inventado (tiene 10 dígitos pero no es de un cliente): ceros u otro dígito repetido
 // después de la lada (6140000000, 1230000000, 6145555555), todos los dígitos iguales (1111111111),
 // o secuencias típicas (1234567890, 0123456789, 9876543210). No toca números reales.
+// Origenes donde el cliente no da su teléfono (llegan por mensaje directo): el teléfono es opcional.
+var ORIGENES_SIN_TELEFONO=['Facebook','Instagram'];
+function telefonoOpcional(){
+  var o=g('cli-origen');
+  return !!o && ORIGENES_SIN_TELEFONO.indexOf(o.value)>=0;
+}
+function actualizarTelefonoObligatorio(){
+  var req=g('req-tel'), tel=g('cli-tel');
+  var opc=telefonoOpcional();
+  if(req) req.style.display=opc?'none':'';
+  if(tel){
+    tel.required=!opc;
+    tel.placeholder=opc?'Opcional (Facebook/Instagram)':'614 000 0000';
+    if(opc) tel.classList.remove('field-error');
+  }
+}
 function telefonoFalso(tel){
   var d=String(tel||'').replace(/[^0-9]/g,'');
   if(d.length!==10) return false;
@@ -3655,7 +3677,9 @@ window.addEventListener('load',function(){
       var ordenRow=g('orden-row');
       if(ordenRow) ordenRow.style.display=this.value==='Auto en servicio'?'block':'none';
       if(this.value!=='Auto en servicio'){var os=g('orden-servicio');if(os)os.value='';}
+      actualizarTelefonoObligatorio();
     });
+    actualizarTelefonoObligatorio();
   }
   document.querySelectorAll('.rb[data-r]').forEach(function(b){b.addEventListener('click',function(){setRin(this.getAttribute('data-r'));});});
   document.querySelectorAll('.rb[data-p]').forEach(function(b){b.addEventListener('click',function(){setPago(this.getAttribute('data-p'));});});
