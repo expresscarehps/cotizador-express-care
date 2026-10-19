@@ -1041,7 +1041,7 @@ var MODO_PRUEBA = (typeof window!=='undefined' && window.location && /[?&]test=1
 // Se detecta por el nombre del archivo: en dev, el aviso real a GHL pide confirmación explícita
 // (para no etiquetar clientes reales por accidente). También viaja en el aviso como "fuente".
 var ES_DEV = (typeof window!=='undefined' && window.location && /dev\.html?$/i.test(window.location.pathname||''));
-var VERSION_PAGINA = 'dev 2026-10-19 margen 12.5% parejo en llantas; Michelin con 35% menos de recargo de instalacion; cotizacion enviada se bloquea; boton OK no duplica; un folio = una cotizacion; Ref en historial; respaldo en Firebase guarda la marca; telefono inventado se bloquea; historial muestra No. de parte; proveedor en lista por servicio, obligatorio; "SOLO LLANTAS" no vale si hay taller; aceite y limpiezas llevan proveedor (ECOM)';
+var VERSION_PAGINA = 'dev 2026-10-19 mensaje WhatsApp con textos por servicio de taller; margen 12.5% parejo en llantas; Michelin con 35% menos de recargo de instalacion; cotizacion enviada se bloquea; boton OK no duplica; un folio = una cotizacion; Ref en historial; respaldo en Firebase guarda la marca; telefono inventado se bloquea; historial muestra No. de parte; proveedor en lista por servicio, obligatorio; "SOLO LLANTAS" no vale si hay taller; aceite y limpiezas llevan proveedor (ECOM)';
 
 var RIN = {
   'a': {mon:85,  bal:80,  piv:20, h:'Montaje $85 - Balanceo $80 - Pivote $20 por llanta'},
@@ -2391,6 +2391,67 @@ function getTipo(){
   return '';
 }
 
+// ── TEXTOS DINÁMICOS DEL MENSAJE DE WHATSAPP SEGÚN EL SERVICIO DE TALLER (19-oct-2026) ──
+// Cada servicio de taller agrega, debajo de su subtotal, un bloque con lo que incluye. Al final (antes del total) va un bloque común
+// una sola vez y, si hay cambio de aceite, la línea "También hacemos". Las llantas NO cambian. "libre" no lleva bloque.
+var TEXTOS_WA_TALLER = {
+  afinacion: {
+    titulo: '✅ *Tu afinación incluye:*',
+    lineas: [
+      'Revisión de 15 puntos de seguridad, sin costo',
+      'Escaneo de códigos de falla, sin costo',
+      'Calibración de cuerpo de aceleración',
+      'Bujías NGK de alta calidad (si prefieres otra marca, consúltalo con tu asesor)',
+      'Revisión de batería, niveles de fluidos y anticongelante con densímetro especial',
+      'Si el tiempo lo permite, revisamos también tu suspensión y el estado de tus llantas'
+    ]
+  },
+  aceite: {
+    titulo: '✅ *Tu cambio de aceite incluye:*',
+    lineas: [
+      'Aceite Valvoline y filtro nuevo',
+      'Revisión de 15 puntos de seguridad',
+      'Revisión de batería, niveles de fluidos y anticongelante con densímetro especial',
+      'Si el tiempo lo permite, revisamos también tu suspensión y el estado de tus llantas'
+    ]
+  },
+  frenos: {
+    titulo: '🛑 *Tu servicio de frenos incluye:*',
+    lineas: [
+      'Balatas de cerámica de alta calidad como primera opción, pensando en tu seguridad y rendimiento',
+      'Limpieza de componentes'
+    ]
+  },
+  suspension: {
+    titulo: '🔩 *Tu servicio de suspensión incluye:*',
+    lineas: [
+      'Revisión de 15 puntos de seguridad',
+      'Revisión de niveles y batería',
+      '13 puntos de revisión en suspensión',
+      'Detección de daños en rótulas, terminales y chasis',
+      'Detección de fugas de aceite de motor y de transmisión'
+    ]
+  }
+};
+var TEXTO_WA_COMUN_TALLER = {
+  titulo: '📸 *En todos nuestros servicios:*',
+  lineas: [
+    'Reporte con evidencia fotográfica',
+    'Recomendaciones por escrito',
+    'Recordatorios automáticos para tu próximo servicio'
+  ]
+};
+var TEXTO_WA_TAMBIEN_HACEMOS = '🛠️ *También hacemos:* mecánica general, afinaciones, frenos, suspensión, diagnóstico por computadora, dirección hidráulica, baterías y anticongelante. Y trabajos mayores de motor: rectificados, cabezas y ajuste de cadena de tiempo.';
+function bloqueWAVinetas(b){ return b.titulo+'\n'+b.lineas.map(function(l){return '• '+l;}).join('\n')+'\n'; }
+function bloqueWAServicio(tipo){ var b=TEXTOS_WA_TALLER[tipo]; return b?bloqueWAVinetas(b):''; }
+// Bloque común (una sola vez) + "También hacemos" si hay cambio de aceite; solo si hay al menos un servicio con bloque propio.
+function bloqueWAComunTaller(tipos){
+  var hay=tipos.some(function(t){return !!TEXTOS_WA_TALLER[t];});
+  if(!hay) return '';
+  var out=bloqueWAVinetas(TEXTO_WA_COMUN_TALLER);
+  if(tipos.indexOf('aceite')>=0) out+='\n'+TEXTO_WA_TAMBIEN_HACEMOS+'\n';
+  return out;
+}
 function generarWA() {
   var wt=g('wt'); if(!wt) return;
   var sinNombre=esSinNombre();
@@ -2497,7 +2558,9 @@ function generarWA() {
         txt+='* '+lineaTxt+'\n';
       }
       if(subtotalTipo>0) txt+='*Subtotal '+(tipoLabels[tipo]||tipo)+': '+fmt(subtotalTipo)+'*\n';
+      var _bq=bloqueWAServicio(tipo); if(_bq) txt+='\n'+_bq;
     }
+    var _comun=bloqueWAComunTaller(tiposWA); if(_comun) txt+='\n'+_comun;
     txt+='\n';
   }
 
