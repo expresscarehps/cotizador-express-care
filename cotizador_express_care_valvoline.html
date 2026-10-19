@@ -576,8 +576,8 @@ label.chk-sin-nombre input:checked + span{color:var(--val-dark-blue);font-weight
     </div>
     <div id="mg-recordatorio" style="background:#fff8e1;border:1px solid #f0d27a;border-radius:8px;padding:7px 10px;margin-bottom:10px;font-size:11px;line-height:1.5;color:#5d4a00">
       <b>🔒 Margen automático (fijo, no se modifica)</b><br>
-      Marcas normales: <b id="rec-mn">12.5</b>% · "Chinas" (origen China o gama Económica / Muy Económica): <b id="rec-me">15.5</b>%<br>
-      Meses sin intereses: +<span id="rec-mm">5</span>% · AYALA: <b>25%</b> de descuento contado / <b>20%</b> a meses sobre precio de lista
+      Todas las marcas (Servillantas y VEGA): <b id="rec-mn">12.5</b>%<span id="rec-me" style="display:none">12.5</span><br>
+      Meses sin intereses: +<span id="rec-mm">5</span>% · AYALA: <b>25%</b> de descuento contado / <b>20%</b> a meses sobre precio de lista<br>Michelin: el recargo de instalación lleva <b id="rec-mi">35</b>% de descuento
     </div>
     <div class="cnt" id="cnt">43 resultados</div>
     <div class="rh"><span>Descripción</span><span>PVP</span><span></span></div>
@@ -632,6 +632,7 @@ label.chk-sin-nombre input:checked + span{color:var(--val-dark-blue);font-weight
           <option value="">- Selecciona -</option>
           <option value="WhatsApp">WhatsApp</option>
           <option value="Facebook">Facebook</option>
+          <option value="Instagram">Instagram</option>
           <option value="Llamada">Llamada telefónica</option>
           <option value="Visita">Visita al taller</option>
           <option value="Cliente de casa">Cliente de casa</option>
@@ -1040,7 +1041,7 @@ var MODO_PRUEBA = (typeof window!=='undefined' && window.location && /[?&]test=1
 // Se detecta por el nombre del archivo: en dev, el aviso real a GHL pide confirmación explícita
 // (para no etiquetar clientes reales por accidente). También viaja en el aviso como "fuente".
 var ES_DEV = (typeof window!=='undefined' && window.location && /dev\.html?$/i.test(window.location.pathname||''));
-var VERSION_PAGINA = 'prod 2026-10-17 telefono opcional si el origen es Facebook/Instagram (nombre obligatorio, casilla Sin nombre desactivada); cotizacion enviada se bloquea; boton OK no duplica; un folio = una cotizacion; Ref en historial; respaldo en Firebase guarda la marca; telefono inventado se bloquea; historial muestra No. de parte; proveedor en lista por servicio, obligatorio; "SOLO LLANTAS" no vale si hay taller; aceite y limpiezas llevan proveedor (ECOM); marcas rojas de proveedor en todas las pestanas; balatas margen 30; paquetes llantas 480/380 e instalacion +120/+190 por llanta; nota de precios de instalacion del rin 13-16 corregida ($85/$80/$20)';
+var VERSION_PAGINA = 'prod 2026-10-19 mensaje WhatsApp con textos por servicio de taller; margen 12.5% parejo en llantas; Michelin con 35% menos de recargo de instalacion; cotizacion enviada se bloquea; boton OK no duplica; un folio = una cotizacion; Ref en historial; respaldo en Firebase guarda la marca; telefono inventado se bloquea; historial muestra No. de parte; proveedor en lista por servicio, obligatorio; "SOLO LLANTAS" no vale si hay taller; aceite y limpiezas llevan proveedor (ECOM)';
 
 var RIN = {
   'a': {mon:85,  bal:80,  piv:20, h:'Montaje $85 - Balanceo $80 - Pivote $20 por llanta'},
@@ -1314,14 +1315,16 @@ function setRin(key) {
 function fmt(n) { return '$' + parseFloat(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
 function fmtN(n) { return parseFloat(n).toFixed(2); }
 // ── MARGEN AUTOMÁTICO DE LLANTAS (fijo, sin opción de modificarlo) ──
-//  · 15.5% = marcas "chinas": origen China, o gama Económica / Muy Económica (aunque sean de India, Indonesia, México, etc.)
-//  · 12.5% = todas las demás (marcas normales / "aspi")
-//  · Proveedor libre (renglón manual): YOKOHAMA 12.5% · SUNFULL 15.5%; cualquier otra marca sigue su gama del catálogo, y si no está, 12.5%
+//  · 12.5% PARA TODAS las marcas de Servillantas y VEGA (cambio 19-oct-2026: antes las "chinas" / gama Económica y Muy Económica llevaban 15.5%).
+//  · AYALA no usa margen: su fórmula fija es precio de lista x 0.75 (contado) o x 0.80 (meses) + IVA.
+//  · Proveedor libre (renglón manual): YOKOHAMA 12.5% · SUNFULL 12.5% (antes 15.5%)
 //  · Meses sin intereses: +5% sobre el precio con margen
 var MARGEN_NORMAL = 12.5;
-var MARGEN_ECON   = 15.5;
+var MARGEN_ECON   = 12.5; // antes 15.5; se conserva la constante y la lógica de gama, solo cambia el valor (19-oct-2026)
 var RECARGO_MESES = 1.05;
-var MARGEN_PROV_LIBRE = {'YOKOHAMA':12.5, 'SUNFULL':15.5, 'SUNFUL':15.5};
+var DESC_INSTALACION_MICHELIN = 35; // % menos en el recargo de instalación cuando la llanta es Michelin (19-oct-2026)
+function esMichelin(l){ return String((l&&l.marca)||'').trim().toUpperCase() === 'MICHELIN'; }
+var MARGEN_PROV_LIBRE = {'YOKOHAMA':12.5, 'SUNFULL':12.5, 'SUNFUL':12.5};
 function margenLlanta(marca) {
   var m = String(marca||'').trim().replace(/\s+/g,' ').toUpperCase();
   if (m && MARGEN_PROV_LIBRE.hasOwnProperty(m)) return MARGEN_PROV_LIBRE[m];
@@ -1542,6 +1545,7 @@ function recalcPVP() {
 // Regla de negocio (ago-2026):
 //  · 4+ llantas en la cotización → +$120 al precio unitario de CADA llanta (base: paquete de $480 ÷ 4; antes $135 con paquete de $540, cambio 14-oct-2026), sin línea de Montaje/Balanceo/Pivote ni "Paquete" por separado.
 //  · 2 o 3 llantas → +$190 al precio unitario de CADA llanta (base: paquete de $380 ÷ 2; antes $210 con paquete de $420, cambio 14-oct-2026), sin línea por separado.
+//  · Si la llanta es MICHELIN, ese recargo lleva 35% menos ($78 con 4+ llantas, $123.50 con 2 o 3). Las demás marcas, recargo completo.
 //  · 1 sola llanta → precio de la llanta sin cambio; Montaje + Balanceo + Pivote se cotizan como líneas individuales, como antes.
 // Se recalcula cada vez que se agrega/quita una llanta, cambia su cantidad, o cambia el margen (recalcPVP).
 function recalcInstalacionLlantas() {
@@ -1567,7 +1571,8 @@ function recalcInstalacionLlantas() {
   for (var i = 0; i < llantas.length; i++) {
     var l = llantas[i];
     if (typeof l.precioBase !== 'number') l.precioBase = l.precio; // compatibilidad con borradores viejos
-    l.precio = l.precioBase + recargo;
+    // Michelin: el recargo de instalación lleva DESC_INSTALACION_MICHELIN% menos (regla 19-oct-2026); las demás marcas, recargo completo.
+    l.precio = l.precioBase + (esMichelin(l) ? recargo * (1 - DESC_INSTALACION_MICHELIN / 100) : recargo);
   }
 
   // Si solo hay 1 llanta en total, restaurar Montaje + Balanceo + Pivote como líneas separadas
@@ -2386,6 +2391,72 @@ function getTipo(){
   return '';
 }
 
+// ── TEXTOS DINÁMICOS DEL MENSAJE DE WHATSAPP SEGÚN EL SERVICIO DE TALLER (19-oct-2026) ──
+// Cada servicio de taller agrega, debajo de su subtotal, un bloque con lo que incluye. Al final (antes del total) va un bloque común
+// una sola vez y, si hay cambio de aceite, la línea "También hacemos". Las llantas NO cambian. "libre" no lleva bloque.
+var TEXTOS_WA_TALLER = {
+  afinacion: {
+    titulo: '✅ *Tu afinación incluye:*',
+    lineas: [
+      'Revisión de 15 puntos de seguridad, sin costo',
+      'Escaneo de códigos de falla, sin costo',
+      'Calibración de cuerpo de aceleración',
+      'Bujías NGK de alta calidad (si prefieres otra marca, consúltalo con tu asesor)',
+      'Revisión de batería, niveles de fluidos y anticongelante con densímetro especial',
+      'Si el tiempo lo permite, revisamos también tu suspensión y el estado de tus llantas'
+    ]
+  },
+  aceite: {
+    titulo: '✅ *Tu cambio de aceite incluye:*',
+    lineas: [
+      'Aceite Valvoline y filtro nuevo',
+      'Revisión de 15 puntos de seguridad',
+      'Revisión de batería, niveles de fluidos y anticongelante con densímetro especial',
+      'Si el tiempo lo permite, revisamos también tu suspensión y el estado de tus llantas'
+    ]
+  },
+  frenos: {
+    titulo: '🛑 *Tu servicio de frenos incluye:*',
+    lineas: [
+      'Balatas de cerámica de alta calidad como primera opción, pensando en tu seguridad y rendimiento',
+      'Limpieza de componentes'
+    ]
+  },
+  suspension: {
+    titulo: '🔩 *Tu servicio de suspensión incluye:*',
+    lineas: [
+      'Revisión de 15 puntos de seguridad',
+      'Revisión de niveles y batería',
+      '12 puntos de revisión en suspensión',
+      'Detección de daños en rótulas, terminales y chasis',
+      'Detección de fugas de aceite de motor y de transmisión'
+    ]
+  }
+};
+var TEXTO_WA_COMUN_TALLER = {
+  titulo: '📸 *En todos nuestros servicios:*',
+  lineas: [
+    'Reporte con evidencia fotográfica',
+    'Recomendaciones por escrito',
+    'Recordatorios automáticos para tu próximo servicio'
+  ]
+};
+var TEXTO_WA_TAMBIEN_HACEMOS = [
+  '🛠️ *También hacemos:*',
+  '• Mecánica general, afinaciones, frenos y suspensión',
+  '• Diagnóstico por computadora, dirección hidráulica, baterías y anticongelante',
+  '• Motor: rectificados, cabezas y cadena de tiempo'
+].join('\n');
+function bloqueWAVinetas(b){ return b.titulo+'\n'+b.lineas.map(function(l){return '• '+l;}).join('\n')+'\n'; }
+function bloqueWAServicio(tipo){ var b=TEXTOS_WA_TALLER[tipo]; return b?bloqueWAVinetas(b):''; }
+// Bloque común (una sola vez) + "También hacemos" si hay cambio de aceite; solo si hay al menos un servicio con bloque propio.
+function bloqueWAComunTaller(tipos){
+  var hay=tipos.some(function(t){return !!TEXTOS_WA_TALLER[t];});
+  if(!hay) return '';
+  var out=bloqueWAVinetas(TEXTO_WA_COMUN_TALLER);
+  if(tipos.indexOf('aceite')>=0) out+='\n'+TEXTO_WA_TAMBIEN_HACEMOS+'\n';
+  return out;
+}
 function generarWA() {
   var wt=g('wt'); if(!wt) return;
   var sinNombre=esSinNombre();
@@ -2492,7 +2563,9 @@ function generarWA() {
         txt+='* '+lineaTxt+'\n';
       }
       if(subtotalTipo>0) txt+='*Subtotal '+(tipoLabels[tipo]||tipo)+': '+fmt(subtotalTipo)+'*\n';
+      var _bq=bloqueWAServicio(tipo); if(_bq) txt+='\n'+_bq;
     }
+    var _comun=bloqueWAComunTaller(tiposWA); if(_comun) txt+='\n'+_comun;
     txt+='\n';
   }
 
@@ -3050,6 +3123,11 @@ function generarPDF(){
   var vh=(typeof getVehiculo==='function'?getVehiculo():'')||'Sin vehículo';
   var asesor=v('asesor')||'';
   var fechaStr=new Date().toLocaleDateString('es-MX');
+  // Datos de la hoja capturados AL CLIC (igual que los del PDF): si mientras se pide el folio el asesor
+  // limpia la pantalla o empieza otra cotización, el renglón que se guarda sigue siendo el de esta cotización.
+  var refClic=refVigente;
+  var datosClic=MODO_PRUEBA?null:armarDatosCotizacion(llantas, autoSvcs, extSvcs, tallerCart);
+  var camposRefClic={ref:refClic, grupo:(grupoRef||refClic), version:versionGuardada+1};
 
   function continuarPDF(){
     consumirBorradorActivo();   // la cotización salió en PDF: el borrador de donde vino ya no se ofrece
@@ -3059,10 +3137,16 @@ function generarPDF(){
 
   function guardarConFolioYContinuar(){
     if(MODO_PRUEBA){ guardadoInfo={ref:refVigente, conFolio:true}; refDelFolio=refVigente; pintarEstadoGuardado(); continuarPDF(); return; }
-    var datos=armarDatosCotizacion(llantas, autoSvcs, extSvcs, tallerCart);
-    nuevaVersionParaGuardar();   // el PDF queda como una versión nueva del mismo Ref, ahora con folio
-    var refEnviada=refVigente;
-    var cuerpo=Object.assign({action:'saveCotizacion', folio:folioActual}, datos, camposRef());
+    var datos=datosClic;
+    var camposGuardar;
+    if(refVigente===refClic){
+      nuevaVersionParaGuardar();   // el PDF queda como una versión nueva del mismo Ref, ahora con folio
+      camposGuardar=camposRef();
+    } else {
+      camposGuardar=camposRefClic;   // la pantalla ya cambió: se guarda la cotización del clic sin tocar el estado de la nueva
+    }
+    var refEnviada=refClic;
+    var cuerpo=Object.assign({action:'saveCotizacion', folio:folioActual}, datos, camposGuardar);
     fetch(SCRIPT_URL,{
       method:'POST',mode:'no-cors',
       headers:{'Content-Type':'text/plain;charset=utf-8'},
