@@ -51,7 +51,7 @@ const cuenta = (t, s) => t.split(s).length - 1;
   console.log('\n— Suspensión');
   t = msg([item('suspension', 'Amortiguadores delanteros', 2400, 2), item('suspension', 'Mano de obra suspensión', 900)]);
   ok('18 título "Tu servicio de suspensión incluye"', t.includes('🔩 *Tu servicio de suspensión incluye:*'));
-  ok('19 15 puntos, niveles y batería, 13 puntos en suspensión', /Revisión de 15 puntos de seguridad/.test(t) && /Revisión de niveles y batería/.test(t) && /13 puntos de revisión en suspensión/.test(t));
+  ok('19 15 puntos, niveles y batería, 12 puntos en suspensión (igual que el mensaje de llantas)', /Revisión de 15 puntos de seguridad/.test(t) && /Revisión de niveles y batería/.test(t) && /12 puntos de revisión en suspensión/.test(t) && !/13 puntos de revisión/.test(t));
   ok('20 daños en rótulas y fugas de aceite', /daños en rótulas, terminales y chasis/.test(t) && /fugas de aceite de motor y de transmisión/.test(t));
 
   console.log('\n— Bloque común y combinaciones');
