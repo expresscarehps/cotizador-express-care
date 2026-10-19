@@ -2441,7 +2441,12 @@ var TEXTO_WA_COMUN_TALLER = {
     'Recordatorios automáticos para tu próximo servicio'
   ]
 };
-var TEXTO_WA_TAMBIEN_HACEMOS = '🛠️ *También hacemos:* mecánica general, afinaciones, frenos, suspensión, diagnóstico por computadora, dirección hidráulica, baterías y anticongelante. Y trabajos mayores de motor: rectificados, cabezas y ajuste de cadena de tiempo.';
+var TEXTO_WA_TAMBIEN_HACEMOS = [
+  '🛠️ *También hacemos:*',
+  '• Mecánica general, afinaciones, frenos y suspensión',
+  '• Diagnóstico por computadora, dirección hidráulica, baterías y anticongelante',
+  '• Motor: rectificados, cabezas y cadena de tiempo'
+].join('\n');
 function bloqueWAVinetas(b){ return b.titulo+'\n'+b.lineas.map(function(l){return '• '+l;}).join('\n')+'\n'; }
 function bloqueWAServicio(tipo){ var b=TEXTOS_WA_TALLER[tipo]; return b?bloqueWAVinetas(b):''; }
 // Bloque común (una sola vez) + "También hacemos" si hay cambio de aceite; solo si hay al menos un servicio con bloque propio.

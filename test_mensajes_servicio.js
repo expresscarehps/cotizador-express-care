@@ -38,7 +38,7 @@ const cuenta = (t, s) => t.split(s).length - 1;
   ok('9 aceite Valvoline y filtro nuevo + 15 puntos', /Aceite Valvoline y filtro nuevo/.test(t) && /Revisión de 15 puntos de seguridad/.test(t));
   ok('10 revisión (NO relleno) de niveles, batería y anticongelante con densímetro', /Revisión de batería, niveles de fluidos y anticongelante con densímetro especial/.test(t) && !/relleno/i.test(t));
   ok('11 si hay tiempo revisa suspensión y llantas', /Si el tiempo lo permite, revisamos también tu suspensión y el estado de tus llantas/.test(t));
-  ok('12 aceite SÍ lleva "También hacemos" con mecánica general y trabajos de motor', /También hacemos:\* mecánica general/.test(t) && /rectificados, cabezas y ajuste de cadena de tiempo/.test(t));
+  ok('12 aceite SÍ lleva "También hacemos" en viñetas: mecánica general, diagnóstico y trabajos de motor', /También hacemos:\*\n• Mecánica general, afinaciones, frenos y suspensión\n• Diagnóstico por computadora, dirección hidráulica, baterías y anticongelante\n• Motor: rectificados, cabezas y cadena de tiempo/.test(t));
   ok('13 no dice que no se desarman motores/transmisiones', !/no realizamos desarme/i.test(t));
 
   console.log('\n— Frenos');
