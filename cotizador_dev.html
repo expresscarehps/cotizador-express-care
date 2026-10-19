@@ -576,8 +576,8 @@ label.chk-sin-nombre input:checked + span{color:var(--val-dark-blue);font-weight
     </div>
     <div id="mg-recordatorio" style="background:#fff8e1;border:1px solid #f0d27a;border-radius:8px;padding:7px 10px;margin-bottom:10px;font-size:11px;line-height:1.5;color:#5d4a00">
       <b>🔒 Margen automático (fijo, no se modifica)</b><br>
-      Marcas normales: <b id="rec-mn">12.5</b>% · "Chinas" (origen China o gama Económica / Muy Económica): <b id="rec-me">15.5</b>%<br>
-      Meses sin intereses: +<span id="rec-mm">5</span>% · AYALA: <b>25%</b> de descuento contado / <b>20%</b> a meses sobre precio de lista
+      Todas las marcas (Servillantas y VEGA): <b id="rec-mn">12.5</b>%<span id="rec-me" style="display:none">12.5</span><br>
+      Meses sin intereses: +<span id="rec-mm">5</span>% · AYALA: <b>25%</b> de descuento contado / <b>20%</b> a meses sobre precio de lista<br>Michelin: el recargo de instalación lleva <b id="rec-mi">35</b>% de descuento
     </div>
     <div class="cnt" id="cnt">43 resultados</div>
     <div class="rh"><span>Descripción</span><span>PVP</span><span></span></div>
@@ -1041,7 +1041,7 @@ var MODO_PRUEBA = (typeof window!=='undefined' && window.location && /[?&]test=1
 // Se detecta por el nombre del archivo: en dev, el aviso real a GHL pide confirmación explícita
 // (para no etiquetar clientes reales por accidente). También viaja en el aviso como "fuente".
 var ES_DEV = (typeof window!=='undefined' && window.location && /dev\.html?$/i.test(window.location.pathname||''));
-var VERSION_PAGINA = 'dev 2026-10-12 cotizacion enviada se bloquea; boton OK no duplica; un folio = una cotizacion; Ref en historial; respaldo en Firebase guarda la marca; telefono inventado se bloquea; historial muestra No. de parte; proveedor en lista por servicio, obligatorio; "SOLO LLANTAS" no vale si hay taller; aceite y limpiezas llevan proveedor (ECOM)';
+var VERSION_PAGINA = 'dev 2026-10-19 margen 12.5% parejo en llantas; Michelin con 35% menos de recargo de instalacion; cotizacion enviada se bloquea; boton OK no duplica; un folio = una cotizacion; Ref en historial; respaldo en Firebase guarda la marca; telefono inventado se bloquea; historial muestra No. de parte; proveedor en lista por servicio, obligatorio; "SOLO LLANTAS" no vale si hay taller; aceite y limpiezas llevan proveedor (ECOM)';
 
 var RIN = {
   'a': {mon:85,  bal:80,  piv:20, h:'Montaje $85 - Balanceo $80 - Pivote $20 por llanta'},
@@ -1315,14 +1315,16 @@ function setRin(key) {
 function fmt(n) { return '$' + parseFloat(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
 function fmtN(n) { return parseFloat(n).toFixed(2); }
 // ── MARGEN AUTOMÁTICO DE LLANTAS (fijo, sin opción de modificarlo) ──
-//  · 15.5% = marcas "chinas": origen China, o gama Económica / Muy Económica (aunque sean de India, Indonesia, México, etc.)
-//  · 12.5% = todas las demás (marcas normales / "aspi")
-//  · Proveedor libre (renglón manual): YOKOHAMA 12.5% · SUNFULL 15.5%; cualquier otra marca sigue su gama del catálogo, y si no está, 12.5%
+//  · 12.5% PARA TODAS las marcas de Servillantas y VEGA (cambio 19-oct-2026: antes las "chinas" / gama Económica y Muy Económica llevaban 15.5%).
+//  · AYALA no usa margen: su fórmula fija es precio de lista x 0.75 (contado) o x 0.80 (meses) + IVA.
+//  · Proveedor libre (renglón manual): YOKOHAMA 12.5% · SUNFULL 12.5% (antes 15.5%)
 //  · Meses sin intereses: +5% sobre el precio con margen
 var MARGEN_NORMAL = 12.5;
-var MARGEN_ECON   = 15.5;
+var MARGEN_ECON   = 12.5; // antes 15.5; se conserva la constante y la lógica de gama, solo cambia el valor (19-oct-2026)
 var RECARGO_MESES = 1.05;
-var MARGEN_PROV_LIBRE = {'YOKOHAMA':12.5, 'SUNFULL':15.5, 'SUNFUL':15.5};
+var DESC_INSTALACION_MICHELIN = 35; // % menos en el recargo de instalación cuando la llanta es Michelin (19-oct-2026)
+function esMichelin(l){ return String((l&&l.marca)||'').trim().toUpperCase() === 'MICHELIN'; }
+var MARGEN_PROV_LIBRE = {'YOKOHAMA':12.5, 'SUNFULL':12.5, 'SUNFUL':12.5};
 function margenLlanta(marca) {
   var m = String(marca||'').trim().replace(/\s+/g,' ').toUpperCase();
   if (m && MARGEN_PROV_LIBRE.hasOwnProperty(m)) return MARGEN_PROV_LIBRE[m];
@@ -1543,6 +1545,7 @@ function recalcPVP() {
 // Regla de negocio (ago-2026):
 //  · 4+ llantas en la cotización → +$120 al precio unitario de CADA llanta (base: paquete de $480 ÷ 4; antes $135 con paquete de $540, cambio 14-oct-2026), sin línea de Montaje/Balanceo/Pivote ni "Paquete" por separado.
 //  · 2 o 3 llantas → +$190 al precio unitario de CADA llanta (base: paquete de $380 ÷ 2; antes $210 con paquete de $420, cambio 14-oct-2026), sin línea por separado.
+//  · Si la llanta es MICHELIN, ese recargo lleva 35% menos ($78 con 4+ llantas, $123.50 con 2 o 3). Las demás marcas, recargo completo.
 //  · 1 sola llanta → precio de la llanta sin cambio; Montaje + Balanceo + Pivote se cotizan como líneas individuales, como antes.
 // Se recalcula cada vez que se agrega/quita una llanta, cambia su cantidad, o cambia el margen (recalcPVP).
 function recalcInstalacionLlantas() {
@@ -1568,7 +1571,8 @@ function recalcInstalacionLlantas() {
   for (var i = 0; i < llantas.length; i++) {
     var l = llantas[i];
     if (typeof l.precioBase !== 'number') l.precioBase = l.precio; // compatibilidad con borradores viejos
-    l.precio = l.precioBase + recargo;
+    // Michelin: el recargo de instalación lleva DESC_INSTALACION_MICHELIN% menos (regla 19-oct-2026); las demás marcas, recargo completo.
+    l.precio = l.precioBase + (esMichelin(l) ? recargo * (1 - DESC_INSTALACION_MICHELIN / 100) : recargo);
   }
 
   // Si solo hay 1 llanta en total, restaurar Montaje + Balanceo + Pivote como líneas separadas
