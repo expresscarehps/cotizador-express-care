@@ -35,7 +35,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   w.setQty(llantas()[0].id, 4); await wait(40);
   ok('4 llantas: conserva la revisión de seguridad sin costo', /Revisión de seguridad SIN COSTO/.test(texto()));
   console.log('\n— Revisión de seguridad según cantidad (2 o 3 llantas lleva su propio texto)');
-  const REV23 = '🔍 *Revisión de seguridad SIN COSTO:* 13 puntos de motor, incluida al instalar tus llantas.\n🔧 La revisión de 12 puntos de suspensión tiene un costo adicional; en la compra de 4 llantas va sin costo.';
+  const REV23 = '🔍 *Revisión de seguridad SIN COSTO:* 13 puntos de motor, incluida al instalar tus llantas.\n🔧 La revisión de 12 puntos de suspensión tiene un costo adicional; en la compra de al menos 4 llantas va sin costo.';
   for (const n of [2, 3]) {
     w.setQty(llantas()[0].id, n); await wait(40);
     const t = texto();
@@ -50,8 +50,8 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   w.setQty(llantas()[0].id, 1); await wait(40);
   ok('1 llanta: no trae ninguna revisión de seguridad', !/Revisión de seguridad/.test(texto()));
   console.log('\n— Alineación según cantidad (4+ sin costo · 2 o 3 aparte · 1 no se menciona)');
-  const AL4 = '🎯 *¡ALINEACIÓN SIN COSTO!* Incluida en la compra de 4 llantas.';
-  const AL23 = '🎯 La alineación se cobra por separado; en la compra de 4 llantas va sin costo.';
+  const AL4 = '🎯 *¡ALINEACIÓN SIN COSTO!* Incluida en la compra de al menos 4 llantas.';
+  const AL23 = '🎯 La alineación se cobra por separado; en la compra de al menos 4 llantas va sin costo.';
   for (const n of [4, 5, 10]) {
     w.setQty(llantas()[0].id, n); await wait(40); const t = texto();
     ok(n + ' llantas: alineación SIN COSTO y no dice que se cobra aparte', t.includes(AL4) && !t.includes(AL23), t.slice(t.indexOf('INSTALACIÓN'), t.indexOf('INSTALACIÓN') + 400));

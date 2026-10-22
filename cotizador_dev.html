@@ -2529,16 +2529,16 @@ function generarWA() {
     }
     // Alineación (21-oct-2026): con 4 o más llantas va sin costo (decisión de Carlos, igual que su competencia); con 2 o 3 se cobra aparte; con 1 no se menciona.
     if(instalacionInfo.totalQty>=4){
-      txt+='\n🎯 *¡ALINEACIÓN SIN COSTO!* Incluida en la compra de 4 llantas.\n';
+      txt+='\n🎯 *¡ALINEACIÓN SIN COSTO!* Incluida en la compra de al menos 4 llantas.\n';
     } else if(instalacionInfo.totalQty===2 || instalacionInfo.totalQty===3){
-      txt+='\n🎯 La alineación se cobra por separado; en la compra de 4 llantas va sin costo.\n';
+      txt+='\n🎯 La alineación se cobra por separado; en la compra de al menos 4 llantas va sin costo.\n';
     }
     if(instalacionInfo.totalQty>=4){
       txt+='\n🔍 *Revisión de seguridad SIN COSTO:* 13 puntos de motor + 12 puntos de suspensión, incluida al instalar tus '+instalacionInfo.totalQty+' llantas.\n';   // el número es la cantidad de la cotización (con opciones, la de cada opción)
     }
     // 2 o 3 llantas (21-oct-2026): la revisión de motor va sin costo; la de suspensión tiene costo adicional (con 4 llantas va sin costo).
     if(instalacionInfo.totalQty===2 || instalacionInfo.totalQty===3){
-      txt+='\n🔍 *Revisión de seguridad SIN COSTO:* 13 puntos de motor, incluida al instalar tus llantas.\n🔧 La revisión de 12 puntos de suspensión tiene un costo adicional; en la compra de 4 llantas va sin costo.\n';
+      txt+='\n🔍 *Revisión de seguridad SIN COSTO:* 13 puntos de motor, incluida al instalar tus llantas.\n🔧 La revisión de 12 puntos de suspensión tiene un costo adicional; en la compra de al menos 4 llantas va sin costo.\n';
     }
   }
   if(pago==='meses' && (llantas.length||extSvcs.length)){
