@@ -1041,7 +1041,7 @@ var MODO_PRUEBA = (typeof window!=='undefined' && window.location && /[?&]test=1
 // Se detecta por el nombre del archivo: en dev, el aviso real a GHL pide confirmación explícita
 // (para no etiquetar clientes reales por accidente). También viaja en el aviso como "fuente".
 var ES_DEV = (typeof window!=='undefined' && window.location && /dev\.html?$/i.test(window.location.pathname||''));
-var VERSION_PAGINA = 'dev 2026-10-21 alineacion en mensaje de llantas (sin costo con 4+, aparte con 2 o 3); revision de seguridad en mensaje de 2 o 3 llantas; bloqueo si hay 2+ llantas sueltas sin Cotizar opciones; mensaje de instalacion gratis sin numero de llantas; mensaje WhatsApp con textos por servicio de taller; margen 12.5% parejo en llantas; Michelin con 35% menos de recargo de instalacion; cotizacion enviada se bloquea; boton OK no duplica; un folio = una cotizacion; Ref en historial; respaldo en Firebase guarda la marca; telefono inventado se bloquea; historial muestra No. de parte; proveedor en lista por servicio, obligatorio; "SOLO LLANTAS" no vale si hay taller; aceite y limpiezas llevan proveedor (ECOM)';
+var VERSION_PAGINA = 'dev 2026-10-21 revision de 4+ llantas con la cantidad real; alineacion en mensaje de llantas (sin costo con 4+, aparte con 2 o 3); revision de seguridad en mensaje de 2 o 3 llantas; bloqueo si hay 2+ llantas sueltas sin Cotizar opciones; mensaje de instalacion gratis sin numero de llantas; mensaje WhatsApp con textos por servicio de taller; margen 12.5% parejo en llantas; Michelin con 35% menos de recargo de instalacion; cotizacion enviada se bloquea; boton OK no duplica; un folio = una cotizacion; Ref en historial; respaldo en Firebase guarda la marca; telefono inventado se bloquea; historial muestra No. de parte; proveedor en lista por servicio, obligatorio; "SOLO LLANTAS" no vale si hay taller; aceite y limpiezas llevan proveedor (ECOM)';
 
 var RIN = {
   'a': {mon:85,  bal:80,  piv:20, h:'Montaje $85 - Balanceo $80 - Pivote $20 por llanta'},
@@ -2534,7 +2534,7 @@ function generarWA() {
       txt+='\n🎯 La alineación se cobra por separado; en la compra de 4 llantas va sin costo.\n';
     }
     if(instalacionInfo.totalQty>=4){
-      txt+='\n🔍 *Revisión de seguridad SIN COSTO:* 13 puntos de motor + 12 puntos de suspensión, incluida al instalar tus 4 llantas.\n';
+      txt+='\n🔍 *Revisión de seguridad SIN COSTO:* 13 puntos de motor + 12 puntos de suspensión, incluida al instalar tus '+instalacionInfo.totalQty+' llantas.\n';   // el número es la cantidad de la cotización (con opciones, la de cada opción)
     }
     // 2 o 3 llantas (21-oct-2026): la revisión de motor va sin costo; la de suspensión tiene costo adicional (con 4 llantas va sin costo).
     if(instalacionInfo.totalQty===2 || instalacionInfo.totalQty===3){

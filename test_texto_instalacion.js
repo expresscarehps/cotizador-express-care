@@ -65,6 +65,12 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   w.setQty(llantas()[0].id, 4); await wait(40);
   { const t = texto(); const i1 = t.indexOf('INSTALACIÓN GRATIS'), i2 = t.indexOf('ALINEACIÓN SIN COSTO'), i3 = t.indexOf('Revisión de seguridad');
     ok('4 llantas: orden del mensaje = instalación gratis → alineación → revisión', i1 > 0 && i2 > i1 && i3 > i2, [i1, i2, i3]); }
+  console.log('\n— Revisión de 4+ llantas: el número sale de la cantidad de la cotización');
+  for (const n of [4, 5, 6, 10]) {
+    w.setQty(llantas()[0].id, n); await wait(40); const t = texto();
+    ok(n + ' llantas: la revisión dice "incluida al instalar tus ' + n + ' llantas"', t.includes('incluida al instalar tus ' + n + ' llantas.'), t.slice(t.indexOf('Revisión'), t.indexOf('Revisión') + 200));
+    ok(n + ' llantas: no queda ningún "tus 4 llantas" fijo' + (n === 4 ? ' (aquí coincide con 4)' : ''), n === 4 || !/tus 4 llantas/.test(t));
+  }
   console.log('\n=============================================\n' + passed + ' pasaron, ' + failed + ' fallaron');
   process.exit(failed ? 1 : 0);
 })();
