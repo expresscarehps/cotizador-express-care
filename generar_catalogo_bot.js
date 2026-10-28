@@ -29,7 +29,17 @@ function agrega(proveedor, d, tipo, base, calc, margen) {
 }
 w.DATA.forEach(d => agrega('SERV', d, 'costo', d.precio, () => w.pvpLlanta(d.precio, d.marca), w.margenLlanta(d.marca)));
 w.VEGA.forEach(d => agrega('VEGA', d, 'costo', d.costo, () => w.pvpLlanta(d.costo, d.marca), w.margenLlanta(d.marca)));
-w.AYALA.forEach(d => agrega('AYALA', d, 'lista', d.lista, () => w.pvpAyala(d.lista), null));
+// AYALA: SOLO lo que el cotizador muestra (ayalaSeMuestra: descontinuadas ocultas si hay otra opción, futuro lanzamiento nunca).
+// Las llantas con aviso para el asesor (descontinuada / hasta agotar existencia / sobre pedido) NO se mandan al bot:
+// el aviso pide confirmar existencia con una persona. Quedan listadas en catalogo_llantas_bot_omitidas.json.
+// Las de la lista MTO (BFGoodrich/Uniroyal) traen costo antes de IVA: precio = costo / (1 - margen) x 1.16 (pvpMto del cotizador).
+omitidas.ayala_con_aviso = []; omitidas.ayala_ocultas_por_estatus = 0;
+w.AYALA.forEach(d => {
+  if (!w.ayalaSeMuestra(d)) { omitidas.ayala_ocultas_por_estatus++; return; }
+  if (w.ayalaAviso(d.est)) { omitidas.ayala_con_aviso.push(d.cve + ':' + d.est); return; }
+  if (d.mto) agrega('AYALA', d, 'costo', d.mto, () => w.pvpMto(d.mto, d.marca), w.margenLlanta(d.marca));
+  else agrega('AYALA', d, 'lista', d.lista, () => w.pvpAyala(d.lista), null);
+});
 
 // Recargo de instalación por llanta: se LEE del cotizador (recalcInstalacionLlantas), no se escribe a mano.
 // Así, si cambian los paquetes (14 oct 2026: $480 ÷ 4 = $120 y $380 ÷ 2 = $190), el bot se actualiza solo al regenerar.
@@ -51,7 +61,7 @@ const reglas = {
     nota: 'Se SUMA al precio unitario DESPUES del margen y DESPUES del recargo de meses. La cantidad es el total de llantas de la cotizacion. Con 1 llanta se cotizan aparte Montaje/Balanceo/Pivote segun rin (tabla abajo).' },
   una_llanta_lineas_por_rin: w.RIN ? Object.fromEntries(Object.entries(w.RIN).map(([k, v]) => [k, { montaje: v.mon, balanceo: v.bal, pivote: v.piv }])) : null,
   categorias_rin: { a: 'rin 13 a 16', b: 'rin 17 a 19', c: 'rin 20 o mas', nota: 'Define cual fila de una_llanta_lineas_por_rin aplica cuando se cotiza UNA sola llanta (el cotizador la elige el asesor con los botones de rin).' },
-  meses: { plazos: [3, 6], nota: 'precio_meses ya incluye el recargo (x1.05 en SERV/VEGA; AYALA usa 80% de lista en vez de 75%). No volver a recargar.' },
+  meses: { plazos: [3, 6], nota: 'precio_meses ya incluye el recargo (x1.05 en SERV/VEGA y en las AYALA de lista MTO; AYALA de lista usa 80% de lista en vez de 75%). No volver a recargar.' },
   total: 'total = suma(cantidad x (precio_contado_o_meses + instalacion_por_llanta)); redondear a 2 decimales solo al mostrar.',
   demanda_texto: 'demanda alta/media/baja es rotacion de la marca en el mercado (numero de SKUs entre proveedores), NO ventas de Express Care. Prohibido decir "la mas vendida", "la que mas vendemos" o sinonimos; usar p.ej. "una de las marcas de mayor rotacion en el mercado".',
   proveedor_visible: 'Nunca mostrar al cliente el campo proveedor (SERV/VEGA/AYALA).'
@@ -60,5 +70,5 @@ fs.writeFileSync(path.join(OUT, 'catalogo_llantas_bot.json'), JSON.stringify(doc
 fs.writeFileSync(path.join(OUT, 'reglas_precios_bot.json'), JSON.stringify(reglas, null, 2));
 fs.writeFileSync(path.join(OUT, 'catalogo_llantas_bot_omitidas.json'), JSON.stringify(omitidas, null, 2));
 const por = {}; docs.forEach(d => { por[d.proveedor] = (por[d.proveedor] || 0) + 1; });
-console.log('Versión del cotizador:', version); console.log('Documentos:', docs.length, por, '· omitidas (sin medida o descripción):', omitidas.sin_medida_o_desc.length);
+console.log('Versión del cotizador:', version); console.log('Documentos:', docs.length, por, '· omitidas (sin medida o descripción):', omitidas.sin_medida_o_desc.length, '· AYALA ocultas por estatus:', omitidas.ayala_ocultas_por_estatus, '· AYALA con aviso (no van al bot):', omitidas.ayala_con_aviso.length);
 process.exit(0);

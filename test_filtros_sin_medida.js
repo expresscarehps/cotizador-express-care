@@ -21,7 +21,7 @@ const filas = w => Array.from(w.document.querySelectorAll('#res .ri'));
 const cnt = w => w.document.getElementById('cnt').textContent;
 const num = w => parseInt((cnt(w).match(/\d+/) || [0])[0], 10);
 const res = w => w.document.getElementById('res').textContent;
-function todas(w) { return [].concat(w.DATA, w.AYALA, w.VEGA).filter(d => d.medida && d.desc); }
+function todas(w) { return [].concat(w.DATA, w.AYALA.filter(w.ayalaSeMuestra), w.VEGA).filter(d => d.medida && d.desc); }
 function esperado(w, f) {   // cuenta independiente, directo de los datos
   return todas(w).filter(d => { const b = w.BRAND_DB[d.marca], r = w.ROTACION_DB[d.marca];
     return (!f.gama || (b && b.gama === f.gama)) && (!f.dem || (r && r.rotacion === f.dem)) && (!f.marca || d.marca === f.marca); }).length;
@@ -51,7 +51,7 @@ function marcaDe(w, row) { return row.querySelector('.rm').textContent.trim(); }
   // Orden: primero auto normal, al final camión / todoterreno / LT (se revisa sobre TODOS los resultados con una consulta amplia)
   const esAuto = m => /^P?\d{3}(\/\d{2}|R)/.test((m || '').toUpperCase()) && (m || '').toUpperCase().indexOf('LT') < 0;
   poner(w, 'qg', 'Económica'); poner(w, 'qd', 'media');   // consulta amplia con medidas mezcladas
-  const lista = [].concat(w.DATA, w.AYALA, w.VEGA).filter(d => d.medida && d.desc && w.BRAND_DB[d.marca] && w.BRAND_DB[d.marca].gama === 'Económica' && w.ROTACION_DB[d.marca] && w.ROTACION_DB[d.marca].rotacion === 'media');
+  const lista = [].concat(w.DATA, w.AYALA.filter(w.ayalaSeMuestra), w.VEGA).filter(d => d.medida && d.desc && w.BRAND_DB[d.marca] && w.BRAND_DB[d.marca].gama === 'Económica' && w.ROTACION_DB[d.marca] && w.ROTACION_DB[d.marca].rotacion === 'media');
   const hayNoAuto = lista.some(d => !esAuto(d.medida)), hayAuto = lista.some(d => esAuto(d.medida));
   ok('B7 la consulta de prueba mezcla medidas de auto y de camión/todoterreno (para que valga)', hayNoAuto && hayAuto);
   const medidasDe = () => Array.from(w.document.querySelectorAll('#res .ochk')).map(c => { const f = w.buscarItemCatalogo(c.getAttribute('data-cve')); return f && f.it ? f.it.medida : ''; });

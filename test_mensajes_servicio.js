@@ -68,7 +68,7 @@ const cuenta = (t, s) => t.split(s).length - 1;
   console.log('\n— Llantas sin cambio y datos del mensaje');
   w.tallerItems = []; w.cart = [];
   const q = doc.getElementById('qm'); q.value = '205/55R16'; q.dispatchEvent(new w.Event('input', { bubbles: true })); await wait(120);
-  doc.querySelector('#res .badd[data-cve="AY25285"]').click(); await wait(80);
+  doc.querySelector('#res .badd[data-cve="AY42495"]').click(); await wait(80);
   w.setQty(w.cart.filter(c => c.t === 'l')[0].id, 4); await wait(40);
   doc.getElementById('cli-nombre').value = 'Juan Prueba'; w.generarWA();
   t = doc.getElementById('wt').textContent;

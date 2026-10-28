@@ -27,12 +27,12 @@ const cerca = (a, b) => Math.abs(a - b) < 0.005;
   ok('2 esMichelin detecta MICHELIN (con espacios y minúsculas)', w.esMichelin({ marca: 'MICHELIN' }) && w.esMichelin({ marca: ' michelin ' }));
   ok('3 esMichelin NO detecta BFGOODRICH, UNIROYAL ni vacío', !w.esMichelin({ marca: 'BFGOODRICH' }) && !w.esMichelin({ marca: 'UNIROYAL' }) && !w.esMichelin({}) && !w.esMichelin(null));
 
-  console.log('\n— Michelin 205/55R16 (AY25285, lista $3,168) contado');
+  console.log('\n— Michelin 205/55R16 (AY42495, lista $3,054) contado');
   w.pago = 'contado';
   await buscar('205/55R16');
-  ok('4 se agrega la Michelin AY25285 al carrito', await agregar('AY25285'), llantas().length);
+  ok('4 se agrega la Michelin AY42495 al carrito', await agregar('AY42495'), llantas().length);
   const m = () => llantas()[0];
-  const base = 3168 * 0.75 * 1.16;
+  const base = 3054 * 0.75 * 1.16;
   ok('5 precio base AYALA contado = lista × 0.75 × 1.16', cerca(m().precioBase, base), m().precioBase);
   for (const [n, rec] of [[1, 0], [2, 123.5], [3, 123.5], [4, 78], [6, 78], [8, 78]]) {
     w.setQty(m().id, n); await wait(30);
@@ -48,7 +48,7 @@ const cerca = (a, b) => Math.abs(a - b) < 0.005;
 
   console.log('\n— Michelin a meses sin intereses');
   w.pago = 'meses'; w.recalcPVP(); await wait(50);
-  const baseM = 3168 * 0.80 * 1.16;
+  const baseM = 3054 * 0.80 * 1.16;
   ok('10 a meses: base = lista × 0.80 × 1.16 y recargo Michelin $78', cerca(m().precioBase, baseM) && cerca(m().precio, baseM + 78), [m().precioBase, m().precio]);
   w.pago = 'contado'; w.recalcPVP(); await wait(50);
   ok('11 al volver a contado se recalcula con $78', cerca(m().precio, base + 78), m().precio);
@@ -82,7 +82,7 @@ const cerca = (a, b) => Math.abs(a - b) < 0.005;
   ok('20 AYALA no cambió: pvpAyala(7560) contado = 7560 × 0.75 × 1.16', cerca(w.pvpAyala(7560), 7560 * 0.75 * 1.16));
 
   console.log('\n— Texto de WhatsApp con Michelin (4 llantas)');
-  await buscar('205/55R16'); await agregar('AY25285'); w.setQty(llantas()[0].id, 4); await wait(50);
+  await buscar('205/55R16'); await agregar('AY42495'); w.setQty(llantas()[0].id, 4); await wait(50);
   w.generarWA();
   const wa = (doc.getElementById('wt') || {}).value || (doc.getElementById('wt') || {}).textContent || '';
   ok('21 el mensaje conserva "INSTALACIÓN GRATIS" y la revisión de seguridad', /INSTALACIÓN GRATIS/.test(wa) && /Revisión de seguridad SIN COSTO/.test(wa), wa.slice(0, 200));

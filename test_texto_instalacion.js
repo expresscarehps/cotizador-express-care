@@ -22,7 +22,7 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   const texto = () => { w.generarWA(); const e = doc.getElementById('wt'); return (e && (e.value || e.textContent)) || ''; };
   w.pago = 'contado';
   await buscar('205/55R16');
-  ok('1 se agrega la llanta AY25285 al carrito', await agregar('AY25285'), llantas().length);
+  ok('1 se agrega la llanta AY42495 al carrito', await agregar('AY42495'), llantas().length);
   for (const n of [2, 3, 4, 6, 10]) {
     w.setQty(llantas()[0].id, n); await wait(40);
     const t = texto();
