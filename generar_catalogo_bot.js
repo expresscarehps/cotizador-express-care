@@ -29,7 +29,7 @@ function agrega(proveedor, d, tipo, base, calc, margen) {
 }
 w.DATA.forEach(d => agrega('SERV', d, 'costo', d.precio, () => w.pvpLlanta(d.precio, d.marca), w.margenLlanta(d.marca)));
 w.VEGA.forEach(d => agrega('VEGA', d, 'costo', d.costo, () => w.pvpLlanta(d.costo, d.marca), w.margenLlanta(d.marca)));
-// AYALA: SOLO lo que el cotizador muestra (ayalaSeMuestra: descontinuadas ocultas si hay otra opción, futuro lanzamiento nunca).
+// AYALA: SOLO lo que el cotizador muestra (ayalaSeMuestra: descontinuadas a secas siempre ocultas, futuro lanzamiento nunca).
 // Las llantas con aviso para el asesor (descontinuada / hasta agotar existencia / sobre pedido) NO se mandan al bot:
 // el aviso pide confirmar existencia con una persona. Quedan listadas en catalogo_llantas_bot_omitidas.json.
 // Las de la lista MTO (BFGoodrich/Uniroyal) traen costo antes de IVA: precio = costo / (1 - margen) x 1.16 (pvpMto del cotizador).

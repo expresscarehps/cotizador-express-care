@@ -52,13 +52,13 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   ok('B2 ' + mixta + ': NO aparece ninguna Descontinuada', rb.every(d => d.est !== 'D'), rb.filter(d => d.est === 'D').map(d => d.cve));
   ok('B3 ' + mixta + ': no se muestra el aviso DESCONTINUADA', !/DESCONTINUADA - confirmar/.test(textoRes()));
 
-  // ── C. Medida con SOLO descontinuadas: se muestran con aviso rojo para el asesor ──
+  // ── C. Medida con SOLO descontinuadas: tampoco salen (AYALA ya no las maneja, confirmado 27 oct 2026) ──
   const soloD = medidas.find(m => porMed[m].every(d => d.est === 'D') && /^\d{3}\/\d{2}R\d{2}$/.test(m));
   ok('C0 hay una medida de prueba con solo descontinuadas', !!soloD, soloD);
   await buscar(soloD);
   const rc = filasAyala();
-  ok('C1 ' + soloD + ': como no hay otra opción AYALA, SÍ se muestran las descontinuadas', porMed[soloD].every(d => rc.indexOf(d) >= 0), rc.map(d => d.cve));
-  ok('C2 ' + soloD + ': cada una trae el aviso "DESCONTINUADA - confirmar existencia"', (textoRes().match(/DESCONTINUADA - confirmar existencia/g) || []).length >= porMed[soloD].length, textoRes().slice(0, 300));
+  ok('C1 ' + soloD + ': aunque no haya otra opción AYALA, NO se muestran las descontinuadas', rc.every(d => d.est !== 'D') && rc.length === 0, rc.map(d => d.cve));
+  ok('C2 ' + soloD + ': no aparece el aviso "DESCONTINUADA - confirmar existencia"', !/DESCONTINUADA - confirmar/.test(textoRes()));
 
   // ── D. Futuro lanzamiento: nunca sale (ni aunque sea la única opción) ──
   const soloFL = medidas.find(m => porMed[m].every(d => d.est === 'FL'));
@@ -85,17 +85,16 @@ const wait = ms => new Promise(r => setTimeout(r, ms));
   for (const m of medidas.slice(0, 120)) {
     await buscar(m);
     const f = filasAyala();
-    const hayOpcion = porMed[m].some(visibleNoD);
-    f.forEach(d => { if (d.medida === m && (d.est === 'FL' || (d.est === 'D' && hayOpcion))) malas.push(m + ':' + d.cve + ':' + d.est); });
+    f.forEach(d => { if (d.medida === m && (d.est === 'FL' || d.est === 'D')) malas.push(m + ':' + d.cve + ':' + d.est); });
   }
-  ok('F1 en 120 medidas revisadas nunca sale una FL ni una D con otra opción disponible', malas.length === 0, malas.slice(0, 5));
+  ok('F1 en 120 medidas revisadas nunca sale una FL ni una D (descontinuada a secas)', malas.length === 0, malas.slice(0, 5));
 
   // ── G. El aviso es solo para el asesor: no viaja al WhatsApp ──
-  await buscar(soloD);
-  const bt = doc.querySelector('#res .badd[data-cve="' + porMed[soloD][0].cve + '"]'); if (bt) bt.click(); await wait(80);
+  await buscar(di.medida);
+  const bt = doc.querySelector('#res .badd[data-cve="' + di.cve + '"]'); if (bt) bt.click(); await wait(80);
   w.pago = 'contado'; w.generarWA();
   const e = doc.getElementById('wt'); const wa = (e && (e.value || e.textContent)) || '';
-  ok('G1 la llanta descontinuada de prueba quedó en el carrito', w.cart.some(c => c.t === 'l'), w.cart.length);
+  ok('G1 la llanta con aviso (descontinuada con inventario) de prueba quedó en el carrito', w.cart.some(c => c.t === 'l'), w.cart.length);
   ok('G2 el mensaje de WhatsApp NO trae avisos de estatus ni el nombre del proveedor', wa.length > 50 && !/DESCONTINUADA|Descontinuada|Sobre pedido|hasta agotar|AYALA/i.test(wa), wa.slice(0, 200));
 
   // ── H. Demanda de las marcas AYALA recalculada con lo que se ofrece; regla del archivo de marcas: <=9 baja, 10-52 media, >=53 alta ──

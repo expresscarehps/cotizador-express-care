@@ -855,7 +855,7 @@ var AYALA_MED_CON_OPCION={};
 })();
 function ayalaSeMuestra(d){
   if(d.est==='FL') return false;
-  if(d.est==='D') return !AYALA_MED_CON_OPCION[d.medida];
+  if(d.est==='D') return false; // AYALA ya no maneja las 'Descontinuado' a secas (confirmado por Carlos 27 oct 2026)
   return true;
 }
 function ayalaAviso(est){
@@ -2435,6 +2435,7 @@ var TEXTOS_WA_TALLER = {
       'Calibración de cuerpo de aceleración',
       'Bujías NGK de alta calidad (si prefieres otra marca, consúltalo con tu asesor)',
       'Revisión de batería, niveles de fluidos y anticongelante con densímetro especial',
+      'Nitrógeno en tus llantas, sin costo',
       'Si el tiempo lo permite, revisamos también tu suspensión y el estado de tus llantas'
     ]
   },
@@ -2444,6 +2445,7 @@ var TEXTOS_WA_TALLER = {
       'Aceite Valvoline y filtro nuevo',
       'Revisión de 15 puntos de seguridad',
       'Revisión de batería, niveles de fluidos y anticongelante con densímetro especial',
+      'Nitrógeno en tus llantas, sin costo',
       'Si el tiempo lo permite, revisamos también tu suspensión y el estado de tus llantas'
     ]
   },

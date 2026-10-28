@@ -81,6 +81,20 @@ const cuenta = (t, s) => t.split(s).length - 1;
   w.tallerItems = [item('frenos', 'Balatas', 1150)]; w.generarWA();
   ok('31 el Ref cambia cuando cambia el mensaje y es estable si no cambia', ref1 !== ref2 && w.refVigente === ref2, [ref1, ref2, w.refVigente]);
   ok('32 ningún proveedor aparece en el mensaje', !/AYALA|VEGA|SERVILLANTAS/i.test(t));
+  // ── Nitrógeno en llantas (27 oct 2026): plus en afinación y cambio de aceite ──
+  console.log('\n— Nitrógeno en llantas');
+  const NITRO = /Nitrógeno en tus llantas, sin costo/;
+  t = msg([item('afinacion', 'Bujías NGK', 960)]);
+  ok('33 afinación incluye "Nitrógeno en tus llantas, sin costo"', NITRO.test(t) && t.indexOf('Nitrógeno en tus llantas') < t.indexOf('Si el tiempo lo permite'));
+  t = msg([item('aceite', 'Aceite', 185, 4)]);
+  ok('34 cambio de aceite incluye "Nitrógeno en tus llantas, sin costo"', NITRO.test(t) && t.indexOf('Nitrógeno en tus llantas') < t.indexOf('Si el tiempo lo permite'));
+  t = msg([item('frenos', 'Balatas', 1150)]);
+  ok('35 frenos NO lleva el nitrógeno', !/Nitrógeno/.test(t));
+  t = msg([item('suspension', 'Amortiguador', 2400)]);
+  ok('36 suspensión NO lleva el nitrógeno', !/Nitrógeno/.test(t));
+  t = msg([item('aceite', 'Aceite', 185, 4), item('afinacion', 'Bujías', 960)]);
+  ok('37 afinación + aceite: el nitrógeno aparece en cada bloque (2 veces)', (t.match(/Nitrógeno en tus llantas, sin costo/g) || []).length === 2);
+
   console.log('\n=============================================\n' + passed + ' pasaron, ' + failed + ' fallaron');
   process.exit(failed ? 1 : 0);
 })();
