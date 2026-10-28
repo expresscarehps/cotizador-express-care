@@ -88,6 +88,24 @@ const cerca = (a, b) => Math.abs(a - b) < 0.005;
   ok('21 el mensaje conserva "INSTALACIÓN GRATIS" y la revisión de seguridad', /INSTALACIÓN GRATIS/.test(wa) && /Revisión de seguridad SIN COSTO/.test(wa), wa.slice(0, 200));
   ok('22 el mensaje muestra el precio unitario Michelin con $78 incluido', wa.includes(w.fmt(base + 78)), wa.slice(0, 300));
 
+  // ── Aviso al asesor con Michelin (27 oct 2026): siempre muestra la base y el descuento aplicado ──
+  console.log('\n— Aviso de instalación al asesor con Michelin');
+  const aviso = () => { w.renderCarrito(); const co = doc.getElementById('ci'); return co.textContent.replace(/\s+/g, ' '); };
+  let av = aviso();   // aquí hay 4 Michelin AY42495
+  ok('23 4 Michelin: el aviso muestra la base "$120.00 por llanta"', /recargo base de \$120\.00 por llanta/.test(av), av.slice(av.indexOf('Instalación incluida'), av.indexOf('Instalación incluida') + 300));
+  ok('24 4 Michelin: dice que se aplica el 35% y que queda en $78.00', /Michelin: recargo base de \$120\.00 por llanta, con 35% de descuento aplicado → queda en \$78\.00 por llanta/.test(av));
+  ok('25 4 Michelin: ya no dice "ya aplicado a c/u" (sería $120 y es $78)', !/ya aplicado a c\/u/.test(av));
+  w.setQty(llantas()[0].id, 2); await wait(30); av = aviso();
+  ok('26 2 Michelin: base $190.00 y queda en $123.50', /recargo base de \$190\.00 por llanta, con 35% de descuento aplicado → queda en \$123\.50 por llanta/.test(av), av.slice(av.indexOf('Instalación incluida'), av.indexOf('Instalación incluida') + 300));
+  await buscar('205/55R16');
+  const otra2 = Array.from(doc.querySelectorAll('#res .badd[data-cve]')).map(b => b.getAttribute('data-cve')).find(c => !/^AY/.test(c));
+  await agregar(otra2); const o2 = llantas().find(l => !l.isAyala); w.setQty(o2.id, 2); await wait(30); av = aviso();
+  ok('27 Michelin + otra marca (4 en total): muestra base, descuento Michelin y que las demás llevan $120.00 completos', /Michelin: recargo base de \$120\.00/.test(av) && /queda en \$78\.00/.test(av) && /Las demás marcas llevan los \$120\.00 completos/.test(av), av.slice(av.indexOf('Instalación incluida'), av.indexOf('Instalación incluida') + 400));
+  w.removeCartItem(llantas().find(l => l.isAyala).id); await wait(30); w.setQty(llantas()[0].id, 4); await wait(30); av = aviso();
+  ok('28 sin Michelin el aviso queda como siempre: "recargo de $120.00 ya aplicado a c/u" y sin texto de Michelin', /recargo de \$120\.00 ya aplicado a c\/u/.test(av) && !/Michelin: recargo base/.test(av), av.slice(av.indexOf('Instalación incluida'), av.indexOf('Instalación incluida') + 300));
+  w.instalacionInfo = { totalQty: 4, recargo: 120 };
+  ok('29 aviso de opciones: con una opción Michelin muestra base y descuento; sin Michelin no agrega nada', /base de \$120\.00/.test(w.avisoMichelinInstalacion([{ marca: 'MICHELIN' }, { marca: 'BFGOODRICH' }])) && w.avisoMichelinInstalacion([{ marca: 'BFGOODRICH' }]) === '');
+
   console.log('\n=============================================\n' + passed + ' pasaron, ' + failed + ' fallaron');
   process.exit(failed ? 1 : 0);
 })();

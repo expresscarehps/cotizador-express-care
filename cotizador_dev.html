@@ -1347,6 +1347,15 @@ var MARGEN_ECON   = 12.5; // antes 15.5; se conserva la constante y la lógica d
 var RECARGO_MESES = 1.05;
 var DESC_INSTALACION_MICHELIN = 35; // % menos en el recargo de instalación cuando la llanta es Michelin (19-oct-2026)
 function esMichelin(l){ return String((l&&l.marca)||'').trim().toUpperCase() === 'MICHELIN'; }
+// Aviso para el asesor (27-oct-2026): con Michelin en la cotización, el aviso de instalación SIEMPRE muestra el recargo base ($120 / $190),
+// dice que se aplica el descuento y cómo queda. Sin Michelin devuelve '' y el aviso queda exactamente como estaba.
+function avisoMichelinInstalacion(llantas){
+  var hayM=false, hayOtra=false, i;
+  for(i=0;i<llantas.length;i++){ if(esMichelin(llantas[i])) hayM=true; else hayOtra=true; }
+  if(!hayM || !(instalacionInfo.recargo>0)) return '';
+  var base=instalacionInfo.recargo, conDesc=base*(1-DESC_INSTALACION_MICHELIN/100);
+  return '<br>🔹 <b>Michelin:</b> recargo base de '+fmt(base)+' por llanta, con '+DESC_INSTALACION_MICHELIN+'% de descuento aplicado → queda en <b>'+fmt(conDesc)+'</b> por llanta.'+(hayOtra?' Las demás marcas llevan los '+fmt(base)+' completos.':'');
+}
 var MARGEN_PROV_LIBRE = {'YOKOHAMA':12.5, 'SUNFULL':12.5, 'SUNFUL':12.5};
 function margenLlanta(marca) {
   var m = String(marca||'').trim().replace(/\s+/g,' ').toUpperCase();
@@ -1756,7 +1765,7 @@ function htmlOpcionesCarrito(){
   h+='<div style="background:#eff6ff;border:1px solid #93c5fd;border-radius:8px;padding:7px 10px;margin:0 0 8px;font-size:11.5px;color:#1e3a8a;line-height:1.4">Son <b>alternativas</b>: el total no las suma, cada opción tiene su propio total.</div>';
   h+='<div class="ci"><div class="cid">Cantidad (igual para todas las opciones)</div>'+qtyCtrl(q)+'</div>';
   if(instalacionInfo.recargo>0){
-    h+='<div style="background:#ecfdf5;border:1px solid #86efac;border-radius:8px;padding:7px 10px;margin:0 0 8px;font-size:11.5px;color:#166534;font-weight:600;line-height:1.4">✅ Instalación incluida en el precio de cada opción ('+instalacionInfo.totalQty+' llantas)</div>';
+    h+='<div style="background:#ecfdf5;border:1px solid #86efac;border-radius:8px;padding:7px 10px;margin:0 0 8px;font-size:11.5px;color:#166534;font-weight:600;line-height:1.4">✅ Instalación incluida en el precio de cada opción ('+instalacionInfo.totalQty+' llantas)'+avisoMichelinInstalacion(T.lista.map(function(x){return x.l;}))+'</div>';
   }
   T.lista.forEach(function(x){
     var c=x.l;
@@ -2359,7 +2368,7 @@ function renderCarrito(){
   if(llantas.length && !hayOpciones()){
     html+='<div class="csect">Llantas</div>';
     if(instalacionInfo.recargo>0){
-      html+='<div style="background:#ecfdf5;border:1px solid #86efac;border-radius:8px;padding:7px 10px;margin:0 0 8px;font-size:11.5px;color:#166534;font-weight:600;line-height:1.4">✅ Instalación incluida en el precio ('+instalacionInfo.totalQty+' llantas): Montaje + Balanceo + Pivote — recargo de '+fmt(instalacionInfo.recargo)+' ya aplicado a c/u. No agregar Paquete ni M/B/P por separado.</div>';
+      html+='<div style="background:#ecfdf5;border:1px solid #86efac;border-radius:8px;padding:7px 10px;margin:0 0 8px;font-size:11.5px;color:#166534;font-weight:600;line-height:1.4">✅ Instalación incluida en el precio ('+instalacionInfo.totalQty+' llantas): Montaje + Balanceo + Pivote — '+(llantas.some(esMichelin)?'recargo base de '+fmt(instalacionInfo.recargo)+' por llanta.':'recargo de '+fmt(instalacionInfo.recargo)+' ya aplicado a c/u.')+' No agregar Paquete ni M/B/P por separado.'+avisoMichelinInstalacion(llantas)+'</div>';
     }
     for(var i=0;i<llantas.length;i++){
       var c=llantas[i],sub=c.precio*c.qty; tot+=sub;
@@ -2578,7 +2587,7 @@ function generarWA() {
   if(pago==='meses' && (llantas.length||extSvcs.length)){
     txt+='\n💳 *Precio a meses sin intereses (3 y 6 meses con tarjetas participantes)*\n\n';
   } else if(llantas.length||extSvcs.length){
-    txt+='\n💵 *Precios de contado.* En caso de que prefieras realizar tu compra a meses sin intereses, se aplicará un incremento del 5% sobre el precio cotizado.\n\n';
+    txt+='\n💵 *Precios de contado.* En caso de que prefieras realizar tu compra a meses sin intereses (3 y 6 meses con tarjetas participantes), se aplicará un incremento del 5% sobre el precio cotizado.\n\n';
   }
 
   if(tallerCart.length){

@@ -95,6 +95,15 @@ const cuenta = (t, s) => t.split(s).length - 1;
   t = msg([item('aceite', 'Aceite', 185, 4), item('afinacion', 'Bujías', 960)]);
   ok('37 afinación + aceite: el nitrógeno aparece en cada bloque (2 veces)', (t.match(/Nitrógeno en tus llantas, sin costo/g) || []).length === 2);
 
+  // ── Meses sin intereses en el mensaje (27 oct 2026): el texto de contado también dice 3 y 6 meses ──
+  console.log('\n— Meses sin intereses en el mensaje');
+  w.pago = 'contado'; w.cart = [{ id: 'lm1', t: 'l', desc: '185/65R15 PRUEBA', marca: 'SAFERICH', precio: 888.23, precioBase: 888.23, qty: 4 }];
+  w.tallerItems = []; w.recalcInstalacionLlantas(); w.generarWA(); t = doc.getElementById('wt').textContent;
+  ok('38 contado: el mensaje dice "3 y 6 meses con tarjetas participantes" y el incremento del 5%', /meses sin intereses \(3 y 6 meses con tarjetas participantes\), se aplicará un incremento del 5% sobre el precio cotizado/.test(t), t.slice(t.indexOf('Precios de contado') - 5, t.indexOf('Precios de contado') + 250));
+  w.pago = 'meses'; w.generarWA(); t = doc.getElementById('wt').textContent;
+  ok('39 a meses: sigue saliendo "Precio a meses sin intereses (3 y 6 meses con tarjetas participantes)"', /Precio a meses sin intereses \(3 y 6 meses con tarjetas participantes\)/.test(t));
+  w.pago = 'contado';
+
   console.log('\n=============================================\n' + passed + ' pasaron, ' + failed + ' fallaron');
   process.exit(failed ? 1 : 0);
 })();
