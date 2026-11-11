@@ -24,7 +24,7 @@ const opts = sel => Array.from(sel.options).map(o => o.value).filter(v => v && v
 function cambiar(w, sel, valor) { sel.value = valor; sel.dispatchEvent(new w.Event('change', { bubbles: true })); }
 function filaDe(w, concepto) { return $$(w, '#taller-items .taller-row').find(r => (r.querySelector('input[data-f="concepto"]') || {}).value === concepto); }
 function itemDe(w, concepto) { return w.tallerItems.find(i => i.concepto === concepto && (!i.tipo || true)); }
-function ponerEnCotizacion(it, precio) { it.precio = precio || 500; it.qty = 1; }
+function ponerEnCotizacion(it, precio) { it.precio = precio || 500; it.qty = 1; if (!it.mo && !it.precioFijo && !it.noParte) it.noParte = 'PT-' + String(it.id).slice(-6); }   // las piezas llevan No. de parte (candado del 11-nov-2026); aquí solo se prueba el proveedor
 function erroresProv(w) { return w.validarCampos().filter(e => /^Proveedor de/.test(e)); }
 function tab(w, s) { w.setTallerSvc(s, null); }
 
@@ -53,7 +53,7 @@ function tab(w, s) { w.setTallerSvc(s, null); }
   tab(w, 'libre'); w.addTallerItem();
   const libreSel = $('#taller-items select.prov-sel');
   const todosNombres = ['AutoZone', 'AutoZone EUA', 'Govi', 'Cosmos', 'Malpa', 'Octavio Vázquez', 'Dar', 'Maresa', 'Dasda', 'Corral Mantilla', 'Lumo', 'Chevrolet Agencia', 'Balatas y Embragues', 'Chavitar', 'Mercado Libre', 'CAASA', 'ECOM'];
-  ok('A11 Libre: renglón nuevo trae TODOS los proveedores', !!libreSel && JSON.stringify(opts(libreSel)) === JSON.stringify(todosNombres), libreSel && opts(libreSel));
+  ok('A11 Libre: renglón nuevo trae N/A (11-nov-2026) y TODOS los proveedores', !!libreSel && JSON.stringify(opts(libreSel)) === JSON.stringify(['N/A'].concat(todosNombres)), libreSel && opts(libreSel));
   ok('A12 Libre incluye a todos los de los otros servicios', ['suspension', 'frenos', 'aceite', 'afinacion'].every(k => w.PROV_LISTAS[k].every(n => w.PROV_LISTAS.libre.indexOf(n) >= 0)));
 
   console.log('\n— B. Elegir proveedor');
@@ -126,7 +126,7 @@ function tab(w, s) { w.setTallerSvc(s, null); }
   $('#asesor').value = 'XEN';
   const rojosVisibles = () => $$(w, 'select.prov-sel.field-error').map(s => s.getAttribute('data-prov-id'));
   const tabsMarcadas = () => $$(w, '.ttab.ttab-err').map(t => t.getAttribute('data-s')).sort();
-  const poner = (svc, nombre, campo, valor) => { tab(w, svc); const it = w.tallerItems.find(i => i.tipo === svc && i.concepto === nombre); w.updTallerField(it.id, campo, valor); w.updTallerField(it.id, 'qty', '1'); return it; };
+  const poner = (svc, nombre, campo, valor) => { tab(w, svc); const it = w.tallerItems.find(i => i.tipo === svc && i.concepto === nombre); w.updTallerField(it.id, campo, valor); w.updTallerField(it.id, 'qty', '1'); if (!it.mo && !it.precioFijo) w.updTallerField(it.id, 'noParte', 'PT-' + String(it.id).slice(-6)); return it; };   // las piezas llevan No. de parte (candado 11-nov-2026)
   const iFiltro = poner('afinacion', 'Filtro de aceite', 'costo', '100');
   const iAceite = poner('afinacion', 'Aceite (especificar viscosidad)', 'precio', '130');
   const iBalata = poner('frenos', 'Balatas delanteras', 'costo', '200');
