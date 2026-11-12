@@ -1065,7 +1065,7 @@ var MODO_PRUEBA = (typeof window!=='undefined' && window.location && /[?&]test=1
 // Se detecta por el nombre del archivo: en dev, el aviso real a GHL pide confirmación explícita
 // (para no etiquetar clientes reales por accidente). También viaja en el aviso como "fuente".
 var ES_DEV = (typeof window!=='undefined' && window.location && /dev\.html?$/i.test(window.location.pathname||''));
-var VERSION_PAGINA = 'dev 2026-11-11 candado de No. de parte en todas las piezas (N/A y S/N solo en Libre; N/A como proveedor en Libre); catalogo Servillantas 24-sep-2026, VEGA 21-oct-2026, AYALA noviembre 2026';
+var VERSION_PAGINA = 'dev 2026-11-11 frenos con dos opciones de balatas (Opción 1 alto rendimiento (cerámica) / Opción 2 convencionales (semi metálicas)); candado de No. de parte; catalogo Servillantas 24-sep-2026, VEGA 21-oct-2026, AYALA noviembre 2026';
 
 var RIN = {
   'a': {mon:85,  bal:80,  piv:20, h:'Montaje $85 - Balanceo $80 - Pivote $20 por llanta'},
@@ -1101,8 +1101,10 @@ var TALLER_TEMPLATES = {
   frenos: {
     tipo: 'Taller - Frenos',
     items: [
-      {concepto:'Balatas delanteras',                  costo:'', margen:30,   mo:false, pend:true,  qty:0},
-      {concepto:'Balatas / zapatas traseras',          costo:'', margen:30,   mo:false, pend:true,  qty:0},
+      {concepto:'Balatas delanteras',                  costo:'', margen:30,   mo:false, pend:true,  qty:0, opc1:true, eje:'del'},
+      {concepto:'Balatas delanteras (convencionales)', costo:'', margen:30, mo:false, pend:true,  qty:0, opc2:true, eje:'del'},
+      {concepto:'Balatas / zapatas traseras',          costo:'', margen:30,   mo:false, pend:true,  qty:0, opc1:true, eje:'tras'},
+      {concepto:'Balatas / zapatas traseras (convencionales)', costo:'', margen:30, mo:false, pend:true, qty:0, opc2:true, eje:'tras'},
       {concepto:'Rectificado de discos',               costo:'', margen:0,  mo:false, pend:false, precioFijo:true, qty:0, conQty:true},
       {concepto:'Rectificado de tambor',               costo:'', margen:0,  mo:false, pend:false, precioFijo:true, qty:0, conQty:true},
       {concepto:'Mano de obra balatas delanteras',     costo:'', margen:0,  mo:true,  pend:false, qty:0, descuento:0},
@@ -1684,6 +1686,43 @@ function textoRangoOpc(){
   var t=totalesOpciones().lista.map(function(x){ return x.total; });
   return t.length ? fmt(Math.min.apply(null,t))+' a '+fmt(Math.max.apply(null,t)) : fmt(0);
 }
+// ── FRENOS CON DOS OPCIONES (11-nov-2026, pedido de Carlos) ──────────────────────────────────────────
+// Opción 1 = balatas alto rendimiento (cerámica); Opción 2 = balatas convencionales (semi metálicas), de otro proveedor.
+// Son ALTERNATIVAS (no se suman). Si el asesor solo llena la Opción 1, la cotización sale normal como siempre.
+// Lo demás (mano de obra, rectificado, otros servicios, llantas) es común y se suma a cada opción. En el texto
+// al cliente NO se nombra al proveedor.
+var FR_ETQ1 = 'Balatas alto rendimiento (cerámica)', FR_ETQ2 = 'Balatas convencionales (semi metálicas)';
+function frIncluido(it){ return !!(it && it.concepto && it.precio!=='' && parseFloat(it.precio)>0 && parseFloat(it.qty)>0 && !it.opcional); }
+function hayOpcionesFrenos(){ return tallerItems.some(function(it){ return it.opc2 && frIncluido(it); }); }
+function frGrupo(n){ return tallerItems.filter(function(it){ return (n===2?it.opc2:it.opc1) && frIncluido(it); }); }
+function totalesOpcionesFrenos(){
+  var comun=0;
+  cart.forEach(function(c){ comun+=c.precio*c.qty; });
+  tallerItems.forEach(function(it){ if(!it.opc1 && !it.opc2 && frIncluido(it)) comun+=parseFloat(it.precio)*parseFloat(it.qty); });
+  function suma(l){ var a=0; l.forEach(function(it){ a+=parseFloat(it.precio)*parseFloat(it.qty); }); return a; }
+  var g1=frGrupo(1), g2=frGrupo(2);
+  return {comun:comun, lista:[{op:1, etq:FR_ETQ1, items:g1, total:comun+suma(g1)}, {op:2, etq:FR_ETQ2, items:g2, total:comun+suma(g2)}]};
+}
+function textoTotalesOpcFrenos(){
+  var out='💰 *Total por opción:*\n';
+  totalesOpcionesFrenos().lista.forEach(function(x){ out+='* Opción '+x.op+' ('+x.etq+'): *'+fmt(x.total)+'*\n'; });
+  return out;
+}
+function textoRangoOpcFrenos(){
+  var t=totalesOpcionesFrenos().lista.map(function(x){ return x.total; });
+  return fmt(Math.min.apply(null,t))+' a '+fmt(Math.max.apply(null,t));
+}
+function frErroresOpciones(){
+  if(!hayOpcionesFrenos()) return [];
+  var e=[], g1=frGrupo(1), g2=frGrupo(2);
+  if(hayOpciones()) e.push('Frenos con dos opciones: no se pueden combinar con opciones de llantas en la misma cotización');
+  if(!g1.length) e.push('Frenos con dos opciones: falta llenar la Opción 1 (balatas alto rendimiento)');
+  else {
+    var ej=function(l){ return l.map(function(it){ return it.eje; }).sort().join('+'); };
+    if(ej(g1)!==ej(g2)) e.push('Frenos con dos opciones: las dos opciones deben cubrir los mismos ejes (delanteras / traseras)');
+  }
+  return e;
+}
 function buscarItemCatalogo(llave){
   var sp=separarLlave(llave), cve=sp.cve;
   var isAyala=!!(cve && cve.indexOf('AY')===0), it=null, isVega=false, i;
@@ -2190,6 +2229,7 @@ function setTallerSvc(s, el) {
         qty: it.qty||0,
         conQty: it.mo ? true : (it.conQty||false),
         descuento: it.descuento||0,
+        opc1: it.opc1||false, opc2: it.opc2||false, eje: it.eje||'',
         proveedor: ''
       };
     });
@@ -2232,7 +2272,8 @@ function cargarPlantilla(s) {
       opcional: it.opcional||false,
       qty: it.qty||0,
       conQty: it.mo ? true : (it.conQty||false),
-      descuento: it.descuento||0
+      descuento: it.descuento||0,
+      opc1: it.opc1||false, opc2: it.opc2||false, eje: it.eje||''
     };
   });
 }
@@ -2309,6 +2350,7 @@ function renderTallerItems() {
     var div=document.createElement('div');
     div.className='taller-row';
     var pend=item.pend?'<div style="font-size:10px;color:#f59e0b;margin-top:2px">⏳ Pendiente</div>':'';
+    if(item.opc2) pend+='<div style="font-size:10px;color:#1a56db;margin-top:2px">Opción 2 · alternativa convencional (no se suma a las balatas de la Opción 1)</div>';
 
     if(item.mo) {
       // Mano de obra: concepto + precio editable (sin costo ni margen)
@@ -2448,6 +2490,7 @@ function renderCarrito(){
       if(!it.opcional) tot+=sub;
       var opcTag=it.opcional?'<span style="font-size:10px;background:#f5f5f5;color:#aaa;border:1px solid #ddd;padding:1px 5px;border-radius:4px;margin-left:4px">opcional</span>':'';
       var moTag=it.mo?'<span style="font-size:10px;background:#f0f0f0;padding:1px 5px;border-radius:4px;color:#666;margin-left:4px">M.O.</span>':'';
+      if(hayOpcionesFrenos() && (it.opc1||it.opc2)) moTag+='<span style="font-size:10px;background:#eff6ff;color:#1a56db;border:1px solid #93c5fd;padding:1px 5px;border-radius:4px;margin-left:4px">Opción '+(it.opc2?2:1)+'</span>';
       html+='<div class="ci'+(it.opcional?' ci-opc':'')+'"><div class="cid">'+it.concepto+moTag+opcTag+'</div><div class="cp" style="margin-left:auto;color:'+(it.opcional?'#aaa':'#111')+'">'+fmt(sub)+'</div><button class="cx cx-taller" data-id="'+it.id+'" style="background:#f0f0f0;color:#666;border:none;border-radius:4px;padding:2px 6px;cursor:pointer;margin-left:4px;font-size:11px">✕</button></div>';
     }
   }
@@ -2462,7 +2505,7 @@ function renderCarrito(){
 
   co.innerHTML=html;
   g('tb').style.display='flex';
-  g('tv').textContent=hayOpciones()?textoRangoOpc():fmt(tot);
+  g('tv').textContent=hayOpciones()?textoRangoOpc():(hayOpcionesFrenos()?textoRangoOpcFrenos():fmt(tot));
 
   marcarLlantasEnCarrito();
   generarWA();
@@ -2516,7 +2559,6 @@ var TEXTOS_WA_TALLER = {
   frenos: {
     titulo: '🛑 *Tu servicio de frenos incluye:*',
     lineas: [
-      'Balatas de cerámica de alta calidad como primera opción, pensando en tu seguridad y rendimiento',
       'Limpieza de componentes'
     ]
   },
@@ -2572,6 +2614,7 @@ function generarWA() {
   }
   var tot=0, totTaller=0, txt='';
   var modoOpc=hayOpciones();   // varias opciones de llantas (alternativas, no se suman)
+  var modoOpcF=hayOpcionesFrenos();   // frenos con dos opciones de balatas (alternativas, no se suman)
   var ordenEl=g('orden-servicio'), orden=ordenEl?ordenEl.value.trim():'';
   var origenTxt=origen?' (vía '+origen+(orden?' - Orden: '+orden:'')+')':''  ;
   var asesorNombre = v('asesor');
@@ -2652,9 +2695,15 @@ function generarWA() {
       var tipo=tiposWA[ti];
       var itemsTipo=tallerCart.filter(function(it){return it.tipo===tipo;});
       var subtotalTipo=0;
+      var frOpcWA=(tipo==='frenos' && modoOpcF), frGrupoPrev=-1;
+      if(frOpcWA) itemsTipo=itemsTipo.filter(function(x){return x.opc1;}).concat(itemsTipo.filter(function(x){return x.opc2;})).concat(itemsTipo.filter(function(x){return !x.opc1&&!x.opc2;}));   // Opción 1, Opción 2 y lo común
       txt+=(txt?'\n':'')+'🔧 *Taller - '+( tipoLabels[tipo]||tipo)+'*\n';
       for(var i=0;i<itemsTipo.length;i++){
         var it=itemsTipo[i],sub=parseFloat(it.precio)*parseFloat(it.qty||1);
+        if(frOpcWA){
+          var frG=it.opc1?1:(it.opc2?2:0);
+          if(frG!==frGrupoPrev){ frGrupoPrev=frG; txt+=(frG===1?'\n*Opción 1 · '+FR_ETQ1+'*\n':(frG===2?'\n*Opción 2 · '+FR_ETQ2+'*\n':'\n➕ *Incluido con cualquier opción:*\n')); }
+        }
         if(!it.opcional&&sub>0){tot+=sub;totTaller+=sub;subtotalTipo+=sub;}
         var iqty=parseFloat(it.qty)||1;
         var esAceite=it.concepto.toLowerCase().indexOf('aceite')>=0&&!it.mo;
@@ -2670,7 +2719,7 @@ function generarWA() {
         }
         txt+='* '+lineaTxt+'\n';
       }
-      if(subtotalTipo>0) txt+='*Subtotal '+(tipoLabels[tipo]||tipo)+': '+fmt(subtotalTipo)+'*\n';
+      if(subtotalTipo>0 && !frOpcWA) txt+='*Subtotal '+(tipoLabels[tipo]||tipo)+': '+fmt(subtotalTipo)+'*\n';
       var _bq=bloqueWAServicio(tipo); if(_bq) txt+='\n'+_bq;
     }
     var _comun=bloqueWAComunTaller(tiposWA); if(_comun) txt+='\n'+_comun;
@@ -2692,12 +2741,14 @@ function generarWA() {
   var msg=(sinNombre?'Gracias por tu paciencia.':'Gracias por tu paciencia, '+primerNombre+'.')+' Aquí está tu presupuesto'+origenTxt+':\n\n';
   if(modoOpc){
     msg+=txt+(tallerCart.length?'\n'+textoTotalesOpc():'')+'\nElige la opción que prefieras y te la apartamos.';
+  } else if(modoOpcF){
+    msg+=txt+'\n'+textoTotalesOpcFrenos()+'\nElige la opción que prefieras y agendamos tu servicio.';
   } else {
     msg+=txt+'\n✅ *Total: '+fmt(tot)+'*';
   }
   msg+='\n\n---\n🛠️ Precios netos (sujetos a disponibilidad de piezas y litros requeridos).\n💳 Aceptamos efectivo, transferencia y tarjetas de crédito o débito. ¡Contamos con promociones a meses sin intereses! (Con tarjetas participantes, aplican restricciones). 💳\n🚘 ¿Te apartamos espacio en el taller hoy o prefieres mañana? 📅👇';
   // Ref: mismo contenido (+ mismo teléfono y día) = mismo Ref; si algo cambia, cambia el Ref.
-  totalActualWA=modoOpc?0:tot;
+  totalActualWA=(modoOpc||modoOpcF)?0:tot;
   refVigente=calcularRef(msg, v('cli-tel'));
   msg+='\n\nRef '+refVigente;
   wt.textContent=msg;
@@ -3010,6 +3061,7 @@ function validarCampos(){
     errores.push('No. de parte de «'+String(i.concepto).trim()+'» ('+(PROV_NOMBRES[provTipoDeItem(i)]||'Taller')+') — '+mot);
     npErrIds[i.id]=true;
   });
+  frErroresOpciones().forEach(function(m){ errores.push(m); });
   provSincronizarErrores();
   return errores;
 }
@@ -3069,6 +3121,7 @@ function armarDatosCotizacion(llantas, autoSvcs, extSvcs, tallerCart){
       precio: fmtN(parseFloat(it.precio)),
       subtotal: it.opcional?'(opcional)':fmtN(sub)
     });
+    if(hayOpcionesFrenos() && (it.opc1||it.opc2)) items[items.length-1].opcion=it.opc2?2:1;   // frenos con dos opciones: 1 = alto rendimiento (cerámica), 2 = convencionales (semi metálicas)
   }
 
   for(var i=0;i<extSvcs.length;i++){
@@ -3081,6 +3134,9 @@ function armarDatosCotizacion(llantas, autoSvcs, extSvcs, tallerCart){
     // Varias opciones = alternativas: no hay un "total" único. Cada opción lleva el suyo.
     datosCot.total='';
     datosCot.opciones=totalesOpciones().lista.map(function(x){ return {opcion:x.op, marca:marcaLlanta(x.l), total:fmtN(x.total)}; });
+  } else if(hayOpcionesFrenos()){
+    datosCot.total='';
+    datosCot.opciones=totalesOpcionesFrenos().lista.map(function(x){ return {opcion:x.op, marca:'', total:fmtN(x.total)}; });
   }
   return datosCot;
 }
@@ -3372,7 +3428,8 @@ function construirYDescargarPDF(folio, cl, tel, vh, asesor, fechaStr, llantas, a
     y+=6;
 
     var opcPDF=hayOpciones();
-    if(!opcPDF){
+    var opcFrPDF=hayOpcionesFrenos();   // frenos con dos opciones
+    if(!opcPDF && !opcFrPDF){
     doc.autoTable({
       startY:y,
       head:[['Concepto','Cant.','Precio unit.','Subtotal']],
@@ -3384,7 +3441,7 @@ function construirYDescargarPDF(folio, cl, tel, vh, asesor, fechaStr, llantas, a
       margin:{left:10,right:10,top:34,bottom:25},
       willDrawPage: function(d){ dibujarMembreteEnPagina(d.pageNumber); }
     });
-    } else {
+    } else if(opcPDF){
     // VARIAS OPCIONES: una tabla por opción (alternativas, no se suman), cada una con su subtotal, IVA y total.
     var TOP=totalesOpciones();
     var comunRows=[];
@@ -3422,6 +3479,48 @@ function construirYDescargarPDF(folio, cl, tel, vh, asesor, fechaStr, llantas, a
       });
       yOp=doc.lastAutoTable.finalY+2;
     });
+    } else {
+    // FRENOS CON DOS OPCIONES: una tabla por opción (alternativas, no se suman), con lo común dentro de cada una.
+    var TFP=totalesOpcionesFrenos();
+    var comunFr=[];
+    llantas.forEach(function(c){
+      comunFr.push([c.desc+(c.marca?' ('+c.marca+')':''), String(c.qty), fmt(c.precio), fmt(c.precio*c.qty)]);
+      autoSvcs.filter(function(sv){return sv.pid===c.id;}).forEach(function(sv){ comunFr.push(['   '+sv.desc, String(sv.qty), fmt(sv.precio), fmt(sv.precio*sv.qty)]); });
+    });
+    extSvcs.forEach(function(sv){ comunFr.push([sv.desc, String(sv.qty), fmt(sv.precio), fmt(sv.precio*sv.qty)]); });
+    tallerCart.forEach(function(it){
+      if(it.opc1||it.opc2) return;
+      var esOp=!!it.opcional, sb=esOp?0:parseFloat(it.precio)*parseFloat(it.qty);
+      comunFr.push([it.concepto, String(it.qty), fmt(it.precio), esOp?'(opcional)':fmt(sb)]);
+    });
+    doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(30,30,30);
+    doc.text('Frenos: elija la opción que prefiera (el total de cada opción es independiente).', 10, y);
+    doc.setFont('helvetica','normal');
+    var yFr=y+3;
+    TFP.lista.forEach(function(x){
+      var body=x.items.map(function(it){ return [it.concepto, String(it.qty), fmt(it.precio), fmt(parseFloat(it.precio)*parseFloat(it.qty))]; });
+      comunFr.forEach(function(r){ body.push(r); });
+      var subSinIvaF=x.total/1.16, ivaF=x.total-subSinIvaF;
+      doc.autoTable({
+        startY:yFr+3,
+        head:[['Opción '+x.op+' · '+x.etq,'Cant.','Precio unit.','Subtotal']],
+        body:body,
+        foot:[
+          [{content:'Subtotal:',colSpan:3,styles:{halign:'right'}}, fmt(subSinIvaF)],
+          [{content:'IVA (16%):',colSpan:3,styles:{halign:'right'}}, fmt(ivaF)],
+          [{content:'Total opción '+x.op+':',colSpan:3,styles:{halign:'right',fontStyle:'bold'}}, {content:fmt(x.total),styles:{fontStyle:'bold'}}]
+        ],
+        theme:'grid',
+        headStyles:{fillColor:[204,32,40]},
+        footStyles:{fillColor:[245,245,245],textColor:[30,30,30],fontSize:8.5},
+        showFoot:'lastPage',
+        columnStyles:{1:{halign:'center'}, 2:{halign:'right'}, 3:{halign:'right'}},
+        styles:{fontSize:8.5},
+        margin:{left:10,right:10,top:34,bottom:25},
+        willDrawPage: function(d){ dibujarMembreteEnPagina(d.pageNumber); }
+      });
+      yFr=doc.lastAutoTable.finalY+2;
+    });
     }
 
     // Desglose de IVA — el TOTAL es el mismo que ya se cotiza (no cambia nada de lo que paga
@@ -3431,7 +3530,7 @@ function construirYDescargarPDF(folio, cl, tel, vh, asesor, fechaStr, llantas, a
     // con el de la tabla de productos, sin depender de calcular bien un número.
     var subtotalSinIva = tot / 1.16;
     var iva = tot - subtotalSinIva;
-    if(!opcPDF) doc.autoTable({
+    if(!opcPDF && !opcFrPDF) doc.autoTable({
       startY: doc.lastAutoTable.finalY + 6,
       body: [
         ['Subtotal:', fmt(subtotalSinIva)],
@@ -3671,6 +3770,7 @@ function armarPayloadAviso(){
   };
   // Con varias opciones no hay un total único: a GHL no se le manda total (solo cuántas opciones)
   if(hayOpciones()){ delete _p.total; _p.opciones=llantasOpc().length; }
+  else if(hayOpcionesFrenos()){ delete _p.total; _p.opciones=2; }
   return _p;
 }
 // ═══════════════════════════════════════════════════════════════════════

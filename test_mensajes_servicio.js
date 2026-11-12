@@ -44,7 +44,7 @@ const cuenta = (t, s) => t.split(s).length - 1;
   console.log('\n— Frenos');
   t = msg([item('frenos', 'Balatas delanteras de cerámica', 1150), item('frenos', 'Mano de obra frenos', 450)]);
   ok('14 título "Tu servicio de frenos incluye"', t.includes('🛑 *Tu servicio de frenos incluye:*'));
-  ok('15 balatas de cerámica como primera opción, seguridad y rendimiento', /Balatas de cerámica de alta calidad como primera opción, pensando en tu seguridad y rendimiento/.test(t));
+  ok('15 ya NO sale la línea de "balatas de cerámica de alta calidad como primera opción" (lo dice la cotización con sus dos opciones)', !/Balatas de cerámica de alta calidad|primera opción/.test(t), t);
   ok('16 incluye limpieza de componentes', /Limpieza de componentes/.test(t));
   ok('17 frenos NO lleva "También hacemos"', !t.includes('También hacemos'));
 
