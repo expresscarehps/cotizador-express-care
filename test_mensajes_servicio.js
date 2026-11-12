@@ -56,6 +56,7 @@ const cuenta = (t, s) => t.split(s).length - 1;
 
   console.log('\n— Bloque común y combinaciones');
   ok('21 el bloque común trae evidencia fotográfica, recomendaciones por escrito y recordatorios', /Reporte con evidencia fotográfica/.test(t) && /Recomendaciones por escrito/.test(t) && /Recordatorios automáticos/.test(t));
+  ok('21b el bloque común trae el expediente histórico como PRIMERA viñeta, antes de la evidencia fotográfica', (() => { const a = t.indexOf('Expediente histórico de tu auto: todos sus servicios guardados, siempre a la mano'), b = t.indexOf('Reporte con evidencia fotográfica'), h = t.indexOf('En todos nuestros servicios'); return a > h && h >= 0 && a < b; })(), t);
   t = msg([item('aceite', 'Aceite', 185, 4), item('frenos', 'Balatas', 1150), item('afinacion', 'Bujías', 960), item('suspension', 'Amortiguador', 2400)]);
   ok('22 cuatro servicios: cada bloque aparece UNA vez', ['Tu afinación incluye', 'Tu cambio de aceite incluye', 'Tu servicio de frenos incluye', 'Tu servicio de suspensión incluye'].every(x => cuenta(t, x) === 1));
   ok('23 cuatro servicios: bloque común y "También hacemos" UNA sola vez', cuenta(t, 'En todos nuestros servicios') === 1 && cuenta(t, 'También hacemos') === 1);
