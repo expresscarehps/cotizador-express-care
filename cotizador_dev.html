@@ -1065,7 +1065,7 @@ var MODO_PRUEBA = (typeof window!=='undefined' && window.location && /[?&]test=1
 // Se detecta por el nombre del archivo: en dev, el aviso real a GHL pide confirmación explícita
 // (para no etiquetar clientes reales por accidente). También viaja en el aviso como "fuente".
 var ES_DEV = (typeof window!=='undefined' && window.location && /dev\.html?$/i.test(window.location.pathname||''));
-var VERSION_PAGINA = 'dev 2026-11-11 frenos con dos opciones de balatas (Opción 1 alto rendimiento (cerámica) / Opción 2 convencionales (semi metálicas)); candado de No. de parte; catalogo Servillantas 24-sep-2026, VEGA 21-oct-2026, AYALA noviembre 2026';
+var VERSION_PAGINA = 'dev 2026-11-13 buscador de medidas: ignora la P inicial y ZR=R; frenos con dos opciones de balatas (Opción 1 alto rendimiento (cerámica) / Opción 2 convencionales (semi metálicas)); candado de No. de parte; catalogo Servillantas 24-sep-2026, VEGA 21-oct-2026, AYALA noviembre 2026';
 
 var RIN = {
   'a': {mon:85,  bal:80,  piv:20, h:'Montaje $85 - Balanceo $80 - Pivote $20 por llanta'},
@@ -1412,6 +1412,10 @@ function pasaDemanda(marca) {
   var r = (typeof ROTACION_DB !== 'undefined' && ROTACION_DB && marca) ? ROTACION_DB[marca] : null;
   return !!r && r.rotacion === df;
 }
+// Búsqueda de medida a prueba de como la copie el asesor: se ignora la "P" del inicio (P285/40R18 = 285/40R18)
+// y ZR = R en los dos sentidos (205/40ZR17 encuentra 205/40R17 y al revés). No depende de que el asesor lo recuerde.
+function nbZR(t){ return String(t).replace(/(\d)ZR/g,'$1R'); }
+function qMedidaNorm(){ var q=v('qm').toUpperCase().replace(/\s/g,''); q=q.replace(/^P(?=\d)/,''); return nbZR(q); }
 function actualizarMarcas(q) {
   var sm = g('qk'); if (!sm) return;
   if(typeof BRAND_DB === 'undefined') return;
@@ -1422,17 +1426,17 @@ function actualizarMarcas(q) {
     var set = {};
     for (var i = 0; i < DATA.length; i++) {
       var d = DATA[i];
-      if (d.medida && d.desc && (d.medida.toUpperCase().replace(/\s/g,'').indexOf(q) >= 0 || d.desc.toUpperCase().indexOf(q) >= 0) && matchGama(d.marca))
+      if (d.medida && d.desc && (nbZR(d.medida.toUpperCase().replace(/\s/g,'')).indexOf(q) >= 0 || nbZR(d.desc.toUpperCase()).indexOf(q) >= 0) && matchGama(d.marca))
         set[d.marca] = true;
     }
     for (var i = 0; i < AYALA.length; i++) {
       var d = AYALA[i];
-      if (ayalaSeMuestra(d) && d.medida && d.desc && (d.medida.toUpperCase().replace(/\s/g,'').indexOf(q) >= 0 || d.desc.toUpperCase().indexOf(q) >= 0) && matchGama(d.marca))
+      if (ayalaSeMuestra(d) && d.medida && d.desc && (nbZR(d.medida.toUpperCase().replace(/\s/g,'')).indexOf(q) >= 0 || nbZR(d.desc.toUpperCase()).indexOf(q) >= 0) && matchGama(d.marca))
         set[d.marca] = true;
     }
     for (var i = 0; i < VEGA.length; i++) {
       var d = VEGA[i];
-      if (d.medida && d.desc && (d.medida.toUpperCase().replace(/\s/g,'').indexOf(q) >= 0 || d.desc.toUpperCase().indexOf(q) >= 0) && matchGama(d.marca))
+      if (d.medida && d.desc && (nbZR(d.medida.toUpperCase().replace(/\s/g,'')).indexOf(q) >= 0 || nbZR(d.desc.toUpperCase()).indexOf(q) >= 0) && matchGama(d.marca))
         set[d.marca] = true;
     }
     mf = Object.keys(set).sort();
@@ -1452,7 +1456,7 @@ function actualizarMarcas(q) {
 
 function buscar() {
   if(typeof BRAND_DB === 'undefined') return;
-  var q = v('qm').toUpperCase().replace(/\s/g,'');
+  var q = qMedidaNorm();
   actualizarMarcas(q);
   var m = v('qk'), gf = (g('qg')?v('qg'):''), res = g('res'), cnt = g('cnt');
   // Sin medida (menos de 2 caracteres): si hay Gama, Demanda o Marca elegidas, es una consulta general
@@ -1466,19 +1470,19 @@ function buscar() {
   var r = [];
   for (var i = 0; i < DATA.length; i++) {
     var d = DATA[i];
-    if (d.medida && d.desc && (d.medida.toUpperCase().replace(/\s/g,'').indexOf(q)>=0||d.desc.toUpperCase().indexOf(q)>=0)&&(!m||d.marca===m)){
+    if (d.medida && d.desc && (nbZR(d.medida.toUpperCase().replace(/\s/g,'')).indexOf(q)>=0||nbZR(d.desc.toUpperCase()).indexOf(q)>=0)&&(!m||d.marca===m)){
       var bi=(BRAND_DB&&d.marca&&BRAND_DB[d.marca])||{pais:'',gama:''}; var bPais=bi.pais||''; var bGama=bi.gama||''; if((!gf||bGama===gf)&&pasaDemanda(d.marca)) r.push({cve:d.cve,desc:d.desc,marca:d.marca,medida:d.medida,precio:d.precio,proveedor:'SERV',pais:bPais,gama:bGama});
     }
   }
   for (var i = 0; i < AYALA.length; i++) {
     var d = AYALA[i];
-    if (ayalaSeMuestra(d) && d.medida && d.desc && (d.medida.toUpperCase().replace(/\s/g,'').indexOf(q)>=0||d.desc.toUpperCase().indexOf(q)>=0)&&(!m||d.marca===m)){
+    if (ayalaSeMuestra(d) && d.medida && d.desc && (nbZR(d.medida.toUpperCase().replace(/\s/g,'')).indexOf(q)>=0||nbZR(d.desc.toUpperCase()).indexOf(q)>=0)&&(!m||d.marca===m)){
       var bi=(BRAND_DB&&d.marca&&BRAND_DB[d.marca])||{pais:'',gama:''}; var bPais=bi.pais||''; var bGama=bi.gama||''; if((!gf||bGama===gf)&&pasaDemanda(d.marca)) r.push({cve:d.cve,desc:d.desc,marca:d.marca,medida:d.medida,lista:d.lista,mto:d.mto,proveedor:'AYALA',est:d.est,pais:bPais,gama:bGama});
     }
   }
   for(var i=0;i<VEGA.length;i++){
     var d=VEGA[i];
-    if(d.medida&&d.desc&&(d.medida.toUpperCase().replace(/[\s\-]/g,'').indexOf(q)>=0||d.desc.toUpperCase().indexOf(q)>=0)&&(!m||d.marca===m)){
+    if(d.medida&&d.desc&&(nbZR(d.medida.toUpperCase().replace(/[\s\-]/g,'')).indexOf(q)>=0||nbZR(d.desc.toUpperCase()).indexOf(q)>=0)&&(!m||d.marca===m)){
       var bv=(BRAND_DB&&d.marca&&BRAND_DB[d.marca])||{pais:'',gama:''}; var bPais=bv.pais||''; var bGama=bv.gama||''; if((!gf||bGama===gf)&&pasaDemanda(d.marca)) r.push({cve:d.cve,desc:d.desc,medida:d.medida,marca:d.marca,pb:d.costo,precio:pvpLlanta(d.costo,d.marca),isVega:true,isAyala:false,proveedor:'VEGA',pais:bPais,gama:bGama});
     }
   }
@@ -4015,8 +4019,8 @@ window.addEventListener('load',function(){
   document.querySelectorAll('.ttab').forEach(function(b){b.addEventListener('click',function(){setTallerSvc(this.getAttribute('data-s'),this);});});
   var qmEl=g('qm');if(qmEl)qmEl.addEventListener('input',buscar);
   var qkEl=g('qk');if(qkEl)qkEl.addEventListener('change',buscar);
-  var qgEl=g('qg');if(qgEl)qgEl.addEventListener('change',function(){ actualizarMarcas(v('qm').toUpperCase().replace(/\s/g,'')); buscar(); });
-  var qdEl=g('qd');if(qdEl)qdEl.addEventListener('change',function(){ actualizarMarcas(v('qm').toUpperCase().replace(/\s/g,'')); buscar(); });
+  var qgEl=g('qg');if(qgEl)qgEl.addEventListener('change',function(){ actualizarMarcas(qMedidaNorm()); buscar(); });
+  var qdEl=g('qd');if(qdEl)qdEl.addEventListener('change',function(){ actualizarMarcas(qMedidaNorm()); buscar(); });
   pintarRecordatorioMargen();
   var bcpEl=g('bcp');if(bcpEl)bcpEl.addEventListener('click',copiar);
   var byeEl=g('btn-ya-envie');if(byeEl)byeEl.addEventListener('click',yaLaEnvie);
