@@ -3184,6 +3184,11 @@ function validarCampos(){
     errores.push('Nombre del cliente (en Facebook/Instagram el nombre es obligatorio: quita "Sin nombre" y escribe el nombre)');
     var elN=g('cli-nombre'); if(elN) elN.classList.add('field-error');
   }
+  // "Sin nombre" solo vale cuando la cotización es SOLO de llantas: con cualquier servicio de taller el nombre es obligatorio
+  if(sinNombre && hayTaller && !telefonoOpcional()){
+    errores.push('Nombre del cliente (si la cotización lleva algo más que llantas el nombre es obligatorio: quita "Sin nombre" y escribe el nombre)');
+    var elN2=g('cli-nombre'); if(elN2) elN2.classList.add('field-error');
+  }
   // Proveedor obligatorio en toda pieza que va en la cotización (no en mano de obra ni en renglones de precio fijo)
   var selsProv=document.querySelectorAll('select.prov-sel.field-error');
   for(var sp=0;sp<selsProv.length;sp++) selsProv[sp].classList.remove('field-error');

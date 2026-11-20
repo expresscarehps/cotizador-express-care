@@ -121,7 +121,9 @@ const textoLetrero = r => $(r, 'estado-guardado').textContent;
     llenar(r, { nombre: 'Juan Pérez' });
     ok('C3 un nombre normal se acepta', !r.w.validarCampos().some(e => /Nombre/.test(e)));
     ok('C4 la casilla "Sin nombre" existe en la tarjeta Cliente', !!$(r, 'cli-sin-nombre'));
-    conProducto(r);
+    // "Sin nombre" solo vale en cotizaciones de SOLO llantas (regla 19 nov 2026): el ejemplo lleva una llanta, no taller
+    r.w.cart.push({ id: 'lsn', t: 'l', desc: '205/55R16 LLANTA PRUEBA', marca: 'Llantera X', precio: 1500, precioBase: 1500, pb: 1000, qty: 4, pid: null, isAyala: false, isVega: false });
+    r.w.generarWA();
     $(r, 'cli-sin-nombre').click();
     ok('C5 marcar la casilla bloquea el campo y pone "Sin nombre"', $(r, 'cli-nombre').disabled === true && $(r, 'cli-nombre').value === 'Sin nombre');
     ok('C6 con la casilla marcada el nombre es válido', !r.w.validarCampos().some(e => /Nombre/.test(e)));
