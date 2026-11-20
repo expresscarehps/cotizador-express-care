@@ -2744,6 +2744,7 @@ function bloqueWAComunTaller(tipos){
 }
 function generarWA() {
   var wt=g('wt'); if(!wt) return;
+  if(typeof ajustarSinNombreSegunTaller==='function') ajustarSinNombreSegunTaller();
   var sinNombre=esSinNombre();
   var cl=(sinNombre?'':v('cli-nombre'))||'Cliente';
   var vh=getVehiculo();
@@ -3185,7 +3186,7 @@ function validarCampos(){
     var elN=g('cli-nombre'); if(elN) elN.classList.add('field-error');
   }
   // "Sin nombre" solo vale cuando la cotización es SOLO de llantas: con cualquier servicio de taller el nombre es obligatorio
-  if(sinNombre && hayTaller && !telefonoOpcional()){
+  if(sinNombre && hayServicioTaller() && !telefonoOpcional()){
     errores.push('Nombre del cliente (si la cotización lleva algo más que llantas el nombre es obligatorio: quita "Sin nombre" y escribe el nombre)');
     var elN2=g('cli-nombre'); if(elN2) elN2.classList.add('field-error');
   }
@@ -3960,6 +3961,7 @@ function actualizarTelefonoObligatorio(){
     if(opc && (cbSN.checked || v('cli-nombre').toLowerCase()==='sin nombre')){ cbSN.checked=false; alternarSinNombre(); }
     cbSN.disabled=opc;
     var lbSN=cbSN.parentNode; if(lbSN) lbSN.style.opacity=opc?'0.45':'';
+    if(typeof ajustarSinNombreSegunTaller==='function') ajustarSinNombreSegunTaller();   // con servicios de taller la casilla sigue apagada
   }
 }
 function telefonoFalso(tel){
@@ -3976,6 +3978,31 @@ function esSinNombre(){
   var cb=g('cli-sin-nombre');
   if(cb && cb.checked) return true;
   return v('cli-nombre').toLowerCase()==='sin nombre';
+}
+// "Sin nombre" solo vale en cotizaciones de SOLO llantas (19 nov 2026): en cuanto la cotización lleva algún
+// servicio de taller (piezas, mano de obra, aceite…), la casilla se apaga y, si estaba marcada, se desmarca.
+function hayServicioTaller(){
+  return typeof tallerItems!=='undefined' && tallerItems.some(function(i){
+    if(i.concepto && i.precio!=='' && parseFloat(i.precio)>0 && parseFloat(i.qty)>0) return true;
+    // En Libre cuenta cualquier cosa que se escriba (concepto o precio), aunque todavía no esté completa
+    return npEsLibre(i) && (String(i.concepto||'').trim()!=='' || String(i.precio==null?'':i.precio).trim()!=='');
+  });
+}
+function ajustarSinNombreSegunTaller(){
+  var cb=g('cli-sin-nombre'), nm=g('cli-nombre');
+  if(!cb || !nm) return;
+  var taller=hayServicioTaller();
+  var bloquea=taller || telefonoOpcional();
+  if(taller && (cb.checked || nm.value.trim().toLowerCase()==='sin nombre')){
+    cb.checked=false; nm.disabled=false;
+    if(nm.value.trim().toLowerCase()==='sin nombre') nm.value='';
+    toast('El nombre es obligatorio cuando la cotización lleva servicios de taller');
+    // No le quita el cursor al asesor si está escribiendo en otro campo (por ejemplo el concepto de Libre)
+    try{ var ae=document.activeElement; if(!ae || !/^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName) || ae===cb) nm.focus(); }catch(e){}
+  }
+  cb.disabled=bloquea;
+  var lb=cb.parentNode;
+  if(lb){ lb.style.opacity=bloquea?'0.45':''; lb.title=taller?'Con servicios de taller el nombre es obligatorio':''; }
 }
 function alternarSinNombre(){
   var cb=g('cli-sin-nombre'), nm=g('cli-nombre');
