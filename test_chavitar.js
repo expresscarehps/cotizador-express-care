@@ -200,6 +200,25 @@ const num = t => parseFloat(String(t).replace(/[^0-9.\-]/g, ''));
     w.cart.length = 0; w.opcSel = [];
   }
 
+  console.log('\n=== CH-H. DESCRIPCIÓN HOMÓLOGA (la de Chavitar = la del equivalente) ===');
+  {
+    const eqDesc = c => { const e = eqLive(c).map(x => Object.assign({ pvp: x.costo / 0.875 }, x)).sort((a, b) => (a.pvp - b.pvp) || (a.p === 'SERV' ? -1 : 1))[0]; return (e.p === 'SERV' ? w.DATA : w.VEGA).find(d => d.cve === e.k).desc; };
+    let malFila = [], malCarro = [], malSolo = [];
+    for (const c of linked) {
+      const rows = buscar(r, c.medida, c.marca);
+      const f = rows.find(x => x.querySelector('.badd').getAttribute('data-cve') === c.cve + '@CHAV');
+      if (!f || f.querySelector('.rd').textContent.indexOf(eqDesc(c)) < 0) malFila.push([c.cve, f && f.querySelector('.rd').textContent.slice(0, 60), eqDesc(c)]);
+      if (w.chavItemCarrito(c, 'x', c.cve + '@CHAV').desc !== eqDesc(c)) malCarro.push(c.cve);
+    }
+    for (const c of solos.slice(0, 300)) { if (w.chavItemCarrito(c, 'x', c.cve + '@CHAV').desc !== c.desc) malSolo.push(c.cve); }
+    ok('H1 las 205 con equivalente: la fila muestra la descripción del equivalente (ej. "195/55R15 OPTECO A1 85V")', malFila.length === 0, malFila.slice(0, 3));
+    ok('H2 las 205: el carrito/cotización lleva esa misma descripción', malCarro.length === 0, malCarro.slice(0, 3));
+    ok('H3 la solo-Chavitar conserva su descripción propia', malSolo.length === 0, malSolo.slice(0, 3));
+    const ans = w.CHAVITAR.find(c => c.cve === '195/55R15ANS');
+    ok('H4 caso real ANSU: Chavitar = "195/55R15 OPTECO A1 85V", igual que la de Servillantas', w.chavItemCarrito(ans, 'x', ans.cve + '@CHAV').desc === '195/55R15 OPTECO A1 85V', w.chavItemCarrito(ans, 'x', ans.cve + '@CHAV').desc);
+    ok('H5 ya no quedan descripciones con dos modelos ("/") en las llantas con equivalente', linked.every(c => !/ \/ /.test(w.chavItemCarrito(c, 'x', c.cve + '@CHAV').desc)) , linked.filter(c => / \/ /.test(w.chavItemCarrito(c, 'x', c.cve + '@CHAV').desc)).map(c => c.cve).slice(0, 3));
+  }
+
   console.log('\n=== CH-F. GUARDADO (SHEET, FIREBASE), WHATSAPP Y PDF ===');
   async function guardar(cve) {
     const r2 = abrir(); await esperar(120); const w2 = r2.w;

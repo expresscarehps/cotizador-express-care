@@ -1443,8 +1443,19 @@ function chavCostoEquiv(c){
   for(i=0;i<eq.length;i++){ if(m===null || eq[i].costo<m) m=eq[i].costo; }
   return m;
 }
+// Descripcion homologa (19-nov-2026): si la llanta tiene equivalente en Servillantas/VEGA se usa SU descripcion (la que ya conocen asesores y clientes);
+// con dos equivalentes, la del mas barato (Servillantas si empatan). Las solo-Chavitar conservan la propia.
+function chavDesc(c){
+  var eq=chavEquivs(c), i, m=null;
+  for(i=0;i<eq.length;i++){
+    if(m===null || eq[i].pvp<m.pvp-0.005 || (Math.abs(eq[i].pvp-m.pvp)<=0.005 && eq[i].prov==='SERV' && m.prov!=='SERV')) m=eq[i];
+  }
+  if(!m) return c.desc;
+  var f = m.prov==='SERV' ? _IDX_SERV[m.cve] : _IDX_VEGA[m.cve];
+  return (f && f.desc) || c.desc;
+}
 function chavItemCarrito(c, id, llave, extra){
-  var pvp=chavPvp(c), o={id:id, t:'l', desc:c.desc, marca:c.marca, precio:pvp, precioBase:pvp, pb:chavCostoIVA(c), qty:1, cve:c.cve, llave:llave, pid:null, isAyala:false, isVega:false, isChav:true, isMto:false, rinCat:rin};
+  var pvp=chavPvp(c), o={id:id, t:'l', desc:chavDesc(c), marca:c.marca, precio:pvp, precioBase:pvp, pb:chavCostoIVA(c), qty:1, cve:c.cve, llave:llave, pid:null, isAyala:false, isVega:false, isChav:true, isMto:false, rinCat:rin};
   if(extra){ for(var k in extra) o[k]=extra[k]; }
   return o;
 }
@@ -1601,7 +1612,7 @@ function buscar() {
   for(var i=0;i<CHAVITAR.length;i++){
     var d=CHAVITAR[i];
     if(d.medida&&d.desc&&(nbZR(d.medida.toUpperCase().replace(/[\s\-]/g,'')).indexOf(q)>=0||nbZR(d.desc.toUpperCase()).indexOf(q)>=0)&&(!m||d.marca===m)){
-      var bc=(BRAND_DB&&d.marca&&BRAND_DB[d.marca])||{pais:'',gama:''}; var bPais=bc.pais||''; var bGama=bc.gama||''; if((!gf||bGama===gf)&&pasaDemanda(d.marca)) r.push({cve:d.cve,desc:d.desc,medida:d.medida,marca:d.marca,pb:chavCostoIVA(d),precio:chavPvp(d),isChav:true,isAyala:false,isVega:false,proveedor:'CHAV',pais:bPais,gama:bGama,_c:d});
+      var bc=(BRAND_DB&&d.marca&&BRAND_DB[d.marca])||{pais:'',gama:''}; var bPais=bc.pais||''; var bGama=bc.gama||''; if((!gf||bGama===gf)&&pasaDemanda(d.marca)) r.push({cve:d.cve,desc:chavDesc(d),medida:d.medida,marca:d.marca,pb:chavCostoIVA(d),precio:chavPvp(d),isChav:true,isAyala:false,isVega:false,proveedor:'CHAV',pais:bPais,gama:bGama,_c:d});
     }
   }
   // Sin medida: primero las medidas de auto normal (195/55R15, 225/55R17, P205/55R16, 195R15...) y al final
