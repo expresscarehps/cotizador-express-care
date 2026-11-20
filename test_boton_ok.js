@@ -40,7 +40,7 @@ const txt = b => b.textContent.trim();
   ok('B4 tres llantas agregadas → tres botones en verde', verdes(w).length === 3, verdes(w).length);
 
   console.log('\n— C. Al quitar del carrito');
-  const idQuitar = w.cart.filter(c => c.t === 'l' && c.cve === cve3)[0].id;
+  const idQuitar = w.cart.filter(c => c.t === 'l' && (c.llave || c.cve) === cve3)[0].id;
   const x = w.document.querySelector('#ci .cx[data-id="' + idQuitar + '"]'); ok('C0 existe la X de esa llanta en el carrito', !!x);
   if (x) x.click(); await wait(200);
   ok('C1 al quitarla vuelve a "+"', txt(btns(w)[3]) === '+', txt(btns(w)[3]));
