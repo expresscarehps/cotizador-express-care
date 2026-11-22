@@ -134,9 +134,10 @@ const dgold = p => Math.round(p * 0.80 * 100) / 100;   // costo de taller de Dur
   w = await listo();
   opc1(w, 'del', 'GCD611', 420, 1, 30); it = op2(w, 'del');   // Opción 1 = 600 → tope 540 → margen real 30% < 35%
   ok('D1 si el tope bajaría el margen de 35%: se mantiene el precio con 35% (= costo ÷ 0.65) y se avisa', cerca(parseFloat(it.precio), 377 / 0.65) && Math.abs(parseFloat(it.margen) - 35) < 1e-6 && /⚠/.test(it.dritekNota) && it.dritekNivel === 'aviso', [it.precio, it.margen, it.dritekNota]);
+  ok('D1b cuando manda el margen mínimo, el aviso NO dice "Precio limitado al…" (no se contradice con "queda arriba del tope")', !/Precio limitado/.test(it.dritekNota) && /margen mínimo/.test(it.dritekNota), [it.dritekNota]);
   w.margenRecibir({ dritek_ceramica: 55, dritek_semimetalica: 50, tope_pct: 90, piso_pct: 35 });
   opc1(w, 'del', 'GCD611', 5000, 1, 30);
-  ok('D2 cambiar el margen en la tabla (55%) cambia el precio sin tocar código: 377 ÷ 0.45', cerca(parseFloat(op2(w, 'del').precio), 377 / 0.45), op2(w, 'del').precio);
+  ok('D2cambiar el margen en la tabla (55%) cambia el precio sin tocar código: 377 ÷ 0.45', cerca(parseFloat(op2(w, 'del').precio), 377 / 0.45), op2(w, 'del').precio);
   w.margenRecibir({ dritek_ceramica: 50, dritek_semimetalica: 50, tope_pct: 80, piso_pct: 35 });
   opc1(w, 'del', 'GCD611', 1000, 1, 30);   // Opción 1 = 1428.57 → tope 80% = 1142.86 → sin efecto (754 < tope)
   ok('D3 un tope distinto (80%) se respeta: Opción 1 de 1,428.57 → tope 1,142.86 no limita los 754', cerca(parseFloat(op2(w, 'del').precio), 754) && !/Precio limitado/.test(op2(w, 'del').dritekNota), [op2(w, 'del').precio, op2(w, 'del').dritekNota]);

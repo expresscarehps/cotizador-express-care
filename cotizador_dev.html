@@ -2553,7 +2553,7 @@ function dritekSincronizar(eje){
     if(!(parseFloat(it2.qty)>0) || it2.qtyAuto){ it2.qty=q1; it2.qtyAuto=true; }
     nota+='Dritek '+fila.parte+' · '+fila.descripcion+' · lista '+fmt(fila.precio)+' sin IVA → costo '+fmt(costo)+' · margen '+dritekRedond(res.margenReal,1)+'%.';
     if(!(precio1>0)) nota+=' Falta el costo de la Opción 1: el precio se ajustará al tope cuando lo captures.';
-    if(res.conTope) nota+=' Precio limitado al '+dritekRedond(margenTopeDritek()*100,1)+'% del precio de la Opción 1.';
+    if(res.conTope && !res.conPiso) nota+=' Precio limitado al '+dritekRedond(margenTopeDritek()*100,1)+'% del precio de la Opción 1.';
     if(res.conPiso){ nota+=' ⚠ Con el tope el margen bajaría de '+dritekRedond(margenPisoDritek()*100,1)+'%: se mantiene el margen mínimo y el precio queda arriba del tope.'; nivel='aviso'; }
     it2.dritekNota=nota; it2.dritekNivel=nivel;
     calcTallerPVP(it2.id);
