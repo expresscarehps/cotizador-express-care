@@ -2948,11 +2948,20 @@ function guardarBorrador() {
     }
   };
   cargarBorradores();
+  // Si la cotización viene de un borrador que sigue en la lista, se ACTUALIZA ese mismo borrador (mismo id, datos y hora nuevos):
+  // no se crea otro ni queda el viejo ocupando un lugar. Si no viene de un borrador, se crea uno nuevo como siempre.
+  var actualizado = false;
+  if(borradorActivoId){
+    for(var bi=0; bi<borradores.length; bi++){
+      if(borradores[bi].id === borradorActivoId){ borrador.id = borradorActivoId; borradores.splice(bi,1); actualizado = true; break; }
+    }
+  }
   borradores.unshift(borrador);
   if(borradores.length > 10) borradores = borradores.slice(0,10);
   try{ localStorage.setItem('expresscare_borradores', JSON.stringify(borradores)); }catch(e){}
   renderBorradores();
   limpiarTodo(true);
+  if(actualizado) toast('Borrador actualizado');
 }
 
 // Cuando la cotización cargada desde un borrador YA SE USÓ (se copió para WhatsApp o se generó el PDF),
