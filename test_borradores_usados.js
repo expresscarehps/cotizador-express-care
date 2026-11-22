@@ -56,7 +56,7 @@ function conProducto(r, precio) {
 const guardados = r => r.fetch.filter(c => c.body && c.body.action === 'saveCotizacion');
 const acciones = r => r.scripts.map(s => s.accion);
 
-const lista = r => JSON.parse(r.w.localStorage.getItem('expresscare_borradores') || '[]');
+const lista = r => JSON.parse(r.w.localStorage.getItem(r.w.BORR_KEY) || '[]');
 // arma una cotización, la guarda como borrador (la pantalla queda limpia) y devuelve el id del borrador
 function hacerBorrador(r, precio, nombre) {
   llenar(r); if (nombre) $(r, 'cli-nombre').value = nombre; conProducto(r, precio);

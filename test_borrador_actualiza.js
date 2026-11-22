@@ -5,7 +5,7 @@ const HTML = process.argv[2] || './cotizador_dev.html';
 let passed = 0, failed = 0;
 function ok(n, c, x) { if (c) { console.log('  ✅ ' + n); passed++; } else { console.log('  ❌ ' + n + (x !== undefined ? ' → ' + JSON.stringify(x).slice(0, 300) : '')); failed++; } }
 const esperar = ms => new Promise(r => setTimeout(r, ms));
-process.on('unhandledRejection', () => {});
+process.on("unhandledRejection", (e) => { console.log("ERROR NO CONTROLADO:", e && e.stack || e); process.exit(1); });
 let JSDOM, VirtualConsole;
 try { JSDOM = require('jsdom').JSDOM; VirtualConsole = require('jsdom').VirtualConsole; } catch (e) { console.log('⏭ jsdom no instalado'); process.exit(0); }
 const html = fs.readFileSync(HTML, 'utf8');
@@ -15,7 +15,7 @@ function abrir() {
     beforeParse(w) { w.fetch = () => Promise.resolve({ json: () => ({}), text: () => '' }); w.alert = () => {}; w.confirm = () => true; w.document.execCommand = () => true; } });
   return dom.window;
 }
-const lista = w => JSON.parse(w.localStorage.getItem('expresscare_borradores') || '[]');
+const lista = w => JSON.parse(w.localStorage.getItem(w.BORR_KEY) || '[]');
 function llenar(w, nombre, precio) {
   const set = (id, v) => { w.document.getElementById(id).value = v; };
   set('cli-nombre', nombre); set('cli-tel', '6145550123'); set('cli-origen', 'WhatsApp'); set('asesor', 'Ana');
@@ -63,7 +63,7 @@ function llenar(w, nombre, precio) {
   w = abrir(); await esperar(100);
   llenar(w, 'Cliente E', 500); w.guardarBorrador(); const idE = lista(w)[0].id;
   w.cargarBorrador(idE);
-  w.localStorage.setItem('expresscare_borradores', '[]');   // alguien lo eliminó desde otra pestaña
+  w.localStorage.setItem(w.BORR_KEY, '[]');   // alguien lo eliminó desde otra pestaña
   llenar(w, 'Cliente E', 700); w.guardarBorrador();
   ok('E1 se guardó como borrador nuevo con el avance', lista(w).length === 1 && lista(w)[0].tallerItems[0].precio === '700', lista(w).length);
 

@@ -67,6 +67,41 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // Borradores de cotización compartidos entre todos los asesores ("borradores" real, "borradores_prueba" para dev).
+    // Se pueden borrar (el cotizador los quita al usarlos y a los 30 días sin cambios).
+    function borradorValido(id) {
+      return request.resource.data.datos is string && request.resource.data.datos.size() < 900000
+        && request.resource.data.id is string && request.resource.data.id == id;
+    }
+    match /borradores/{id} {
+      allow read, delete: if esCotizador();
+      allow create, update: if esCotizador() && borradorValido(id);
+    }
+    match /borradores_prueba/{id} {
+      allow read, delete: if esCotizador();
+      allow create, update: if esCotizador() && borradorValido(id);
+    }
+
+    // Márgenes de balatas Dritek ("dritek" real, "dritek_prueba" para dev). Las asesoras solo leen; un administrador los cambia.
+    function numEntre(campo, lo, hi) {
+      return request.resource.data[campo] is number
+        && request.resource.data[campo] >= lo && request.resource.data[campo] <= hi;
+    }
+    function margenesValidos() {
+      return numEntre('dritek_ceramica', 1, 90) && numEntre('dritek_semimetalica', 1, 90)
+        && numEntre('tope_pct', 50, 100) && numEntre('piso_pct', 0, 90);
+    }
+    match /reglas_margen/{id} {
+      allow read: if esCotizador();
+      allow create, update: if esAdmin() && id in ['dritek', 'dritek_prueba'] && margenesValidos();
+      allow delete: if false;
+    }
+    // Lista de precios de Chavitar (Dritek): solo lectura desde el navegador; la carga se hace desde fuera (n8n)
+    match /lista_precios_chavitar/{id} {
+      allow read: if esCotizador();
+      allow write: if false;
+    }
+
     // ── Usuarios y roles ────────────────────────────────────────
     // Superadministrador: administra a todos. Administrador: solo da de alta/baja
     // a usuarios con rol "usuario". El superadministrador no se puede tocar.

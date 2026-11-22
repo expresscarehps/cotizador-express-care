@@ -120,7 +120,7 @@ function cambiarPrecio(r, precio) { conProducto(r, precio); }
   {
     const r = abrir(); await esperar(80); llenar(r); conProducto(r, 700);
     r.w.guardarBorrador();                       // borrador de 700
-    const id = JSON.parse(r.w.localStorage.getItem('expresscare_borradores'))[0].id;
+    const id = JSON.parse(r.w.localStorage.getItem(r.w.BORR_KEY))[0].id;
     llenar(r); conProducto(r, 550);
     r.w.generarPDF(); await esperar(300);        // la cotización en pantalla recibe el folio 012
     ok('F14 la de 550 salió con el 012', r.pdfs[0] === 'EXPCARE-012/26', r.pdfs);

@@ -1,4 +1,4 @@
-// ── TEST — Frenos con dos opciones de balatas (Opción 1 alto rendimiento / Opción 2 convencionales) ──
+// ── TEST — Frenos con dos opciones de balatas (Opción 1 Primera Calidad / Opción 2 Calidad Estándar) ──
 // Uso:  node test_frenos_opciones.js [ruta_al_html]   (por defecto ./cotizador_dev.html)
 // Reglas de Carlos: solo varían las balatas; el resto (mano de obra, rectificados, etc.) es común y se suma a cada opción;
 // dos renglones de balatas por eje; el asesor decide: solo Opción 1 llena = cotización normal; las dos = "Total por opción".
@@ -60,7 +60,7 @@ function simularPDF(r, textos) {
   ok('A3 Opción 1 trasera = opc1/eje tras; económica = opc2/eje tras', por(w, T1).opc1 && por(w, T1).eje === 'tras' && por(w, T2).opc2 && por(w, T2).eje === 'tras');
   ok('A4 los renglones comunes (mano de obra, rectificados) NO son de ninguna opción', ['Rectificado de discos', 'Rectificado de tambor', MOD, MOT].every(n => !por(w, n).opc1 && !por(w, n).opc2));
   ok('A5 las balatas económicas son piezas (llevan proveedor y No. de parte)', w.provEsPieza(por(w, D2)) && w.provEsPieza(por(w, T2)));
-  ok('A6 la pantalla marca la Opción 2 como alternativa (no se suma)', /Opción 2 · alternativa convencional/.test(w.document.getElementById('taller-items').innerHTML));
+  ok('A6 la pantalla marca la Opción 2 como alternativa (no se suma)', /Opción 2 · alternativa de calidad estándar/.test(w.document.getElementById('taller-items').innerHTML));
   ok('A7 los renglones pendientes de costo no cuentan hasta que se llenan (frIncluido)', !w.frIncluido(por(w, D2)));
   ok('A8 sin llenar nada no hay modo de dos opciones', w.hayOpcionesFrenos() === false);
 
@@ -103,13 +103,18 @@ function simularPDF(r, textos) {
   // ═══ D. WhatsApp ═══
   console.log('\n— D. Texto de WhatsApp');
   w.generarWA(); wa = texto(w);
-  const iO1 = wa.indexOf('*Opción 1 · Balatas alto rendimiento (cerámica)*'), iO2 = wa.indexOf('*Opción 2 · Balatas convencionales (semi metálicas)*'), iCom = wa.indexOf('Incluido con cualquier opción');
+  ok('D0 el WhatsApp ya no usa los nombres viejos y NO nombra el material (ni cerámica ni semimetálica)', !/alto rendimiento|semi ?met[aá]licas|cer[aá]mica/i.test(wa), wa);
+  if (process.env.MOSTRAR_WA) console.log('\n----- WHATSAPP -----\n' + wa + '\n--------------------');
+  const iO1 = wa.indexOf('*Opción 1 · Balatas Primera Calidad*'), iO2 = wa.indexOf('*Opción 2 · Balatas Calidad Estándar*'), iCom = wa.indexOf('Incluido con cualquier opción');
   ok('D1 trae los encabezados Opción 1 y Opción 2 con su etiqueta, en ese orden', iO1 >= 0 && iO2 > iO1, wa);
   ok('D2 "Incluido con cualquier opción" va después de la Opción 2', iCom > iO2, wa);
   ok('D3 las balatas de la Opción 1 quedan bajo la Opción 1 y las económicas bajo la 2',
-    wa.indexOf('Balatas delanteras') > iO1 && wa.indexOf('Balatas delanteras') < iO2 && wa.indexOf('(convencionales)') > iO2, wa);
+    wa.indexOf('Balatas delanteras') > iO1 && wa.indexOf('Balatas delanteras') < iO2 && wa.indexOf('Balatas delanteras', iO2) > iO2 && wa.indexOf('Balatas delanteras', iO2) < iCom, wa);
+  ok('D3b el cliente NO ve la palabra "(convencionales)" en los renglones (el título de la Opción 2 ya lo dice)', !/\(convencionales\)/i.test(wa), wa);
+  ok('D3c cada opción muestra sus dos renglones con el mismo nombre: Balatas delanteras / Balatas / zapatas traseras', (wa.match(/\* Balatas delanteras - /g) || []).length === 2 && (wa.match(/\* Balatas \/ zapatas traseras - /g) || []).length === 2, wa);
+  ok('D3d por dentro la pantalla sigue distinguiendo el renglón de la Opción 2', !!por(w, 'Balatas delanteras (convencionales)'));
   ok('D4 la mano de obra queda en "Incluido con cualquier opción"', wa.indexOf('Mano de obra balatas delanteras') > iCom, wa);
-  ok('D5 trae "Total por opción" con las dos etiquetas nuevas', /Total por opción/.test(wa) && wa.includes('Opción 1 (Balatas alto rendimiento (cerámica))') && wa.includes('Opción 2 (Balatas convencionales (semi metálicas))'), wa);
+  ok('D5 trae "Total por opción" con las dos etiquetas nuevas', /Total por opción/.test(wa) && wa.includes('Opción 1 (Balatas Primera Calidad)') && wa.includes('Opción 2 (Balatas Calidad Estándar)'), wa);
   ok('D6 trae los totales exactos 2,900 y 1,950', wa.includes(w.fmt(2900)) && wa.includes(w.fmt(1950)), wa);
   ok('D7 NO trae "Subtotal Frenos" (no se suman las opciones)', !/Subtotal Frenos/.test(wa));
   ok('D8 cierra con "Elige la opción que prefieras y agendamos tu servicio."', /Elige la opción que prefieras y agendamos tu servicio\./.test(wa), wa.slice(-200));
@@ -169,7 +174,9 @@ function simularPDF(r, textos) {
     await wait(500);
     const pdf = textos.join('\n');
     ok('H0 el PDF no lanzó excepciones', !/EXCEPCION/.test(pdf), pdf.slice(0, 400));
-    ok('H1 el PDF dibuja una tabla por opción con su etiqueta', pdf.includes('Opción 1 · Balatas alto rendimiento (cerámica)') && pdf.includes('Opción 2 · Balatas convencionales (semi metálicas)'), pdf.slice(0, 400));
+    ok('H0 el PDF ya no usa los nombres viejos ni nombra el material', !/alto rendimiento|semi ?met[aá]licas|cer[aá]mica/i.test(pdf), pdf.slice(0,200));
+    ok('H0b el PDF tampoco muestra "(convencionales)" en los renglones', !/\(convencionales\)/i.test(pdf), pdf.slice(0, 300));
+    ok('H1 el PDF dibuja una tabla por opción con su etiqueta', pdf.includes('Opción 1 · Balatas Primera Calidad') && pdf.includes('Opción 2 · Balatas Calidad Estándar'), pdf.slice(0, 400));
     ok('H2 trae el total de cada opción', /Total opción 1/.test(pdf) && /Total opción 2/.test(pdf) && pdf.includes(w3.fmt(2900)) && pdf.includes(w3.fmt(1950)), pdf.slice(0, 400));
     ok('H3 NO trae el bloque de total único', !/"Total:"/.test(pdf));
     ok('H4 cada opción trae la mano de obra común', (pdf.match(/Mano de obra balatas delanteras/g) || []).length >= 2, (pdf.match(/Mano de obra balatas delanteras/g) || []).length);

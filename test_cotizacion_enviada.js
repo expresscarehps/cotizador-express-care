@@ -57,7 +57,7 @@ const guardados = r => r.fetch.filter(c => c.body && c.body.action === 'saveCoti
 const acciones = r => r.scripts.map(s => s.accion);
 
 
-const lista = r => JSON.parse(r.w.localStorage.getItem('expresscare_borradores') || '[]');
+const lista = r => JSON.parse(r.w.localStorage.getItem(r.w.BORR_KEY) || '[]');
 const PANELES = ['p-llantas', 'p-servicios', 'p-taller', 'p-cotizacion'];
 const bloqueada = r => PANELES.every(id => $(r, id).hasAttribute('inert'));
 const libre = r => PANELES.every(id => !$(r, id).hasAttribute('inert'));

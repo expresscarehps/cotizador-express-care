@@ -748,6 +748,13 @@ label.chk-sin-nombre input:checked + span{color:var(--val-dark-blue);font-weight
     <p class="hint" style="margin-bottom:10px">Estas listas son las que ven las asesoras en cada renglón de piezas. Aquí puedes agregar, corregir el nombre o quitar proveedores. Las cotizaciones ya guardadas no cambian.</p>
     <div id="prov-admin-lista"></div>
   </div>
+  <div class="card" id="margen-admin" style="display:none">
+    <p class="st">Márgenes de balatas Dritek</p>
+    <p class="hint" style="margin-bottom:10px">El margen es la ganancia sobre el precio de venta: precio = costo ÷ (1 − margen). El costo de Dritek es el precio de lista de Chavitar (por juego, sin IVA) × 1.16. Los cambios los usa el cotizador sin tocar el programa.</p>
+    <div id="margen-admin-campos"></div>
+    <div id="margen-admin-meta" class="hint" style="margin:8px 0"></div>
+    <button type="button" id="btn-save-margenes" style="padding:8px 14px;font-size:13px;border:1.5px solid #111;border-radius:7px;background:#111;color:#fff;cursor:pointer;font-weight:600">Guardar márgenes</button>
+  </div>
   <div class="card">
     <p class="st">Tarifas de mano de obra</p>
     <p class="hint" style="margin-bottom:10px">Estos precios se cargan automáticamente en los renglones de M.O. Puedes editarlos aquí y se guardan en este navegador.</p>
@@ -1139,6 +1146,9 @@ var pago = 'contado';
 var borradores = [];
 var borradores = [];  // Array of saved draft cotizaciones
 var borradorActivoId = null;  // id del borrador cargado en pantalla (se quita de la lista cuando la cotización se usa: copiar o PDF)
+// Llave del navegador: el dev usa su propia lista para no mezclar borradores de prueba con los de producción
+var BORR_KEY = ES_DEV ? 'expresscare_borradores_dev' : 'expresscare_borradores';
+var MAX_BORRADORES = 10;      // sin Firebase caben 10; con los borradores en la nube sube (ver borrNubeConectar)
 var cart = [];
 var sact = new Set();
 var tallerItems = [];
@@ -1339,7 +1349,7 @@ function setTab(tabId) {
   var btn = g('tab-'+tabId), panel = g('p-'+tabId);
   if (btn) btn.classList.add('on');
   if (panel) panel.classList.add('on');
-  if(tabId === 'config'){ renderConfigTarifas(); provRenderAdmin(); }
+  if(tabId === 'config'){ renderConfigTarifas(); provRenderAdmin(); margenRenderAdmin(); }
 }
 
 function setPago(p) {
@@ -1829,11 +1839,14 @@ function textoRangoOpc(){
   return t.length ? fmt(Math.min.apply(null,t))+' a '+fmt(Math.max.apply(null,t)) : fmt(0);
 }
 // ── FRENOS CON DOS OPCIONES (11-nov-2026, pedido de Carlos) ──────────────────────────────────────────
-// Opción 1 = balatas alto rendimiento (cerámica); Opción 2 = balatas convencionales (semi metálicas), de otro proveedor.
+// Opción 1 = Balatas Primera Calidad (GRC / Duralast); Opción 2 = Balatas Calidad Estándar (ahí va Dritek), de otro proveedor. No se nombra el material: cerámica o semimetálica se infiere. (Nombres cambiados el 22-nov-2026 a pedido de Carlos; WhatsApp, totales y PDF usan estas dos etiquetas.)
 // Son ALTERNATIVAS (no se suman). Si el asesor solo llena la Opción 1, la cotización sale normal como siempre.
 // Lo demás (mano de obra, rectificado, otros servicios, llantas) es común y se suma a cada opción. En el texto
 // al cliente NO se nombra al proveedor.
-var FR_ETQ1 = 'Balatas alto rendimiento (cerámica)', FR_ETQ2 = 'Balatas convencionales (semi metálicas)';
+var FR_ETQ1 = 'Balatas Primera Calidad', FR_ETQ2 = 'Balatas Calidad Estándar';
+// Lo que ve el CLIENTE (WhatsApp y PDF): el renglón de la Opción 2 no repite "(convencionales)"; el título de la opción ya lo dice.
+// El nombre interno del renglón (pantalla, Sheet, borradores) NO cambia.
+function frNombreCliente(it){ var c=String(it&&it.concepto!=null?it.concepto:''); return (it&&it.opc2)?c.replace(/\s*\(convencionales\)\s*$/i,''):c; }
 function frIncluido(it){ return !!(it && it.concepto && it.precio!=='' && parseFloat(it.precio)>0 && parseFloat(it.qty)>0 && !it.opcional); }
 function hayOpcionesFrenos(){ return tallerItems.some(function(it){ return it.opc2 && frIncluido(it); }); }
 function frGrupo(n){ return tallerItems.filter(function(it){ return (n===2?it.opc2:it.opc1) && frIncluido(it); }); }
@@ -1858,7 +1871,7 @@ function frErroresOpciones(){
   if(!hayOpcionesFrenos()) return [];
   var e=[], g1=frGrupo(1), g2=frGrupo(2);
   if(hayOpciones()) e.push('Frenos con dos opciones: no se pueden combinar con opciones de llantas en la misma cotización');
-  if(!g1.length) e.push('Frenos con dos opciones: falta llenar la Opción 1 (balatas alto rendimiento)');
+  if(!g1.length) e.push('Frenos con dos opciones: falta llenar la Opción 1 (Balatas Primera Calidad)');
   else {
     var ej=function(l){ return l.map(function(it){ return it.eje; }).sort().join('+'); };
     if(ej(g1)!==ej(g2)) e.push('Frenos con dos opciones: las dos opciones deben cubrir los mismos ejes (delanteras / traseras)');
@@ -2343,6 +2356,256 @@ function provAccionAdmin(btn){
   }
 }
 
+// ── REGLAS DE MARGEN DE BALATAS DRITEK (22-nov-2026, paso 2 de la opción Dritek) ───────────────────────────
+// Los márgenes NO van fijos en el código: viven en Firestore (colección "reglas_margen") y solo un administrador los cambia.
+// Margen = sobre el precio de venta: precio = costo ÷ (1 − margen). MARGEN_BASE solo se usa si aún no hay documento guardado
+// o no hay conexión. En este paso solo se guardan y se cargan; el cálculo de precio que los usa llega en el paso 4.
+var MARGEN_BASE = {dritek_ceramica:50, dritek_semimetalica:50, tope_pct:90, piso_pct:35};
+var MARGEN_LIMITES = {dritek_ceramica:[1,90], dritek_semimetalica:[1,90], tope_pct:[50,100], piso_pct:[0,90]};
+var MARGEN_ETQ = {
+  dritek_ceramica:     {t:'Dritek cerámica (margen %)',      ayuda:'Margen sobre el precio de venta'},
+  dritek_semimetalica: {t:'Dritek semimetálica (margen %)',  ayuda:'Margen sobre el precio de venta'},
+  tope_pct:            {t:'Tope (% del precio de la Opción 1)', ayuda:'El precio Dritek no pasa de este % del precio de la Opción 1'},
+  piso_pct:            {t:'Margen mínimo (%)',                ayuda:'Si el tope lo baja de aquí, se mantiene este margen y se avisa a la asesora'}
+};
+var MARGEN_REGLAS = {dritek_ceramica:MARGEN_BASE.dritek_ceramica, dritek_semimetalica:MARGEN_BASE.dritek_semimetalica, tope_pct:MARGEN_BASE.tope_pct, piso_pct:MARGEN_BASE.piso_pct};
+var MARGEN_META = {actualizado:'', por:''};
+var MARGEN_API = null, MARGEN_PERFIL = null, MARGEN_STOP = null;
+function margenDocId(){ return (MODO_PRUEBA||ES_DEV) ? 'dritek_prueba' : 'dritek'; }   // dev y pruebas NO tocan la tabla real
+function margenEsAdmin(){ return !!MODO_PRUEBA || !!(MARGEN_PERFIL && (MARGEN_PERFIL.rol==='superadministrador'||MARGEN_PERFIL.rol==='administrador')); }
+function margenNumero(v){ var n=parseFloat(String(v==null?'':v).replace(',','.')); return isFinite(n)?n:NaN; }
+function margenValidar(r){
+  var e=[];
+  Object.keys(MARGEN_LIMITES).forEach(function(k){
+    var n=margenNumero(r&&r[k]), lim=MARGEN_LIMITES[k];
+    if(isNaN(n)||n<lim[0]||n>lim[1]) e.push(MARGEN_ETQ[k].t+': escribe un número entre '+lim[0]+' y '+lim[1]);
+  });
+  return e;
+}
+// Valores que usa el cotizador (como fracción). Un valor inválido o ausente nunca llega aquí: margenRecibir lo reemplaza por el base.
+function margenDritek(material){ return (material==='semimetalica'?MARGEN_REGLAS.dritek_semimetalica:MARGEN_REGLAS.dritek_ceramica)/100; }
+function margenTopeDritek(){ return MARGEN_REGLAS.tope_pct/100; }
+function margenPisoDritek(){ return MARGEN_REGLAS.piso_pct/100; }
+// Documento que llega de Firestore (o null si aún no existe: valores base). Cada campo se valida por separado.
+function margenRecibir(data){
+  var nuevo={};
+  Object.keys(MARGEN_BASE).forEach(function(k){
+    var n=(data&&typeof data==='object')?margenNumero(data[k]):NaN, lim=MARGEN_LIMITES[k];
+    nuevo[k]=(!isNaN(n)&&n>=lim[0]&&n<=lim[1])?n:MARGEN_BASE[k];
+  });
+  MARGEN_REGLAS=nuevo;
+  try{ if(typeof dritekSincronizarTodo==='function') dritekSincronizarTodo(); }catch(e){}
+  MARGEN_META=(data&&typeof data==='object')?{actualizado:String(data.actualizado||''), por:String(data.por||'')}:{actualizado:'', por:''};
+  margenRenderAdmin();
+}
+// La conecta el módulo de Firebase cuando hay sesión con acceso: api = null si no hay sesión
+function margenConectar(api, perfil){
+  if(MARGEN_STOP){ try{MARGEN_STOP();}catch(e){} MARGEN_STOP=null; }
+  MARGEN_API=api||null; MARGEN_PERFIL=(api&&perfil)?perfil:null;
+  if(MARGEN_API && MARGEN_PERFIL && MARGEN_API.margenEscuchar){
+    try{
+      MARGEN_STOP=MARGEN_API.margenEscuchar(margenDocId(), margenRecibir, function(e){ try{console.warn('Márgenes Dritek no se pudieron leer; se usan los valores base:',e);}catch(x){} margenRecibir(null); });
+    }catch(e){ margenRecibir(null); }
+  } else { margenRecibir(null); }
+}
+function margenRenderAdmin(){
+  var card=document.getElementById('margen-admin'), cont=document.getElementById('margen-admin-campos');
+  if(!card||!cont) return;
+  if(!margenEsAdmin()){ card.style.display='none'; return; }
+  card.style.display='';
+  if(!cont.querySelector('input')){
+    var h='';
+    Object.keys(MARGEN_BASE).forEach(function(k){
+      h+='<div style="display:grid;grid-template-columns:1fr 90px;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid #eee">'+
+        '<div><div style="font-weight:600;font-size:13px">'+provEsc(MARGEN_ETQ[k].t)+'</div><div class="hint" style="font-size:11px">'+provEsc(MARGEN_ETQ[k].ayuda)+'</div></div>'+
+        '<input type="text" inputmode="decimal" id="mg-'+k+'" style="font-size:14px;font-weight:600;padding:6px 8px;text-align:right"></div>';
+    });
+    cont.innerHTML=h;
+  }
+  Object.keys(MARGEN_BASE).forEach(function(k){
+    var inp=document.getElementById('mg-'+k);
+    if(inp && document.activeElement!==inp) inp.value=String(MARGEN_REGLAS[k]);   // no pisa lo que se está escribiendo
+  });
+  var meta=document.getElementById('margen-admin-meta');
+  if(meta) meta.textContent=MARGEN_META.actualizado ? ('Última actualización: '+MARGEN_META.actualizado+(MARGEN_META.por?' · '+MARGEN_META.por:'')) : 'Aún no se ha guardado ninguna tabla: se usan los valores base.';
+}
+function margenLeerCampos(){
+  var r={};
+  Object.keys(MARGEN_BASE).forEach(function(k){ var inp=document.getElementById('mg-'+k); r[k]=inp?inp.value:''; });
+  return r;
+}
+function margenGuardar(){
+  if(!margenEsAdmin()) return Promise.resolve(false);
+  var vals=margenLeerCampos(), err=margenValidar(vals);
+  if(err.length){ toast(err[0]); return Promise.resolve(false); }
+  if(!MARGEN_API || !MARGEN_PERFIL || !MARGEN_API.margenGuardar){ toast('Inicia sesión (pestaña Historial) para guardar los márgenes'); return Promise.resolve(false); }
+  var docu={}; Object.keys(MARGEN_BASE).forEach(function(k){ docu[k]=margenNumero(vals[k]); });
+  return MARGEN_API.margenGuardar(margenDocId(), docu, MARGEN_PERFIL.correo).then(function(){ toast('Márgenes guardados'); return true; })
+    .catch(function(e){ try{console.warn('No se pudieron guardar los márgenes:',e);}catch(x){} toast('⚠ No se pudieron guardar los márgenes ('+((e&&e.code)||'error')+')'); return false; });
+}
+(function(){ var b=document.getElementById('btn-save-margenes'); if(b) b.addEventListener('click', function(){ margenGuardar(); }); })();
+
+// ── OPCIÓN DRITEK EN FRENOS (22-nov-2026, pasos 3 a 6 de la opción Dritek) ─────────────────────────────────
+// La asesora escribe el No. de parte de la Opción 1 (GRC: GCD… · Duralast Gold: DG…). Si Chavitar tiene la misma balata
+// de CERÁMICA y en la misma posición (delantera/trasera), la Opción 2 se llena sola con Dritek:
+//   costo = lista de Chavitar (por juego, sin IVA) × 1.16 · precio = costo ÷ (1 − margen de la tabla)
+//   tope: el precio no pasa de 90% del precio de la Opción 1 · piso: el margen real no baja de 35% (si baja, se avisa)
+// Sin redondeo. Cerámica con cerámica (GCD/DG → CD) y semimetálica con semimetálica (GMD → MD): nunca se cruzan (cambio 22-nov-2026). Si la asesora edita a mano
+// el renglón de la Opción 2, la propuesta automática se desactiva en ese renglón (vaciándolo vuelve a funcionar).
+var CHAV_BAL = null;                 // lista vigente de Chavitar (Firestore, colección lista_precios_chavitar): {fecha, filas[]}
+var DRITEK_PROV = 'Chavitar', DRITEK_IVA = 1.16;
+function chavBalNormalizar(data){
+  if(!data || typeof data!=='object' || !data.fecha_lista || !Array.isArray(data.filas)) return null;   // un precio sin fecha no se usa
+  var filas=[];
+  data.filas.forEach(function(f){
+    if(!f) return;
+    var precio=parseFloat(f.precio_lista_sin_iva), num=parseInt(String(f.numero==null?'':f.numero),10);
+    var mat=String(f.material||''), pos=String(f.posicion||'').toUpperCase();
+    if(!(precio>0) || isNaN(num) || !f.parte || (mat!=='ceramica'&&mat!=='semimetalica') || (pos!=='D'&&pos!=='T')) return;
+    filas.push({material:mat, parte:String(f.parte), numero:String(num), sufijo:String(f.sufijo||'').toUpperCase(), posicion:pos, descripcion:String(f.descripcion||''), precio:precio});
+  });
+  return {fecha:String(data.fecha_lista), filas:filas};
+}
+function chavBalRecibir(data){
+  CHAV_BAL=chavBalNormalizar(data);
+  dritekSincronizarTodo();
+}
+// La conecta el módulo de Firebase cuando hay sesión con acceso: api = null si no hay sesión
+function chavBalConectar(api, perfil){
+  if(api && perfil && api.chavitarLeer){
+    var leer; try{ leer=api.chavitarLeer(); }catch(e){ leer=Promise.reject(e); }
+    Promise.resolve(leer).then(chavBalRecibir).catch(function(e){ try{console.warn('Lista de Chavitar no se pudo leer; Dritek no se propone:',e);}catch(x){} chavBalRecibir(null); });
+  } else { chavBalRecibir(null); }
+}
+// "GCD1194" (GRC cerámica) · "GMD711" (GRC semimetálica) · "MKD711" (Duralast semimetálica, puede traer letra: MKD768A, o decimales: MKD1279.50)
+// "DG652" (Duralast Gold): AutoZone vende Gold en cerámica Y en semimetálica con el mismo prefijo, así que el número no dice el material
+// (material '?'): la asesora lo elige con un botón y se recuerda para ese número.
+function dritekParseParte(txt){
+  var t=String(txt==null?'':txt).toUpperCase().replace(/[\s\-_]/g,'');
+  var m=/^(GCD|GMD|MKD|DG)(\d{2,4})([A-Z]?)(\.\d+)?$/.exec(t);
+  if(!m) return null;
+  var pref=m[1];
+  return {marca:((pref==='GCD'||pref==='GMD')?'GRC':'Duralast'), material:(pref==='GCD'?'ceramica':((pref==='GMD'||pref==='MKD')?'semimetalica':'?')), numero:String(parseInt(m[2],10)), sufijo:m[3]||'', pref:pref, texto:t};
+}
+// Busca en la lista de Chavitar. Respeta el material (cerámica CD / semimetálica MD, sin cruzarlos) y la posición ('D' delantera / 'T' trasera).
+// Regla de la letra: sin letra → la balata sin letra; las variantes con letra solo si no existe otra.
+function dritekBuscar(prs, pos){
+  var todas=(CHAV_BAL?CHAV_BAL.filas:[]).filter(function(f){ return f.material===prs.material && f.numero===prs.numero; });
+  if(!todas.length) return {estado:'sin', motivo:'numero'};
+  var rp=todas.filter(function(f){ return f.posicion===pos; });
+  if(!rp.length) return {estado:'sin', motivo:'posicion', otras:todas};
+  var sinLetra=rp.filter(function(f){ return !f.sufijo; });
+  if(prs.sufijo){
+    var ex=rp.filter(function(f){ return f.sufijo===prs.sufijo; });
+    if(ex.length) return {estado:'ok', fila:ex[0]};
+    if(sinLetra.length) return {estado:'ok', fila:sinLetra[0], aviso:'letra'};
+  } else if(sinLetra.length) return {estado:'ok', fila:sinLetra[0]};
+  var orden=rp.slice().sort(function(a,b){ return a.sufijo<b.sufijo?-1:(a.sufijo>b.sufijo?1:0); });   // solo existen variantes con letra
+  var mismo=orden.every(function(f){ return f.precio===orden[0].precio; });
+  if(orden.length===1 || mismo) return {estado:'ok', fila:orden[0], aviso:'variante', variantes:orden};
+  return {estado:'variantes', filas:orden};
+}
+// Precio al cliente de la opción Dritek. costoIVA ya trae el IVA. precio1 = precio de la Opción 1 (0 si aún no se conoce).
+function dritekPrecio(costoIVA, precio1, material){
+  var m=margenDritek(material||'ceramica'), tope=margenTopeDritek(), piso=margenPisoDritek();
+  var precio=costoIVA/(1-m), conTope=false, conPiso=false;
+  if(precio1>0 && precio>tope*precio1){ precio=tope*precio1; conTope=true; }
+  if(1-costoIVA/precio < piso-1e-12){ precio=costoIVA/(1-piso); conPiso=true; }   // piso: se mantiene el precio con el margen mínimo y se avisa
+  return {precio:precio, margenReal:(1-costoIVA/precio)*100, conTope:conTope, conPiso:conPiso};
+}
+function dritekItems(eje){
+  var r={it1:null, it2:null};
+  for(var i=0;i<tallerItems.length;i++){ var x=tallerItems[i]; if(x.eje!==eje) continue; if(x.opc1&&!r.it1) r.it1=x; if(x.opc2&&!r.it2) r.it2=x; }
+  return r;
+}
+function dritekVacio(it){ return !String(it.noParte==null?'':it.noParte).trim() && String(it.costo==null?'':it.costo).trim()===''; }
+function dritekFirma(it){ return JSON.stringify([it.noParte,it.costo,it.margen,it.qty,it.proveedor,it.precio,it.dritekNota,it.dritekNivel,!!it.autoDritek]); }
+function dritekRedond(n,d){ var f=Math.pow(10,d||2); return Math.round(n*f)/f; }
+// Pone al día el renglón de la Opción 2 de un eje. Devuelve true si algo cambió.
+function dritekSincronizar(eje){
+  var p=dritekItems(eje), it1=p.it1, it2=p.it2;
+  if(!it1 || !it2) return false;
+  var antes=dritekFirma(it2);
+  if(!it2.autoDritek && !dritekVacio(it2)){ it2.dritekNota=''; it2.dritekNivel=''; return dritekFirma(it2)!==antes; }   // renglón capturado a mano: no se toca
+  var np=String(it1.noParte==null?'':it1.noParte).trim(), nota='', nivel='info', fila=null, pos=(eje==='del'?'D':'T'), etqPos=(eje==='del'?'delantera':'trasera');
+  var prs=np?dritekParseParte(np):null;
+  if(prs && prs.material==='?' && it1.durMat && it1.durMatNp===prs.texto) prs.material=it1.durMat;   // material ya elegido para ESTE número
+  if(!np){ /* aún no hay número de la Opción 1 */ }
+  else if(!prs){ nota='El No. de parte «'+np+'» no es GRC (GCD…, GMD…) ni Duralast (MKD…, DG…): Dritek no se propone. Si hay segunda opción, captúrala a mano.'; nivel='aviso'; }
+  else if(prs.material==='?'){ nota='Duralast Gold existe en cerámica y en semimetálica y el número no lo dice. Elige el material de la balata para proponer la Dritek.'; nivel='elegir'; }
+  else if(!CHAV_BAL){ nota='La lista de precios de Dritek no está disponible (inicia sesión o revisa la conexión). Si hay segunda opción, captúrala a mano.'; nivel='aviso'; }
+  else {
+    var r=dritekBuscar(prs,pos);
+    if(r.estado==='ok'){ fila=r.fila;
+      if(r.aviso==='letra') nota='El número trae la letra «'+prs.sufijo+'»; se usó la balata sin letra de Chavitar. Confirma la variante. ';
+      if(r.aviso==='variante') nota='Chavitar solo tiene la variante con letra ('+fila.parte+'). Confirma la variante con Chavitar. ';
+      if(r.aviso) nivel='aviso';
+    } else if(r.estado==='variantes'){
+      nota='Chavitar tiene varias variantes del '+prs.numero+' con precios distintos ('+r.filas.map(function(f){ return f.parte+' '+fmt(f.precio); }).join(' · ')+'). Escribe a mano la que corresponda.'; nivel='aviso';
+    } else if(r.motivo==='posicion'){
+      nota='Chavitar tiene el '+prs.numero+' solo como '+(pos==='D'?'trasera':'delantera')+' ('+r.otras[0].descripcion+'): no coincide con la '+etqPos+'. No se propone Dritek.'; nivel='aviso';
+    } else { nota='Sin equivalente Dritek para el '+prs.numero+' (no está en la lista de Chavitar). No hay segunda opción automática.'; nivel='aviso'; }
+  }
+  if(fila){
+    var costo=fila.precio*DRITEK_IVA, precio1=parseFloat(it1.precio)||0, res=dritekPrecio(costo,precio1,prs.material);
+    it2.autoDritek=true; it2.noParte=fila.parte; it2.proveedor=DRITEK_PROV; it2.costo=costo; it2.margen=res.margenReal;
+    var q1=parseFloat(it1.qty)||0;
+    if(!(parseFloat(it2.qty)>0) || it2.qtyAuto){ it2.qty=q1; it2.qtyAuto=true; }
+    nota+='Dritek '+fila.parte+' · '+fila.descripcion+' · lista '+fmt(fila.precio)+' sin IVA → costo '+fmt(costo)+' · margen '+dritekRedond(res.margenReal,1)+'%.';
+    if(!(precio1>0)) nota+=' Falta el costo de la Opción 1: el precio se ajustará al tope cuando lo captures.';
+    if(res.conTope) nota+=' Precio limitado al '+dritekRedond(margenTopeDritek()*100,1)+'% del precio de la Opción 1.';
+    if(res.conPiso){ nota+=' ⚠ Con el tope el margen bajaría de '+dritekRedond(margenPisoDritek()*100,1)+'%: se mantiene el margen mínimo y el precio queda arriba del tope.'; nivel='aviso'; }
+    it2.dritekNota=nota; it2.dritekNivel=nivel;
+    calcTallerPVP(it2.id);
+  } else {
+    if(it2.autoDritek){   // ya no aplica: se deja el renglón vacío como estaba
+      it2.autoDritek=false; it2.noParte=''; it2.costo=''; it2.proveedor=''; it2.margen=30; it2.precio='';
+      if(it2.qtyAuto){ it2.qty=0; }
+    }
+    it2.qtyAuto=false; it2.dritekNota=nota; it2.dritekNivel=nivel;
+  }
+  return dritekFirma(it2)!==antes;
+}
+function dritekSincronizarTodo(){
+  var cambio=false;
+  ['del','tras'].forEach(function(e){ try{ if(dritekSincronizar(e)) cambio=true; }catch(x){ try{console.warn('Dritek:',x);}catch(y){} } });
+  if(cambio && typeof renderTallerItems==='function' && document.getElementById('taller-items')){ renderTallerItemsConFoco(); renderCarrito(); updateBadge(); generarWA(); }
+  return cambio;
+}
+// Lo llama updTallerField cada vez que la asesora cambia un campo de un renglón de balatas. true = hay que repintar.
+function dritekAlEditar(it, field){
+  if(it.opc2){
+    if(it.autoDritek && ['noParte','costo','margen','precio','concepto'].indexOf(field)>=0){ it.autoDritek=false; it.qtyAuto=false; it.dritekNota=''; it.dritekNivel=''; return true; }
+    if(field==='qty') it.qtyAuto=false;
+    if(!it.autoDritek && (field==='noParte'||field==='costo') && dritekVacio(it)) return dritekSincronizar(it.eje);   // lo vaciaron: vuelve la propuesta automática
+    return false;
+  }
+  if(it.opc1 && ['noParte','costo','margen','precio','descuento','qty'].indexOf(field)>=0) return dritekSincronizar(it.eje);
+  return false;
+}
+// Botones "Cerámica" / "Semimetálica" de la franja de Duralast Gold
+function dritekElegirMaterial(eje, material){
+  var p=dritekItems(eje); if(!p.it1 || (material!=='ceramica'&&material!=='semimetalica')) return false;
+  var prs=dritekParseParte(p.it1.noParte); if(!prs || prs.material!=='?') return false;
+  p.it1.durMat=material; p.it1.durMatNp=prs.texto;
+  dritekSincronizar(eje);
+  if(document.getElementById('taller-items')) renderTallerItemsConFoco();
+  renderCarrito(); updateBadge(); generarWA();
+  return true;
+}
+// Repinta los renglones sin perder el campo donde la asesora está escribiendo
+function renderTallerItemsConFoco(){
+  var a=document.activeElement, id=a&&a.getAttribute?a.getAttribute('data-id'):null, f=a&&a.getAttribute?a.getAttribute('data-f'):null, ini=null, fin=null;
+  try{ ini=a.selectionStart; fin=a.selectionEnd; }catch(e){}
+  renderTallerItems();
+  if(id && f){ var n=document.querySelector('#taller-items [data-id="'+id+'"][data-f="'+f+'"]'); if(n){ n.focus(); try{ if(ini!=null) n.setSelectionRange(ini,fin); }catch(e){} } }
+}
+// Marca que va a la columna Marca del Sheet (GRC / Duralast / Dritek)
+function dritekMarcaDe(it){
+  if(it.opc2) return it.autoDritek ? 'Dritek' : '';
+  var prs=dritekParseParte(it.noParte); return prs ? prs.marca : '';
+}
+
 // ── TALLER ───────────────────────────────────────────────
 function setTallerSvc(s, el) {
   document.querySelectorAll('.ttab').forEach(function(t){t.classList.remove('on');});
@@ -2479,6 +2742,7 @@ function updTallerField(id, field, val) {
     }
   }
   if(field==='noParte') provSincronizarErrores();
+  for(var _k=0;_k<tallerItems.length;_k++){ if(tallerItems[_k].id===id){ var _ti=tallerItems[_k]; if(_ti.eje && (_ti.opc1||_ti.opc2)){ try{ if(dritekAlEditar(_ti,field)) renderTallerItemsConFoco(); }catch(e){ try{console.warn('Dritek:',e);}catch(x){} } } break; } }
   renderCarrito(); updateBadge(); generarWA();
 }
 
@@ -2494,7 +2758,7 @@ function renderTallerItems() {
     var div=document.createElement('div');
     div.className='taller-row';
     var pend=item.pend?'<div style="font-size:10px;color:#f59e0b;margin-top:2px">⏳ Pendiente</div>':'';
-    if(item.opc2) pend+='<div style="font-size:10px;color:#1a56db;margin-top:2px">Opción 2 · alternativa convencional (no se suma a las balatas de la Opción 1)</div>';
+    if(item.opc2) pend+='<div style="font-size:10px;color:#1a56db;margin-top:2px">Opción 2 · alternativa de calidad estándar (no se suma a las balatas de la Opción 1)</div>';
 
     if(item.mo) {
       // Mano de obra: concepto + precio editable (sin costo ni margen)
@@ -2534,14 +2798,24 @@ function renderTallerItems() {
             '<button class="opc-btn'+(!item.opcional?' opc-on':'')+'" data-id="'+item.id+'" title="Incluir en cotización">'+(!item.opcional?'&#10003;':'+')+' </button>'+
           '</div>'+
         pend+'</div>'+
-        '<div class="tr-costo"><div style="font-size:9px;color:#888;margin-bottom:1px">Costo</div><input type="text" inputmode="decimal" value="'+(item.costo||'')+'" placeholder="0" data-id="'+item.id+'" data-f="costo" class="ti-num" style="width:100%"></div>'+
-        '<div class="tr-margen"><div style="font-size:9px;color:#888;margin-bottom:1px">%</div><input type="text" inputmode="decimal" value="'+(item.margen!==undefined?item.margen:30)+'" placeholder="30" data-id="'+item.id+'" data-f="margen" class="ti-num ti-margen"><span style="font-size:11px;color:#888;flex-shrink:0"></span></div>'+
+        '<div class="tr-costo"><div style="font-size:9px;color:#888;margin-bottom:1px">Costo</div><input type="text" inputmode="decimal" value="'+(item.autoDritek&&item.costo!==''?dritekRedond(parseFloat(item.costo),2):(item.costo||''))+'" placeholder="0" data-id="'+item.id+'" data-f="costo" class="ti-num" style="width:100%"></div>'+
+        '<div class="tr-margen"><div style="font-size:9px;color:#888;margin-bottom:1px">%</div><input type="text" inputmode="decimal" value="'+(item.autoDritek&&item.margen!==undefined?dritekRedond(parseFloat(item.margen),2):(item.margen!==undefined?item.margen:30))+'" placeholder="30" data-id="'+item.id+'" data-f="margen" class="ti-num ti-margen"><span style="font-size:11px;color:#888;flex-shrink:0"></span></div>'+
         '<div style="flex:0 0 36px"><div style="font-size:9px;color:#888;margin-bottom:1px">Cant</div><input type="text" inputmode="numeric" value="'+(item.qty||'')+'" placeholder="0" data-id="'+item.id+'" data-f="qty" class="ti-num" style="width:100%;text-align:center"></div>'+
         '<div style="flex:0 0 40px"><div style="font-size:9px;color:#888;text-align:center;margin-bottom:1px">Desc %</div><input type="text" inputmode="decimal" value="'+(item.descuento||'')+'" placeholder="0" data-id="'+item.id+'" data-f="descuento" class="ti-num" style="width:100%;text-align:center"></div>'+
         '<div class="tr-pvp"><div style="font-size:9px;color:#888;text-align:right;margin-bottom:1px">PVP</div>'+(item.precio?fmt(item.precio):'-')+'</div>'+
         '<button class="cx" data-id="'+item.id+'">X</button>';
     }
     c.appendChild(div);
+    if(item.opc2 && item.dritekNota){   // nota de Dritek: franja a todo lo ancho debajo del renglón (la columna del concepto es muy angosta en celular)
+      var nd=document.createElement('div'); nd.className='dritek-nota'; var av=(item.dritekNivel==='aviso');
+      nd.style.cssText='font-size:11px;line-height:1.35;margin:-2px 0 8px;padding:6px 8px;border-radius:6px;background:'+(av?'#fffbeb':'#f0fdfa')+';color:'+(av?'#92400e':'#0f766e')+';border:1px solid '+(av?'#fde68a':'#99f6e4');
+      if(item.dritekNivel==='elegir'){ nd.style.cssText+=';background:#fffbeb;color:#92400e;border:1px solid #fde68a';
+        nd.appendChild(document.createTextNode(item.dritekNota+' '));
+        [['ceramica','Cerámica'],['semimetalica','Semimetálica']].forEach(function(m){ var b=document.createElement('button'); b.type='button'; b.setAttribute('data-dr-mat',m[0]); b.setAttribute('data-dr-eje',item.eje); b.textContent=m[1];
+          b.style.cssText='margin:4px 6px 0 0;padding:5px 12px;font-size:12px;font-weight:600;border:1.5px solid #92400e;border-radius:7px;background:#fff;color:#92400e;cursor:pointer'; nd.appendChild(b); });
+      } else nd.textContent=item.dritekNota;
+      c.appendChild(nd);
+    }
   }
   // Attach listeners
   // All events handled via delegation on #taller-items
@@ -2854,13 +3128,13 @@ function generarWA() {
         var esAceite=it.concepto.toLowerCase().indexOf('aceite')>=0&&!it.mo;
         var lineaTxt;
         if(it.opcional){
-          lineaTxt=it.concepto+' (opcional, no incluido en total)'+(iqty>1?' · '+iqty+' litros · '+fmt(parseFloat(it.precio))+' c/lt · Total '+fmt(sub):' - '+fmt(sub));
+          lineaTxt=frNombreCliente(it)+' (opcional, no incluido en total)'+(iqty>1?' · '+iqty+' litros · '+fmt(parseFloat(it.precio))+' c/lt · Total '+fmt(sub):' - '+fmt(sub));
         } else if(esAceite&&iqty>1){
-          lineaTxt=it.concepto+' · '+iqty+' litros · '+fmt(parseFloat(it.precio))+' c/lt · Total '+fmt(sub);
+          lineaTxt=frNombreCliente(it)+' · '+iqty+' litros · '+fmt(parseFloat(it.precio))+' c/lt · Total '+fmt(sub);
         } else if(iqty>1){
-          lineaTxt=it.concepto+' x'+iqty+' - '+fmt(parseFloat(it.precio))+' c/u = '+fmt(sub);
+          lineaTxt=frNombreCliente(it)+' x'+iqty+' - '+fmt(parseFloat(it.precio))+' c/u = '+fmt(sub);
         } else {
-          lineaTxt=it.concepto+' - '+fmt(sub);
+          lineaTxt=frNombreCliente(it)+' - '+fmt(sub);
         }
         txt+='* '+lineaTxt+'\n';
       }
@@ -2874,7 +3148,7 @@ function generarWA() {
   var pends=tallerItems.filter(function(i){return i.pend&&(i.costo===''||i.costo===0)&&parseFloat(i.qty)>0;});
   if(pends.length){
     txt+='\n⏳ En espera de precio para:\n';
-    for(var i=0;i<pends.length;i++){if(pends[i].concepto)txt+='* '+pends[i].concepto+'\n';}
+    for(var i=0;i<pends.length;i++){if(pends[i].concepto)txt+='* '+frNombreCliente(pends[i])+'\n';}
     txt+='\nTe confirmamos en breve el precio completo.\n';
   }
 
@@ -2910,7 +3184,7 @@ function resetGuardar(){
 // ── BORRADORES ─────────────────────────────────────────
 function cargarBorradores() {
   try {
-    var saved = localStorage.getItem('expresscare_borradores');
+    var saved = localStorage.getItem(BORR_KEY);
     borradores = saved ? JSON.parse(saved) : [];
   } catch(e){ borradores = []; }
 }
@@ -2957,8 +3231,8 @@ function guardarBorrador() {
     }
   }
   borradores.unshift(borrador);
-  if(borradores.length > 10) borradores = borradores.slice(0,10);
-  try{ localStorage.setItem('expresscare_borradores', JSON.stringify(borradores)); }catch(e){}
+  if(borradores.length > MAX_BORRADORES) borradores = borradores.slice(0,MAX_BORRADORES);
+  try{ localStorage.setItem(BORR_KEY, JSON.stringify(borradores)); }catch(e){}
   renderBorradores();
   limpiarTodo(true);
   if(actualizado) toast('Borrador actualizado');
@@ -2975,7 +3249,7 @@ function consumirBorradorActivo() {
   var antes = borradores.length;
   borradores = borradores.filter(function(b){ return b.id !== id; });
   if(borradores.length === antes) return;
-  try{ localStorage.setItem('expresscare_borradores', JSON.stringify(borradores)); }catch(e){}
+  try{ localStorage.setItem(BORR_KEY, JSON.stringify(borradores)); }catch(e){}
   renderBorradores();
   toast('📋 Este borrador ya se usó y se quitó de la lista');
 }
@@ -3018,7 +3292,7 @@ function cargarBorrador(id) {
 function eliminarBorrador(id) {
   cargarBorradores();
   borradores = borradores.filter(function(b){ return b.id !== id; });
-  try{ localStorage.setItem('expresscare_borradores', JSON.stringify(borradores)); }catch(e){}
+  try{ localStorage.setItem(BORR_KEY, JSON.stringify(borradores)); }catch(e){}
   renderBorradores();
   limpiarTodo(true);
 }
@@ -3038,7 +3312,7 @@ function renderBorradores() {
     html += '<div style="font-weight:700;font-size:13px">'+b.cliente+'</div>';
     html += '<div style="font-size:11px;color:#666">'+b.telefono+(b.vehiculo?' · '+b.vehiculo:'')+'</div>';
     html += '<div style="font-size:11px;color:#888;margin:2px 0">'+b.preview+'</div>';
-    html += '<div style="font-size:10px;color:#aaa">'+b.fecha+'</div>';
+    html += '<div style="font-size:10px;color:#aaa">'+b.fecha+((b.campos&&b.campos.asesor)?' · Asesor: '+provEsc(b.campos.asesor):'')+'</div>';
     html += '<div style="display:flex;gap:6px;margin-top:8px">';
     html += '<button class="btn-cargar-borrador" id="cargar_'+bid+'" style="flex:1;padding:6px;background:#1a56db;color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer">Cargar</button>';
     html += '<button class="btn-eliminar-borrador" id="eliminar_'+bid+'" style="padding:6px 10px;background:#fff;color:#dc2626;border:1px solid #dc2626;border-radius:6px;font-size:12px;cursor:pointer">Eliminar</button>';
@@ -3052,6 +3326,116 @@ function renderBorradores() {
     btn.addEventListener('click', function(){ eliminarBorrador(this.id.replace('eliminar_','')); });
   });
 }
+
+// ── BORRADORES EN LA NUBE (Firebase) — bloque ADITIVO ───────────────────────
+// Los borradores se comparten entre todos los asesores y equipos (colección "borradores"; en dev "borradores_prueba").
+// El navegador sigue guardando una copia local (BORR_KEY): si Firebase no está disponible todo funciona como antes.
+// Producción: activo con sesión. Dev: apagado (los borradores se quedan en el navegador) salvo con ?borradoresfb=1. ?test=1 nunca escribe.
+var BORR_COL = ES_DEV ? 'borradores_prueba' : 'borradores';
+var BORR_NUBE_ACTIVA = !MODO_PRUEBA && (!ES_DEV || /[?&]borradoresfb=1(&|$)/.test((typeof window!=='undefined' && window.location && window.location.search) || ''));
+var BORR_DIAS = 30;           // un borrador sin cambios por 30 días se borra solo
+var BORR_MAX_NUBE = 200;      // tope de la lista cuando está conectada a la nube
+var BORR_API = null, BORR_PERFIL = null, BORR_STOP = null, BORR_LISTO = false;
+var BORR_FIRMA = {};          // id -> huella de la versión que ya está en la nube
+var BORR_ACT = {};            // id -> fecha de la última modificación (para ordenar y para caducar)
+var BORR_AVISADO = false;
+
+function borrHash(b){
+  var t = JSON.stringify(b), h = 5381;
+  for(var i=0;i<t.length;i++){ h = ((h<<5)+h + t.charCodeAt(i)) | 0; }
+  return t.length + ':' + h;
+}
+function borrAhoraISO(){ return new Date(Date.now()-6*3600000).toISOString().slice(0,23)+'-06:00'; }   // con milisegundos: ordena bien aunque se guarden varios en el mismo segundo
+function borrConocidos(){ try{ return JSON.parse(localStorage.getItem(BORR_KEY+'_nube')||'{}') || {}; }catch(e){ return {}; } }
+function borrGuardarConocidos(o){ try{ localStorage.setItem(BORR_KEY+'_nube', JSON.stringify(o)); }catch(e){} }
+function borrAviso(m){ if(BORR_AVISADO) return; BORR_AVISADO = true; try{ toast(m); }catch(e){} }
+function borrFalla(e){
+  try{ console.warn('Borradores en la nube:', e); }catch(x){}
+  borrAviso('⚠ Borradores: no se pudo sincronizar con Firebase'+((e&&e.code)?' ('+e.code+')':'')+'. Se guardan en este navegador.');
+}
+function borrDoc(b){
+  var p = BORR_PERFIL || {};
+  return { id:b.id, cliente:b.cliente||'', telefono:b.telefono||'', vehiculo:b.vehiculo||'', preview:b.preview||'',
+    asesor:(b.campos&&b.campos.asesor)||'', fecha:b.fecha||'', actualizado:borrAhoraISO(),
+    por:{ correo:p.correo||'', nombre:p.nombre||'' }, datos:JSON.stringify(b) };
+}
+function borrGuardarLocal(){
+  try{ localStorage.setItem(BORR_KEY, JSON.stringify(borradores)); }
+  catch(e){ try{ localStorage.setItem(BORR_KEY, JSON.stringify(borradores.slice(0,30))); }catch(e2){} }
+}
+function borrSubir(b){
+  BORR_FIRMA[b.id] = borrHash(b); BORR_ACT[b.id] = borrAhoraISO();
+  try{ BORR_API.borrGuardar(BORR_COL, b.id, borrDoc(b)).catch(borrFalla); }catch(e){ borrFalla(e); }
+}
+// Después de guardar / eliminar / usar un borrador: sube lo que cambió y borra en la nube lo que ya no está en la lista
+function borrSincronizar(){
+  if(!BORR_API || !BORR_PERFIL || !BORR_LISTO) return;
+  cargarBorradores();
+  var presentes = {}, conoc = borrConocidos();
+  borradores.forEach(function(b){
+    presentes[b.id] = true;
+    if(BORR_FIRMA[b.id] === borrHash(b)) return;      // sin cambios respecto a la nube
+    borrSubir(b);
+  });
+  Object.keys(BORR_FIRMA).forEach(function(id){
+    if(presentes[id]) return;
+    delete BORR_FIRMA[id]; delete BORR_ACT[id]; delete conoc[id];
+    try{ BORR_API.borrBorrar(BORR_COL, id).catch(borrFalla); }catch(e){ borrFalla(e); }
+  });
+  borrGuardarConocidos(conoc);
+}
+// Llega la lista de la nube (cada vez que alguien cambia algo). docs = [{id, data}]; deCache = viene del caché sin confirmar con el servidor
+function borrRecibir(docs, deCache){
+  var conoc = borrConocidos(), ahora = Date.now(), limite = BORR_DIAS*86400000, nube = {};
+  docs.forEach(function(d){
+    var x = d.data || {}, b = null;
+    try{ b = JSON.parse(x.datos); }catch(e){ return; }
+    if(!b || !b.id) return;
+    var t = Date.parse(x.actualizado || '');
+    if(!deCache && !isNaN(t) && ahora - t > limite){            // caducó: más de 30 días sin cambios
+      try{ BORR_API.borrBorrar(BORR_COL, d.id).catch(borrFalla); }catch(e){}
+      return;
+    }
+    BORR_ACT[b.id] = x.actualizado || ''; nube[b.id] = b;
+  });
+  cargarBorradores();
+  var locales = borradores.slice(), merged = [], subir = [];
+  Object.keys(nube).forEach(function(id){ merged.push(nube[id]); BORR_FIRMA[id] = borrHash(nube[id]); conoc[id] = 1; });
+  locales.forEach(function(b){
+    if(nube[b.id]) return;                                       // ya está en la nube: manda la versión de la nube
+    if(conoc[b.id] && !deCache){ delete conoc[b.id]; delete BORR_FIRMA[b.id]; return; }   // otro equipo lo borró (o lo usó)
+    merged.push(b); if(!conoc[b.id] && !deCache) subir.push(b);  // borrador local nuevo (importación o hecho sin conexión): se sube
+  });
+  merged.sort(function(a,b){
+    var x = String(BORR_ACT[a.id]||'9'), y = String(BORR_ACT[b.id]||'9');   // sin fecha = recién hecho localmente: va primero
+    if(x !== y) return x < y ? 1 : -1;
+    return String(a.id) < String(b.id) ? 1 : -1;
+  });
+  if(merged.length > BORR_MAX_NUBE) merged = merged.slice(0, BORR_MAX_NUBE);
+  borradores = merged; borrGuardarLocal(); borrGuardarConocidos(conoc);
+  BORR_LISTO = true;
+  subir.forEach(borrSubir);
+  renderBorradores();
+}
+// La conecta el módulo de Firebase cuando hay sesión con acceso (api = null si no hay sesión)
+function borrNubeConectar(api, perfil){
+  if(BORR_STOP){ try{BORR_STOP();}catch(e){} BORR_STOP = null; }
+  BORR_API = null; BORR_PERFIL = null; BORR_LISTO = false; BORR_FIRMA = {}; BORR_ACT = {}; MAX_BORRADORES = 10;
+  if(!BORR_NUBE_ACTIVA || !api || !perfil || !api.borrEscuchar) return;
+  BORR_API = api; BORR_PERFIL = perfil; MAX_BORRADORES = BORR_MAX_NUBE;
+  try{
+    BORR_STOP = api.borrEscuchar(BORR_COL, borrRecibir, function(e){
+      BORR_API = null; BORR_LISTO = false; MAX_BORRADORES = 10;   // sin permiso o sin red: se sigue con la copia del navegador
+      borrFalla(e);
+    });
+  }catch(e){ BORR_API = null; MAX_BORRADORES = 10; borrFalla(e); }
+}
+// Las operaciones que ya existen se envuelven SIN tocar su código: al terminar, sincronizan con la nube
+['guardarBorrador','eliminarBorrador','consumirBorradorActivo'].forEach(function(n){
+  var o = window[n];
+  if(typeof o !== 'function') return;
+  window[n] = function(){ var r = o.apply(this, arguments); try{ borrSincronizar(); }catch(e){ borrFalla(e); } return r; };
+});
 
 function toggleBorradores() {
   var panel = g('borradores-dropdown');
@@ -3277,11 +3661,12 @@ function armarDatosCotizacion(llantas, autoSvcs, extSvcs, tallerCart){
       producto: it.concepto+(it.opcional?' (opcional)':''),
       cant: parseFloat(it.qty)||1,
       costo: it.mo?'':( it.costo?fmtN(parseFloat(it.costo)):'' ),
-      margen: it.mo?'M.O.':(it.margen?it.margen+'%':''),
+      margen: it.mo?'M.O.':(it.margen?(it.autoDritek?dritekRedond(parseFloat(it.margen),2):it.margen)+'%':''),
       precio: fmtN(parseFloat(it.precio)),
       subtotal: it.opcional?'(opcional)':fmtN(sub)
     });
-    if(hayOpcionesFrenos() && (it.opc1||it.opc2)) items[items.length-1].opcion=it.opc2?2:1;   // frenos con dos opciones: 1 = alto rendimiento (cerámica), 2 = convencionales (semi metálicas)
+    if(it.opc1||it.opc2){ var _mk=dritekMarcaDe(it); if(_mk) items[items.length-1].marca=_mk; }   // columna Marca del Sheet: GRC / Duralast / Dritek
+    if(hayOpcionesFrenos() && (it.opc1||it.opc2)) items[items.length-1].opcion=it.opc2?2:1;   // frenos con dos opciones: 1 = Balatas Primera Calidad, 2 = Balatas Calidad Estándar
   }
 
   for(var i=0;i<extSvcs.length;i++){
@@ -3658,7 +4043,7 @@ function construirYDescargarPDF(folio, cl, tel, vh, asesor, fechaStr, llantas, a
     doc.setFont('helvetica','normal');
     var yFr=y+3;
     TFP.lista.forEach(function(x){
-      var body=x.items.map(function(it){ return [it.concepto, String(it.qty), fmt(it.precio), fmt(parseFloat(it.precio)*parseFloat(it.qty))]; });
+      var body=x.items.map(function(it){ return [frNombreCliente(it), String(it.qty), fmt(it.precio), fmt(parseFloat(it.precio)*parseFloat(it.qty))]; });
       comunFr.forEach(function(r){ body.push(r); });
       var subSinIvaF=x.total/1.16, ivaF=x.total-subSinIvaF;
       doc.autoTable({
@@ -4197,6 +4582,10 @@ window.addEventListener('load',function(){
   // Event delegation for opc-btn - avoids listener accumulation on re-renders
   var tallerContainer=g('taller-items');
   if(tallerContainer){
+    tallerContainer.addEventListener('click',function(e){   // botones de material de Duralast Gold
+      var b=e.target && e.target.closest ? e.target.closest('button[data-dr-mat]') : null;
+      if(b){ e.preventDefault(); dritekElegirMaterial(b.getAttribute('data-dr-eje'), b.getAttribute('data-dr-mat')); }
+    });
     // Input delegation
     tallerContainer.addEventListener('input',function(e){
       var inp=e.target;
@@ -4363,6 +4752,8 @@ window.addEventListener('load',function(){
   var ROLES = { superadministrador:'Superadministrador', administrador:'Administrador', usuario:'Usuario' };
   var COL = 'cotizaciones';
   var COL_PROV = 'proveedores';
+  var COL_MARGEN = 'reglas_margen';
+  var COL_CHAV = 'lista_precios_chavitar';
   var MAX_DOCS = 5000;
   var POR_PAGINA = 50;
 
@@ -4640,6 +5031,9 @@ window.addEventListener('load',function(){
     if(perfil){ escuchar(); if(puedeAdministrar(perfil)) escucharUsr(); else dejarUsr(); }
     else { dejarDeEscuchar(); dejarUsr(); }
     try{ if(typeof provConectar==='function') provConectar(perfil?api:null, perfil); }catch(e){}
+    try{ if(typeof margenConectar==='function') margenConectar(perfil?api:null, perfil); }catch(e){}
+    try{ if(typeof chavBalConectar==='function') chavBalConectar(perfil?api:null, perfil); }catch(e){}
+    try{ if(typeof borrNubeConectar==='function') borrNubeConectar(perfil?api:null, perfil); }catch(e){}
     pintarEstado();
   }
   // Decide si la cuenta con sesión tiene acceso. El superadministrador
@@ -4743,6 +5137,29 @@ window.addEventListener('load',function(){
         provReemplazar:function(id,listas,por){
           return fs.setDoc(fs.doc(db,COL_PROV,id),{listas:listas,actualizado:fechaISOChihuahua(),por:por});
         },
+        // Lista de precios de Chavitar (Dritek): documento "vigente" apunta a la lista en uso (lista_AAAA-MM-DD)
+        chavitarLeer:function(){
+          return fs.getDoc(fs.doc(db,COL_CHAV,'vigente')).then(function(sn){
+            var v=sn.exists()?sn.data():null; if(!v||!v.lista_id) return null;
+            return fs.getDoc(fs.doc(db,COL_CHAV,String(v.lista_id))).then(function(s2){ return s2.exists()?s2.data():null; });
+          });
+        },
+        // Tabla de márgenes de balatas Dritek (colección "reglas_margen"; documento "dritek", o "dritek_prueba" en dev)
+        margenEscuchar:function(id,cb,errcb){
+          return fs.onSnapshot(fs.doc(db,COL_MARGEN,id),function(sn){ cb(sn.exists()?sn.data():null); },errcb);
+        },
+        margenGuardar:function(id,valores,por){
+          return fs.setDoc(fs.doc(db,COL_MARGEN,id),Object.assign({},valores,{actualizado:fechaISOChihuahua(),por:por}));
+        },
+        // Borradores compartidos (colección "borradores"; "borradores_prueba" en dev con ?borradoresfb=1)
+        borrEscuchar:function(col,cb,errcb){
+          return fs.onSnapshot(fs.collection(db,col),function(snap){
+            var arr=[]; snap.forEach(function(d){ arr.push({id:d.id,data:d.data()}); });
+            cb(arr,snap.metadata.fromCache===true);
+          },errcb);
+        },
+        borrGuardar:function(col,id,docu){ return fs.setDoc(fs.doc(db,col,id),docu); },
+        borrBorrar:function(col,id){ return fs.deleteDoc(fs.doc(db,col,id)); },
         escucharUsuarios:function(cb,errcb){
           return fs.onSnapshot(fs.collection(db,COL_USR),function(snap){
             var arr=[]; snap.forEach(function(d){ var x=d.data(); x._id=d.id; arr.push(x); }); cb(arr);
