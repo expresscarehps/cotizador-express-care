@@ -755,6 +755,13 @@ label.chk-sin-nombre input:checked + span{color:var(--val-dark-blue);font-weight
     <div id="margen-admin-meta" class="hint" style="margin:8px 0"></div>
     <button type="button" id="btn-save-margenes" style="padding:8px 14px;font-size:13px;border:1.5px solid #111;border-radius:7px;background:#111;color:#fff;cursor:pointer;font-weight:600">Guardar márgenes</button>
   </div>
+  <div class="card" id="rect-admin" style="display:none">
+    <p class="st">Precios fijos de rectificado (Frenos)</p>
+    <p class="hint" style="margin-bottom:10px">Precio por pieza (cada disco o tambor). Se aplica solo cuando la cotización lleva balatas: con balatas delanteras y traseras, un precio; con balatas en un solo eje, otro. Si la asesora escribe el precio a mano en un renglón, se respeta el suyo. La mano de obra de frenos se sigue cambiando en "Tarifas de mano de obra".</p>
+    <div id="rect-admin-campos"></div>
+    <div id="rect-admin-meta" class="hint" style="margin:8px 0"></div>
+    <button type="button" id="btn-save-rect" style="padding:8px 14px;font-size:13px;border:1.5px solid #111;border-radius:7px;background:#111;color:#fff;cursor:pointer;font-weight:600">Guardar precios de rectificado</button>
+  </div>
   <div class="card">
     <p class="st">Tarifas de mano de obra</p>
     <p class="hint" style="margin-bottom:10px">Estos precios se cargan automáticamente en los renglones de M.O. Puedes editarlos aquí y se guardan en este navegador.</p>
@@ -1077,7 +1084,7 @@ var MODO_PRUEBA = (typeof window!=='undefined' && window.location && /[?&]test=1
 // Se detecta por el nombre del archivo: en dev, el aviso real a GHL pide confirmación explícita
 // (para no etiquetar clientes reales por accidente). También viaja en el aviso como "fuente".
 var ES_DEV = (typeof window!=='undefined' && window.location && /dev\.html?$/i.test(window.location.pathname||''));
-var VERSION_PAGINA = 'prod 2026-11-23 Chavitar como 4o proveedor de llantas (1,464 llantas; equivalentes con Servillantas/VEGA; comprar en CHAV/SERV/VEGA); balatas Dritek (Chavitar) como Opción 2 de Frenos con tabla de márgenes; borradores compartidos en la nube; prod 2026-11-13 buscador de medidas: ignora la P inicial y ZR=R; frenos con dos opciones de balatas (Opción 1 alto rendimiento (cerámica) / Opción 2 convencionales (semi metálicas)); candado de No. de parte; catalogo Servillantas 24-sep-2026, VEGA 21-oct-2026, AYALA noviembre 2026';
+var VERSION_PAGINA = 'prod 2026-11-23 rectificado de frenos con precio fijo automatico (gratis con balatas delanteras y traseras; por pieza con un solo eje; tarjeta en Config solo administrador); prod 2026-11-23 Chavitar como 4o proveedor de llantas (1,464 llantas; equivalentes con Servillantas/VEGA; comprar en CHAV/SERV/VEGA); balatas Dritek (Chavitar) como Opción 2 de Frenos con tabla de márgenes; borradores compartidos en la nube; prod 2026-11-13 buscador de medidas: ignora la P inicial y ZR=R; frenos con dos opciones de balatas (Opción 1 alto rendimiento (cerámica) / Opción 2 convencionales (semi metálicas)); candado de No. de parte; catalogo Servillantas 24-sep-2026, VEGA 21-oct-2026, AYALA noviembre 2026';
 
 var RIN = {
   'a': {mon:85,  bal:80,  piv:20, h:'Montaje $85 - Balanceo $80 - Pivote $20 por llanta'},
@@ -1847,6 +1854,9 @@ var FR_ETQ1 = 'Balatas Primera Calidad', FR_ETQ2 = 'Balatas Calidad Estándar';
 // Lo que ve el CLIENTE (WhatsApp y PDF): el renglón de la Opción 2 no repite "(convencionales)"; el título de la opción ya lo dice.
 // El nombre interno del renglón (pantalla, Sheet, borradores) NO cambia.
 function frNombreCliente(it){ var c=String(it&&it.concepto!=null?it.concepto:''); return (it&&it.opc2)?c.replace(/\s*\(convencionales\)\s*$/i,''):c; }
+// Renglón de taller que entra a la cotización: con concepto, precio mayor a 0 y cantidad. Excepción: el rectificado que salió GRATIS
+// por precio fijo automático (it.gratis, precio 0) también entra, para que el cliente lo vea en el mensaje y en el PDF.
+function tallerLineaOk(i){ return !!(i.concepto&&i.precio!==''&&(parseFloat(i.precio)>0||i.gratis===true)&&parseFloat(i.qty)>0); }
 function frIncluido(it){ return !!(it && it.concepto && it.precio!=='' && parseFloat(it.precio)>0 && parseFloat(it.qty)>0 && !it.opcional); }
 function hayOpcionesFrenos(){ return tallerItems.some(function(it){ return it.opc2 && frIncluido(it); }); }
 function frGrupo(n){ return tallerItems.filter(function(it){ return (n===2?it.opc2:it.opc1) && frIncluido(it); }); }
@@ -2445,6 +2455,120 @@ function margenGuardar(){
 }
 (function(){ var b=document.getElementById('btn-save-margenes'); if(b) b.addEventListener('click', function(){ margenGuardar(); }); })();
 
+// ── PRECIOS FIJOS DE RECTIFICADO EN FRENOS (23-nov-2026) ─────────────────────────────────────────────────────
+// Precio por PIEZA (cada disco o tambor). Con balatas en los DOS ejes (delanteras y traseras) el rectificado sale GRATIS; con balatas
+// en UN solo eje, $65 por pieza. Son precios fijos (no una promoción) y solo un administrador los cambia en Configuración.
+// Viven en Firestore (colección "tarifas"; documento "frenos_rectificado", o "frenos_rectificado_prueba" en dev). RECT_BASE solo se
+// usa si aún no hay documento guardado o no hay conexión (son los mismos valores vigentes).
+// Sin balatas en la cotización, o si la asesora escribe el precio a mano, NO se toca el precio: se respeta lo que ella ponga.
+var RECT_BASE = {dos_ejes:0, un_eje:65};
+var RECT_LIM = [0, 5000];
+var RECT_ETQ = {
+  dos_ejes: {t:'Con balatas delanteras y traseras ($ por pieza)', ayuda:'Por cada disco o tambor. Escribe 0 para que salga GRATIS'},
+  un_eje:   {t:'Con balatas en un solo eje ($ por pieza)',       ayuda:'Por cada disco o tambor'}
+};
+var RECT_PRECIOS = {dos_ejes:RECT_BASE.dos_ejes, un_eje:RECT_BASE.un_eje};
+var RECT_META = {actualizado:'', por:''};
+var RECT_API = null, RECT_PERFIL = null, RECT_STOP = null;
+function rectDocId(){ return (MODO_PRUEBA||ES_DEV) ? 'frenos_rectificado_prueba' : 'frenos_rectificado'; }   // dev y pruebas NO tocan el documento real
+function rectEsAdmin(){ return !!MODO_PRUEBA || !!(RECT_PERFIL && (RECT_PERFIL.rol==='superadministrador'||RECT_PERFIL.rol==='administrador')); }
+function rectEsItem(it){ return !!it && it.tipo==='frenos' && !!it.precioFijo && /^\s*rectificado de (discos|tambor)/i.test(it.concepto||''); }
+// Ejes con balatas en la cotización: cuenta la balata que ya lleva cantidad (aunque su precio siga pendiente) y no es opcional
+function rectEjes(){
+  var del=false, tras=false;
+  for(var i=0;i<tallerItems.length;i++){
+    var it=tallerItems[i];
+    if(it.tipo==='frenos' && it.eje && it.concepto && !it.opcional && (parseFloat(it.qty)||0)>0){ if(it.eje==='del') del=true; else if(it.eje==='tras') tras=true; }
+  }
+  return {del:del, tras:tras, n:(del?1:0)+(tras?1:0)};
+}
+// Precio por pieza que toca según los ejes; null = no hay balatas, no se aplica precio automático
+function rectPrecioAuto(){ var n=rectEjes().n; if(n===0) return null; return n>=2 ? RECT_PRECIOS.dos_ejes : RECT_PRECIOS.un_eje; }
+// Pone el precio automático en los renglones de rectificado que NO tienen precio escrito a mano. Devuelve true si algo cambió.
+function rectSincronizar(){
+  var p=rectPrecioAuto(), cambio=false;
+  for(var i=0;i<tallerItems.length;i++){
+    var it=tallerItems[i];
+    if(!rectEsItem(it) || it.rectManual) continue;
+    if(p===null){
+      if(it.rectAuto){ it.rectAuto=false; it.gratis=false; it.precio=tarifaFijaDe(it.concepto); cambio=true; }   // se quitaron las balatas: vuelve a como estaba
+    } else {
+      var ps=String(p), gr=(p===0);
+      if(!it.rectAuto || String(it.precio)!==ps || !!it.gratis!==gr){ it.precio=ps; it.rectAuto=true; it.gratis=gr; cambio=true; }
+    }
+  }
+  return cambio;
+}
+function rectSincronizarTodo(){
+  if(rectSincronizar()){ try{ renderTallerItems(); renderCarrito(); updateBadge(); generarWA(); }catch(e){} }
+}
+function rectValidar(r){
+  var e=[];
+  Object.keys(RECT_BASE).forEach(function(k){
+    var n=margenNumero(r&&r[k]);
+    if(isNaN(n)||n<RECT_LIM[0]||n>RECT_LIM[1]) e.push(RECT_ETQ[k].t+': escribe un número entre '+RECT_LIM[0]+' y '+RECT_LIM[1]);
+  });
+  return e;
+}
+// Documento que llega de Firestore (o null si aún no existe: valores base). Cada campo se valida por separado.
+function rectRecibir(data){
+  var nuevo={};
+  Object.keys(RECT_BASE).forEach(function(k){
+    var n=(data&&typeof data==='object')?margenNumero(data[k]):NaN;
+    nuevo[k]=(!isNaN(n)&&n>=RECT_LIM[0]&&n<=RECT_LIM[1])?n:RECT_BASE[k];
+  });
+  RECT_PRECIOS=nuevo;
+  RECT_META=(data&&typeof data==='object')?{actualizado:String(data.actualizado||''), por:String(data.por||'')}:{actualizado:'', por:''};
+  try{ rectSincronizarTodo(); }catch(e){}
+  rectRenderAdmin();
+}
+// La conecta el módulo de Firebase cuando hay sesión con acceso: api = null si no hay sesión
+function rectConectar(api, perfil){
+  if(RECT_STOP){ try{RECT_STOP();}catch(e){} RECT_STOP=null; }
+  RECT_API=api||null; RECT_PERFIL=(api&&perfil)?perfil:null;
+  if(RECT_API && RECT_PERFIL && RECT_API.rectEscuchar){
+    try{
+      RECT_STOP=RECT_API.rectEscuchar(rectDocId(), rectRecibir, function(e){ try{console.warn('Precios de rectificado no se pudieron leer; se usan los valores base:',e);}catch(x){} rectRecibir(null); });
+    }catch(e){ rectRecibir(null); }
+  } else { rectRecibir(null); }
+}
+function rectRenderAdmin(){
+  var card=document.getElementById('rect-admin'), cont=document.getElementById('rect-admin-campos');
+  if(!card||!cont) return;
+  if(!rectEsAdmin()){ card.style.display='none'; return; }
+  card.style.display='';
+  if(!cont.querySelector('input')){
+    var h='';
+    Object.keys(RECT_BASE).forEach(function(k){
+      h+='<div style="display:grid;grid-template-columns:1fr 90px;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid #eee">'+
+        '<div><div style="font-weight:600;font-size:13px">'+provEsc(RECT_ETQ[k].t)+'</div><div class="hint" style="font-size:11px">'+provEsc(RECT_ETQ[k].ayuda)+'</div></div>'+
+        '<input type="text" inputmode="decimal" id="rc-'+k+'" style="font-size:14px;font-weight:600;padding:6px 8px;text-align:right"></div>';
+    });
+    cont.innerHTML=h;
+  }
+  Object.keys(RECT_BASE).forEach(function(k){
+    var inp=document.getElementById('rc-'+k);
+    if(inp && document.activeElement!==inp) inp.value=String(RECT_PRECIOS[k]);   // no pisa lo que se está escribiendo
+  });
+  var meta=document.getElementById('rect-admin-meta');
+  if(meta) meta.textContent=RECT_META.actualizado ? ('Última actualización: '+RECT_META.actualizado+(RECT_META.por?' · '+RECT_META.por:'')) : 'Aún no se ha guardado: se usan los valores base (con los dos ejes $'+RECT_BASE.dos_ejes+' · con un eje $'+RECT_BASE.un_eje+').';
+}
+function rectLeerCampos(){
+  var r={};
+  Object.keys(RECT_BASE).forEach(function(k){ var inp=document.getElementById('rc-'+k); r[k]=inp?inp.value:''; });
+  return r;
+}
+function rectGuardar(){
+  if(!rectEsAdmin()) return Promise.resolve(false);
+  var vals=rectLeerCampos(), err=rectValidar(vals);
+  if(err.length){ toast(err[0]); return Promise.resolve(false); }
+  if(!RECT_API || !RECT_PERFIL || !RECT_API.rectGuardar){ toast('Inicia sesión (pestaña Historial) para guardar los precios'); return Promise.resolve(false); }
+  var docu={}; Object.keys(RECT_BASE).forEach(function(k){ docu[k]=margenNumero(vals[k]); });
+  return RECT_API.rectGuardar(rectDocId(), docu, RECT_PERFIL.correo).then(function(){ toast('Precios de rectificado guardados'); return true; })
+    .catch(function(e){ try{console.warn('No se pudieron guardar los precios de rectificado:',e);}catch(x){} toast('⚠ No se pudieron guardar los precios ('+((e&&e.code)||'error')+')'); return false; });
+}
+(function(){ var b=document.getElementById('btn-save-rect'); if(b) b.addEventListener('click', function(){ rectGuardar(); }); })();
+
 // ── OPCIÓN DRITEK EN FRENOS (22-nov-2026, pasos 3 a 6 de la opción Dritek) ─────────────────────────────────
 // La asesora escribe el No. de parte de la Opción 1 (GRC: GCD… · Duralast Gold: DG…). Si Chavitar tiene la misma balata
 // de CERÁMICA y en la misma posición (delantera/trasera), la Opción 2 se llena sola con Dritek:
@@ -2653,6 +2777,7 @@ function setTallerSvc(s, el) {
     }
     tallerItems = tallerItems.concat(nuevos);
   }
+  try{ rectSincronizar(); }catch(e){}
   renderTallerItems();
 }
 
@@ -2692,6 +2817,7 @@ function addTallerItem() {
 
 function removeTallerItem(id) {
   tallerItems=tallerItems.filter(function(i){return i.id!==id;});
+  try{ rectSincronizar(); }catch(e){}
   renderTallerItems(); renderCarrito(); updateBadge(); generarWA();
 }
 
@@ -2737,12 +2863,14 @@ function updTallerField(id, field, val) {
       if(field==='qty') tallerItems[i].qty=parseFloat(val)||0;
       else if(field==='descuento') tallerItems[i].descuento=parseFloat(val)||0;
       else tallerItems[i][field]=val;
+      if(field==='precio' && rectEsItem(tallerItems[i])){ tallerItems[i].rectManual=true; tallerItems[i].rectAuto=false; tallerItems[i].gratis=false; }   // precio escrito a mano: se respeta
       if(field==='costo'||field==='margen'||field==='precio'||field==='qty'||field==='descuento') calcTallerPVP(id);
       break;
     }
   }
   if(field==='noParte') provSincronizarErrores();
   for(var _k=0;_k<tallerItems.length;_k++){ if(tallerItems[_k].id===id){ var _ti=tallerItems[_k]; if(_ti.eje && (_ti.opc1||_ti.opc2)){ try{ if(dritekAlEditar(_ti,field)) renderTallerItemsConFoco(); }catch(e){ try{console.warn('Dritek:',e);}catch(x){} } } break; } }
+  try{ if(rectSincronizar()) renderTallerItemsConFoco(); }catch(e){ try{console.warn('Rectificado:',e);}catch(x){} }
   renderCarrito(); updateBadge(); generarWA();
 }
 
@@ -2773,6 +2901,7 @@ function renderTallerItems() {
       // Precio fijo: concepto + precio directo (sin costo ni margen)
       var esAceiteItem = item.concepto.toLowerCase().indexOf('aceite')>=0;
       var qtyLabel = esAceiteItem ? 'Lts' : 'Cant';
+      if(rectEsItem(item) && item.rectAuto) pend+='<div style="font-size:10px;color:#166534;margin-top:2px">'+(item.gratis?'🎁 Gratis: la cotización lleva balatas delanteras y traseras':'Precio fijo por pieza: la cotización lleva balatas en un solo eje')+' · si escribes otro precio, se respeta el tuyo</div>';
       var provSel = provEsRectificado(item) ? provSelectHTML(item,'rectificado','Proveedor (opcional)')
                   : (provEsAceiteOLimpieza(item) ? provSelectHTML(item,provTipoDeItem(item,currentKey),'Proveedor…') : '');
       // Renglón igual que siempre (concepto, FIJO, cantidad, precio, X). Solo cambia que, cuando lleva proveedor,
@@ -2863,7 +2992,7 @@ function marcarLlantasEnCarrito(){
 }
 function renderCarrito(){
   var co=g('ci'); if(!co) return;
-  var tallerCart=tallerItems.filter(function(i){return i.concepto&&i.precio!==''&&parseFloat(i.precio)>0&&parseFloat(i.qty)>0;});
+  var tallerCart=tallerItems.filter(function(i){return tallerLineaOk(i);});
   var llantas=cart.filter(function(c){return c.t==='l';});
   var autoSvcs=cart.filter(function(c){return c.pid;});
   var extSvcs=cart.filter(function(c){return c.t==='s'&&!c.pid;});
@@ -2909,7 +3038,7 @@ function renderCarrito(){
       var opcTag=it.opcional?'<span style="font-size:10px;background:#f5f5f5;color:#aaa;border:1px solid #ddd;padding:1px 5px;border-radius:4px;margin-left:4px">opcional</span>':'';
       var moTag=it.mo?'<span style="font-size:10px;background:#f0f0f0;padding:1px 5px;border-radius:4px;color:#666;margin-left:4px">M.O.</span>':'';
       if(hayOpcionesFrenos() && (it.opc1||it.opc2)) moTag+='<span style="font-size:10px;background:#eff6ff;color:#1a56db;border:1px solid #93c5fd;padding:1px 5px;border-radius:4px;margin-left:4px">Opción '+(it.opc2?2:1)+'</span>';
-      html+='<div class="ci'+(it.opcional?' ci-opc':'')+'"><div class="cid">'+it.concepto+moTag+opcTag+'</div><div class="cp" style="margin-left:auto;color:'+(it.opcional?'#aaa':'#111')+'">'+fmt(sub)+'</div><button class="cx cx-taller" data-id="'+it.id+'" style="background:#f0f0f0;color:#666;border:none;border-radius:4px;padding:2px 6px;cursor:pointer;margin-left:4px;font-size:11px">✕</button></div>';
+      html+='<div class="ci'+(it.opcional?' ci-opc':'')+'"><div class="cid">'+it.concepto+moTag+opcTag+'</div><div class="cp" style="margin-left:auto;color:'+(it.opcional?'#aaa':'#111')+'">'+(it.gratis?'GRATIS':fmt(sub))+'</div><button class="cx cx-taller" data-id="'+it.id+'" style="background:#f0f0f0;color:#666;border:none;border-radius:4px;padding:2px 6px;cursor:pointer;margin-left:4px;font-size:11px">✕</button></div>';
     }
   }
 
@@ -3022,7 +3151,7 @@ function generarWA() {
   var cl=(sinNombre?'':v('cli-nombre'))||'Cliente';
   var vh=getVehiculo();
   var orEl=g('cli-origen'), origen=orEl?orEl.value:'';
-  var tallerCart=tallerItems.filter(function(i){return i.concepto&&i.precio!==''&&parseFloat(i.precio)>0&&parseFloat(i.qty)>0;});
+  var tallerCart=tallerItems.filter(function(i){return tallerLineaOk(i);});
   var llantas=cart.filter(function(c){return c.t==='l';});
   var autoSvcs=cart.filter(function(c){return c.pid;});
   var extSvcs=cart.filter(function(c){return c.t==='s'&&!c.pid;});
@@ -3127,7 +3256,9 @@ function generarWA() {
         var iqty=parseFloat(it.qty)||1;
         var esAceite=it.concepto.toLowerCase().indexOf('aceite')>=0&&!it.mo;
         var lineaTxt;
-        if(it.opcional){
+        if(it.gratis&&!it.opcional){
+          lineaTxt=frNombreCliente(it)+' - ¡GRATIS! 🎁';
+        } else if(it.opcional){
           lineaTxt=frNombreCliente(it)+' (opcional, no incluido en total)'+(iqty>1?' · '+iqty+' litros · '+fmt(parseFloat(it.precio))+' c/lt · Total '+fmt(sub):' - '+fmt(sub));
         } else if(esAceite&&iqty>1){
           lineaTxt=frNombreCliente(it)+' · '+iqty+' litros · '+fmt(parseFloat(it.precio))+' c/lt · Total '+fmt(sub);
@@ -3194,7 +3325,7 @@ function guardarBorrador() {
   var cl = v('cli-nombre');
   var tel = v('cli-tel');
   var vh = getVehiculo();
-  var tallerCart = tallerItems.filter(function(i){return i.concepto&&i.precio!==''&&parseFloat(i.precio)>0&&parseFloat(i.qty)>0;});
+  var tallerCart = tallerItems.filter(function(i){return tallerLineaOk(i);});
   var llantas = cart.filter(function(c){return c.t==='l';});
   var extSvcs = cart.filter(function(c){return c.t==='s'&&!c.pid;});
   if(!llantas.length && !tallerCart.length && !extSvcs.length && !cl){
@@ -3683,7 +3814,7 @@ function armarDatosCotizacion(llantas, autoSvcs, extSvcs, tallerCart){
 
 // ── GUARDAR EN HISTORIAL — SIN folio, siempre (simple, directo) ──
 function guardarCotizacion(onOk, onErr){
-  var tallerCart=tallerItems.filter(function(i){return i.concepto&&i.precio!==''&&parseFloat(i.precio)>0&&parseFloat(i.qty)>0;});
+  var tallerCart=tallerItems.filter(function(i){return tallerLineaOk(i);});
   var llantas=cart.filter(function(c){return c.t==='l';});
   var autoSvcs=cart.filter(function(c){return c.pid;});
   var extSvcs=cart.filter(function(c){return c.t==='s'&&!c.pid;});
@@ -3819,7 +3950,7 @@ function confirmarFolioJSONP(numero, cb){
 // ── GENERAR PDF — el único que usa folio. Lo pide, lo consume, guarda la cotización CON
 // ese folio (renglón aparte, aunque ya se hubiera guardado sin folio antes), y arma el PDF.
 function generarPDF(){
-  var tallerCart=tallerItems.filter(function(i){return i.concepto&&i.precio!==''&&parseFloat(i.precio)>0&&parseFloat(i.qty)>0;});
+  var tallerCart=tallerItems.filter(function(i){return tallerLineaOk(i);});
   var llantas=cart.filter(function(c){return c.t==='l';});
   var autoSvcs=cart.filter(function(c){return c.pid;});
   var extSvcs=cart.filter(function(c){return c.t==='s'&&!c.pid;});
@@ -3944,7 +4075,7 @@ function construirYDescargarPDF(folio, cl, tel, vh, asesor, fechaStr, llantas, a
       var esOpcional=!!it.opcional;
       var sub=esOpcional?0:parseFloat(it.precio)*parseFloat(it.qty);
       if(!esOpcional) tot+=sub;
-      rows.push([it.concepto, String(it.qty), fmt(it.precio), esOpcional?'(opcional)':fmt(sub)]);
+      rows.push([it.concepto, String(it.qty), it.gratis?'GRATIS':fmt(it.precio), esOpcional?'(opcional)':(it.gratis?'GRATIS':fmt(sub))]);
     });
 
     // Membrete de la primera página (las páginas siguientes las dibuja willDrawPage)
@@ -3988,7 +4119,7 @@ function construirYDescargarPDF(folio, cl, tel, vh, asesor, fechaStr, llantas, a
     extSvcs.forEach(function(s){ comunRows.push([s.desc, String(s.qty), fmt(s.precio), fmt(s.precio*s.qty)]); });
     tallerCart.forEach(function(it){
       var esOp=!!it.opcional, sb=esOp?0:parseFloat(it.precio)*parseFloat(it.qty);
-      comunRows.push([it.concepto, String(it.qty), fmt(it.precio), esOp?'(opcional)':fmt(sb)]);
+      comunRows.push([it.concepto, String(it.qty), it.gratis?'GRATIS':fmt(it.precio), esOp?'(opcional)':(it.gratis?'GRATIS':fmt(sb))]);
     });
     doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(30,30,30);
     doc.text('Opciones de llantas: elija la que prefiera (el total de cada opción es independiente).', 10, y);
@@ -4031,7 +4162,7 @@ function construirYDescargarPDF(folio, cl, tel, vh, asesor, fechaStr, llantas, a
     tallerCart.forEach(function(it){
       if(it.opc1||it.opc2) return;
       var esOp=!!it.opcional, sb=esOp?0:parseFloat(it.precio)*parseFloat(it.qty);
-      comunFr.push([it.concepto, String(it.qty), fmt(it.precio), esOp?'(opcional)':fmt(sb)]);
+      comunFr.push([it.concepto, String(it.qty), it.gratis?'GRATIS':fmt(it.precio), esOp?'(opcional)':(it.gratis?'GRATIS':fmt(sb))]);
     });
     doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(30,30,30);
     doc.text('Frenos: elija la opción que prefiera (el total de cada opción es independiente).', 10, y);
@@ -4381,7 +4512,7 @@ function esSoloLlantas(){
 
 // ¿Hay algo que cotizar? (mismos filtros que usan generarWA, guardar y PDF)
 function hayProductos(){
-  var tallerCart=tallerItems.filter(function(i){return i.concepto&&i.precio!==''&&parseFloat(i.precio)>0&&parseFloat(i.qty)>0;});
+  var tallerCart=tallerItems.filter(function(i){return tallerLineaOk(i);});
   var llantas=cart.filter(function(c){return c.t==='l';});
   var extSvcs=cart.filter(function(c){return c.t==='s'&&!c.pid;});
   return !!(llantas.length||tallerCart.length||extSvcs.length);
@@ -4592,6 +4723,11 @@ window.addEventListener('load',function(){
     // Proveedor: es una lista (select), no texto libre
     tallerContainer.addEventListener('change',function(e){
       var np=e.target;
+      if(np && np.getAttribute && np.getAttribute('data-f')==='precio' && String(np.value).trim()===''){   // precio de rectificado borrado a mano: vuelve al automático
+        var rpId=np.getAttribute('data-id');
+        for(var rz=0;rz<tallerItems.length;rz++){ if(tallerItems[rz].id===rpId){ if(rectEsItem(tallerItems[rz]) && tallerItems[rz].rectManual){ tallerItems[rz].rectManual=false; if(rectSincronizar()){ renderTallerItems(); renderCarrito(); updateBadge(); generarWA(); } } break; } }
+        return;
+      }
       if(np && np.getAttribute && np.getAttribute('data-f')==='noParte'){
         var npId=np.getAttribute('data-id'), npIt=null;
         for(var z=0;z<tallerItems.length;z++){ if(tallerItems[z].id===npId){ npIt=tallerItems[z]; break; } }
@@ -4625,6 +4761,7 @@ window.addEventListener('load',function(){
             break;
           }
         }
+        try{ rectSincronizar(); }catch(e){}
         renderTallerItems();
         renderCarrito();
         updateBadge();
@@ -4748,6 +4885,7 @@ window.addEventListener('load',function(){
   var COL = 'cotizaciones';
   var COL_PROV = 'proveedores';
   var COL_MARGEN = 'reglas_margen';
+  var COL_TARIFAS = 'tarifas';   // precios fijos de rectificado de Frenos (las reglas ya permiten leer a todos y escribir solo al administrador)
   var COL_CHAV = 'lista_precios_chavitar';
   var MAX_DOCS = 5000;
   var POR_PAGINA = 50;
@@ -5027,6 +5165,7 @@ window.addEventListener('load',function(){
     else { dejarDeEscuchar(); dejarUsr(); }
     try{ if(typeof provConectar==='function') provConectar(perfil?api:null, perfil); }catch(e){}
     try{ if(typeof margenConectar==='function') margenConectar(perfil?api:null, perfil); }catch(e){}
+    try{ if(typeof rectConectar==='function') rectConectar(perfil?api:null, perfil); }catch(e){}
     try{ if(typeof chavBalConectar==='function') chavBalConectar(perfil?api:null, perfil); }catch(e){}
     try{ if(typeof borrNubeConectar==='function') borrNubeConectar(perfil?api:null, perfil); }catch(e){}
     pintarEstado();
@@ -5145,6 +5284,13 @@ window.addEventListener('load',function(){
         },
         margenGuardar:function(id,valores,por){
           return fs.setDoc(fs.doc(db,COL_MARGEN,id),Object.assign({},valores,{actualizado:fechaISOChihuahua(),por:por}));
+        },
+        // Precios fijos de rectificado de Frenos (colección "tarifas"; documento "frenos_rectificado", o "frenos_rectificado_prueba" en dev)
+        rectEscuchar:function(id,cb,errcb){
+          return fs.onSnapshot(fs.doc(db,COL_TARIFAS,id),function(sn){ cb(sn.exists()?sn.data():null); },errcb);
+        },
+        rectGuardar:function(id,valores,por){
+          return fs.setDoc(fs.doc(db,COL_TARIFAS,id),Object.assign({},valores,{actualizado:fechaISOChihuahua(),por:por}));
         },
         // Borradores compartidos (colección "borradores"; "borradores_prueba" en dev con ?borradoresfb=1)
         borrEscuchar:function(col,cb,errcb){
