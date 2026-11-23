@@ -2457,11 +2457,11 @@ function margenGuardar(){
 
 // ── PRECIOS FIJOS DE RECTIFICADO EN FRENOS (23-nov-2026) ─────────────────────────────────────────────────────
 // Precio por PIEZA (cada disco o tambor). Con balatas en los DOS ejes (delanteras y traseras) el rectificado sale GRATIS; con balatas
-// en UN solo eje, $65 por pieza. Son precios fijos (no una promoción) y solo un administrador los cambia en Configuración.
+// en UN solo eje, $68 por pieza. Son precios fijos (no una promoción) y solo un administrador los cambia en Configuración.
 // Viven en Firestore (colección "tarifas"; documento "frenos_rectificado", o "frenos_rectificado_prueba" en dev). RECT_BASE solo se
 // usa si aún no hay documento guardado o no hay conexión (son los mismos valores vigentes).
 // Sin balatas en la cotización, o si la asesora escribe el precio a mano, NO se toca el precio: se respeta lo que ella ponga.
-var RECT_BASE = {dos_ejes:0, un_eje:65};
+var RECT_BASE = {dos_ejes:0, un_eje:68};
 var RECT_LIM = [0, 5000];
 var RECT_ETQ = {
   dos_ejes: {t:'Con balatas delanteras y traseras ($ por pieza)', ayuda:'Por cada disco o tambor. Escribe 0 para que salga GRATIS'},

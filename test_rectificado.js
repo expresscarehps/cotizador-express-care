@@ -1,6 +1,6 @@
 // ── TEST — Precios fijos de rectificado en Frenos (23 nov 2026) ─────────────────────────────────────────
 // Regla de Carlos: el rectificado (discos y tambor) se cobra POR PIEZA. Con balatas delanteras y traseras = GRATIS;
-// con balatas en un solo eje = $65 por pieza. No es promoción: son precios fijos, editables solo por un administrador.
+// con balatas en un solo eje = $68 por pieza. No es promoción: son precios fijos, editables solo por un administrador.
 // Uso:  node test_rectificado.js [ruta_al_html]   (por defecto ./cotizador_dev.html)
 const fs = require('fs');
 const FILE_PATH = process.argv[2] || './cotizador_dev.html';
@@ -61,23 +61,23 @@ function simularPDF(w, textos) {
 async function frenos() { const w = abrir(); await wait(250); w.setTallerSvc('frenos', null); return w; }
 
 (async () => { try {
-  // ═══ A. Un solo eje: $65 por pieza ═══
-  console.log('\n— A. Balatas en un solo eje → rectificado a $65 por pieza');
+  // ═══ A. Un solo eje: $68 por pieza ═══
+  console.log('\n— A. Balatas en un solo eje → rectificado a $68 por pieza');
   let w = await frenos();
   ok('A0 sin balatas el rectificado queda como siempre (sin precio automático)', por(w, RD).precio === '' && !por(w, RD).rectAuto && !por(w, RD).gratis, por(w, RD));
   balata(w, D1, 1150); qty(w, D1, 1); qty(w, RD, 2);
-  ok('A1 balatas delanteras + rectificado de discos x2 → $65 por pieza', por(w, RD).precio === '65' && por(w, RD).rectAuto === true && por(w, RD).gratis === false, por(w, RD));
-  ok('A2 el subtotal del rectificado es 2 × 65 = 130', parseFloat(por(w, RD).precio) * por(w, RD).qty === 130);
-  ok('A3 el mensaje de WhatsApp dice "x2 - $65.00 c/u = $130.00"', /Rectificado de discos x2 - \$65\.00 c\/u = \$130\.00/.test(texto(w)), texto(w).slice(0, 600));
-  ok('A4 el total suma las balatas y el rectificado ($1,150 + $130)', Math.abs(w.tallerItems.filter(w.tallerLineaOk).reduce((s, i) => s + parseFloat(i.precio) * i.qty, 0) - 1280) < 0.01);
+  ok('A1 balatas delanteras + rectificado de discos x2 → $68 por pieza', por(w, RD).precio === '68' && por(w, RD).rectAuto === true && por(w, RD).gratis === false, por(w, RD));
+  ok('A2 el subtotal del rectificado es 2 × 68 = 136', parseFloat(por(w, RD).precio) * por(w, RD).qty === 136);
+  ok('A3 el mensaje de WhatsApp dice "x2 - $68.00 c/u = $136.00"', /Rectificado de discos x2 - \$68\.00 c\/u = \$136\.00/.test(texto(w)), texto(w).slice(0, 600));
+  ok('A4 el total suma las balatas y el rectificado ($1,150 + $136)', Math.abs(w.tallerItems.filter(w.tallerLineaOk).reduce((s, i) => s + parseFloat(i.precio) * i.qty, 0) - 1286) < 0.01);
   w = await frenos(); balata(w, T1, 900); qty(w, T1, 1); qty(w, RT, 2);
-  ok('A5 solo traseras (zapatas) + rectificado de tambor x2 → también $65 por pieza', por(w, RT).precio === '65' && por(w, RT).gratis === false, por(w, RT));
+  ok('A5 solo traseras (zapatas) + rectificado de tambor x2 → también $68 por pieza', por(w, RT).precio === '68' && por(w, RT).gratis === false, por(w, RT));
 
   // ═══ B. Dos ejes: gratis ═══
   console.log('\n— B. Balatas delanteras y traseras → rectificado GRATIS');
   w = await frenos(); ponerDatos(w);
   balata(w, D1, 1150); balata(w, T1, 900); qty(w, D1, 1); qty(w, RD, 2); qty(w, RT, 2);
-  ok('B0 con una sola balata el rectificado cuesta $65', por(w, RD).precio === '65' && por(w, RT).precio === '65');
+  ok('B0 con una sola balata el rectificado cuesta $68', por(w, RD).precio === '68' && por(w, RT).precio === '68');
   qty(w, T1, 1);
   ok('B1 al agregar las traseras, el rectificado de discos pasa a gratis (precio 0)', por(w, RD).precio === '0' && por(w, RD).gratis === true && por(w, RD).rectAuto === true, por(w, RD));
   ok('B2 el rectificado de tambor también pasa a gratis', por(w, RT).precio === '0' && por(w, RT).gratis === true, por(w, RT));
@@ -112,11 +112,11 @@ async function frenos() { const w = abrir(); await wait(250); w.setTallerSvc('fr
   qty(w, D1, 1); qty(w, T1, 1); qty(w, RD, 2);
   ok('C0 con dos ejes: gratis', por(w, RD).precio === '0' && por(w, RD).gratis === true);
   qty(w, T1, 0);
-  ok('C1 se quitan las traseras (cantidad 0) → $65 y ya no es gratis', por(w, RD).precio === '65' && por(w, RD).gratis === false, por(w, RD));
+  ok('C1 se quitan las traseras (cantidad 0) → $68 y ya no es gratis', por(w, RD).precio === '68' && por(w, RD).gratis === false, por(w, RD));
   qty(w, T1, 1);
   ok('C2 vuelven las traseras → gratis otra vez', por(w, RD).precio === '0' && por(w, RD).gratis === true);
   w.removeTallerItem(por(w, T1).id);
-  ok('C3 se borra el renglón de traseras con la X → $65', por(w, RD).precio === '65' && por(w, RD).gratis === false, por(w, RD));
+  ok('C3 se borra el renglón de traseras con la X → $68', por(w, RD).precio === '68' && por(w, RD).gratis === false, por(w, RD));
   qty(w, D1, 0);
   ok('C4 sin ninguna balata el precio vuelve a quedar vacío y ya no es automático', por(w, RD).precio === '' && !por(w, RD).rectAuto && !por(w, RD).gratis, por(w, RD));
   ok('C5 sin balatas el rectificado con precio vacío no entra a la cotización', !w.tallerLineaOk(por(w, RD)));
@@ -125,7 +125,7 @@ async function frenos() { const w = abrir(); await wait(250); w.setTallerSvc('fr
   console.log('\n— D. Si la asesora escribe un precio a mano, se respeta');
   w = await frenos(); balata(w, D1, 1150); balata(w, T1, 900);
   qty(w, D1, 1); qty(w, RD, 2);
-  ok('D0 arranca en $65', por(w, RD).precio === '65');
+  ok('D0 arranca en $68', por(w, RD).precio === '68');
   w.updTallerField(por(w, RD).id, 'precio', '100');
   ok('D1 escribe 100 → queda 100 y es manual', por(w, RD).precio === '100' && por(w, RD).rectManual === true && !por(w, RD).rectAuto && !por(w, RD).gratis, por(w, RD));
   qty(w, T1, 1);
@@ -143,7 +143,7 @@ async function frenos() { const w = abrir(); await wait(250); w.setTallerSvc('fr
   console.log('\n— E. Las balatas de la Opción 2 usan los mismos ejes');
   w = await frenos(); balata(w, D1, 1150); qty(w, D1, 1);
   const d2 = por(w, 'Balatas delanteras (convencionales)'); d2.precio = 900; d2.noParte = 'CD1001'; w.updTallerField(d2.id, 'qty', '1'); qty(w, RD, 2);
-  ok('E1 Opción 1 y Opción 2 delanteras = un solo eje → $65', por(w, RD).precio === '65' && por(w, RD).gratis === false, por(w, RD));
+  ok('E1 Opción 1 y Opción 2 delanteras = un solo eje → $68', por(w, RD).precio === '68' && por(w, RD).gratis === false, por(w, RD));
   const t2 = por(w, 'Balatas / zapatas traseras (convencionales)'); t2.precio = 700; w.updTallerField(t2.id, 'qty', '1');
   ok('E2 con la Opción 2 trasera también → ya son dos ejes → gratis', por(w, RD).precio === '0' && por(w, RD).gratis === true, por(w, RD));
 
@@ -152,12 +152,12 @@ async function frenos() { const w = abrir(); await wait(250); w.setTallerSvc('fr
   w = await frenos(); balata(w, D1, 1150); balata(w, T1, 900); qty(w, D1, 1); qty(w, T1, 1); qty(w, RD, 2);
   ok('F0 dos ejes → gratis', por(w, RD).gratis === true);
   por(w, T1).opcional = true; w.rectSincronizar(); 
-  ok('F1 si las traseras pasan a opcionales, ya es un solo eje → $65', por(w, RD).precio === '65' && por(w, RD).gratis === false, por(w, RD));
+  ok('F1 si las traseras pasan a opcionales, ya es un solo eje → $68', por(w, RD).precio === '68' && por(w, RD).gratis === false, por(w, RD));
 
   // ═══ G. Precios editables: lectura de Firestore ═══
   console.log('\n— G. Los precios vienen de Firestore (un administrador los cambia)');
   w = abrir(); await wait(100);
-  ok('G1 base: con dos ejes 0 y con un eje 65', w.RECT_PRECIOS.dos_ejes === 0 && w.RECT_PRECIOS.un_eje === 65);
+  ok('G1 base: con dos ejes 0 y con un eje 68', w.RECT_PRECIOS.dos_ejes === 0 && w.RECT_PRECIOS.un_eje === 68);
   ok('G2 dev lee el documento "frenos_rectificado_prueba"', w.rectDocId() === 'frenos_rectificado_prueba');
   { const wp = abrir('cotizador_express_care_valvoline.html', ''); await wait(60); ok('G3 producción lee el documento real "frenos_rectificado"', wp.rectDocId() === 'frenos_rectificado'); }
   let N = nube({ frenos_rectificado_prueba: { dos_ejes: 20, un_eje: 80, actualizado: '2026-11-23 09:00', por: 'carlos.mtz@expresscarecuu.com' } });
@@ -172,19 +172,19 @@ async function frenos() { const w = abrir(); await wait(250); w.setTallerSvc('fr
   ok('G7 si el administrador cambia el precio, la cotización abierta se actualiza sola (gratis y $90)', por(w, RD).precio === '0' && por(w, RD).gratis === true && w.RECT_PRECIOS.un_eje === 90, por(w, RD));
   N = nube({ frenos_rectificado_prueba: { dos_ejes: 'abc', un_eje: -5 } });
   w = abrir('cotizador_dev.html', ''); await wait(100); w.rectConectar(N.api(), ADMIN); await wait(50);
-  ok('G8 documento dañado → cada campo malo vuelve a su base (0 y 65)', w.RECT_PRECIOS.dos_ejes === 0 && w.RECT_PRECIOS.un_eje === 65, w.RECT_PRECIOS);
+  ok('G8 documento dañado → cada campo malo vuelve a su base (0 y 68)', w.RECT_PRECIOS.dos_ejes === 0 && w.RECT_PRECIOS.un_eje === 68, w.RECT_PRECIOS);
   N = nube(); N.falla = true; w = abrir('cotizador_dev.html', ''); await wait(100); w.rectConectar(N.api(), ASESORA); await wait(50);
-  ok('G9 si Firestore niega la lectura se usan los valores base', w.RECT_PRECIOS.dos_ejes === 0 && w.RECT_PRECIOS.un_eje === 65);
+  ok('G9 si Firestore niega la lectura se usan los valores base', w.RECT_PRECIOS.dos_ejes === 0 && w.RECT_PRECIOS.un_eje === 68);
 
   // ═══ H. Tarjeta de Configuración: solo administrador ═══
   console.log('\n— H. Tarjeta en Configuración: solo administradores');
-  N = nube({ frenos_rectificado_prueba: { dos_ejes: 0, un_eje: 65, actualizado: '2026-11-23 09:00', por: 'carlos.mtz@expresscarecuu.com' } });
+  N = nube({ frenos_rectificado_prueba: { dos_ejes: 0, un_eje: 68, actualizado: '2026-11-23 09:00', por: 'carlos.mtz@expresscarecuu.com' } });
   w = abrir('cotizador_dev.html', ''); await wait(100); w.rectConectar(N.api(), ASESORA); await wait(50);
   ok('H1 asesora: la tarjeta NO se ve', w.document.getElementById('rect-admin').style.display === 'none');
   ok('H2 asesora: no puede guardar', (await w.rectGuardar()) === false && N.escrituras.length === 0);
   w = abrir('cotizador_dev.html', ''); await wait(100); w.rectConectar(N.api(), ADMIN); await wait(50);
   ok('H3 administrador: la tarjeta SÍ se ve con los dos campos', w.document.getElementById('rect-admin').style.display === '' && !!w.document.getElementById('rc-dos_ejes') && !!w.document.getElementById('rc-un_eje'));
-  ok('H4 los campos traen los valores guardados (0 y 65)', w.document.getElementById('rc-dos_ejes').value === '0' && w.document.getElementById('rc-un_eje').value === '65');
+  ok('H4 los campos traen los valores guardados (0 y 68)', w.document.getElementById('rc-dos_ejes').value === '0' && w.document.getElementById('rc-un_eje').value === '68');
   w.document.getElementById('rc-un_eje').value = '70'; w.document.getElementById('rc-dos_ejes').value = '0';
   ok('H5 guardar escribe en "frenos_rectificado_prueba" con los dos valores y el correo', (await w.rectGuardar()) === true && N.escrituras.length === 1 && N.escrituras[0].id === 'frenos_rectificado_prueba' && N.escrituras[0].d.un_eje === 70 && N.escrituras[0].d.dos_ejes === 0 && N.escrituras[0].d.por === ADMIN.correo, N.escrituras);
   await wait(50);
