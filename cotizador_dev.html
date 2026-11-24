@@ -132,6 +132,41 @@ body{
   border-bottom-color:var(--val-light-blue);
 }
 
+/* ── PENDIENTES DE WHATSAPP (pestaña de solo lectura) ───── */
+.tab .pd-dot{display:none;width:9px;height:9px;border-radius:50%;margin-right:5px;background:#9ca3af}
+.tab.sem-verde .pd-dot,.tab.sem-amarillo .pd-dot,.tab.sem-rojo .pd-dot{display:inline-block}
+.tab.sem-verde .pd-dot{background:#16a34a}
+.tab.sem-amarillo .pd-dot{background:#eab308}
+.tab.sem-rojo .pd-dot{background:#dc2626}
+.tab .pd-badge{display:none;min-width:17px;padding:1px 5px;margin-left:5px;border-radius:9px;font-size:10px;font-weight:700;color:#fff;background:#16a34a;line-height:1.3}
+.tab.pd-con .pd-badge{display:inline-block}
+.tab.sem-amarillo .pd-badge{background:#eab308;color:#422006}
+.tab.sem-rojo .pd-badge{background:#dc2626}
+.pd-resumen{font-size:13px;font-weight:600;margin:4px 0}
+.pd-act{font-size:12px;color:var(--val-dark-gray);margin:2px 0 6px}
+.pd-aviso{background:#fef9c3;border:1px solid #eab308;color:#713f12;border-radius:8px;padding:8px 10px;font-size:13px;font-weight:600;margin:8px 0}
+.pd-tit{font-weight:700;font-size:13px;margin:12px 0 6px;color:var(--val-dark-blue)}
+.pd-toggle{display:block;width:100%;text-align:left;font-weight:700;font-size:13px;margin:14px 0 6px;padding:8px 10px;border:1px solid #d1d5db;border-radius:8px;background:#f9fafb;color:var(--val-dark-blue);cursor:pointer}
+.pd-head,.pd-row{display:grid;grid-template-columns:2.3fr 1fr .9fr 1.8fr 1.8fr 1.8fr;gap:8px;align-items:start}
+.pd-head{font-size:11px;font-weight:700;color:var(--val-dark-gray);padding:4px 8px;border-bottom:2px solid #e5e7eb}
+.pd-row{padding:8px;border-bottom:1px solid #eee;border-left:4px solid transparent;font-size:13px;overflow-wrap:anywhere}
+.pd-row.pd-venc{background:#fef2f2;border-left-color:#dc2626}
+.pd-row.pd-nar{background:#fff7ed;border-left-color:#f97316}
+.pd-c{min-width:0}
+.pd-esp{font-weight:700}
+.pd-row.pd-venc .pd-esp{color:#b91c1c}
+.pd-row.pd-nar .pd-esp{color:#c2410c}
+.pd-tel{color:var(--val-dark-gray);font-size:12px}
+.pd-tag{display:inline-block;font-size:11px;background:#eef2ff;border-radius:6px;padding:1px 6px;margin:2px 4px 0 0}
+.pd-tag.seg{background:#fef9c3}
+.pd-wa{margin-left:6px;text-decoration:none}
+@media (max-width:720px){
+  .pd-head{display:none}
+  .pd-row{display:block;border:1px solid #e5e7eb;border-left-width:4px;border-radius:8px;margin-bottom:8px}
+  .pd-row .pd-c[data-l]{margin-top:4px}
+  .pd-row .pd-c[data-l]::before{content:attr(data-l) ": ";font-weight:700;color:#6b7280;font-size:11px}
+}
+
 /* ── PANELES ────────────────────────────────────────────── */
 .pnl{display:none;padding:12px}
 .pnl.on{display:block}
@@ -536,6 +571,7 @@ label.chk-sin-nombre input:checked + span{color:var(--val-dark-blue);font-weight
   <button class="tab" id="tab-cotizacion" data-t="cotizacion">Cotización</button>
   <button class="tab" id="tab-whatsapp" data-t="whatsapp">WhatsApp</button>
   <button class="tab" id="tab-historial" data-t="historial">Historial</button>
+  <button class="tab" id="tab-pendientes" data-t="pendientes"><span class="pd-dot"></span>Pendientes<span class="pd-badge" id="pd-badge"></span></button>
   <button class="tab" id="tab-usuarios" data-t="usuarios" style="display:none">Usuarios</button>
   <button class="tab" id="tab-config" data-t="config">⚙ Config</button>
 </div>
@@ -724,6 +760,19 @@ label.chk-sin-nombre input:checked + span{color:var(--val-dark-blue);font-weight
       <button id="fb-mas" class="fb-btn sec" type="button" style="display:none">Mostrar más</button>
       <button id="fb-salir" class="fb-btn sec" type="button">Cerrar sesión</button>
     </div>
+  </div>
+</div>
+
+<!-- PENDIENTES DE WHATSAPP (solo lectura: los datos los escribe n8n en Firestore) -->
+<div id="p-pendientes" class="pnl">
+  <div class="card">
+    <p class="st">Pendientes de WhatsApp</p>
+    <div id="pd-cab"></div>
+    <div id="pd-aviso" class="pd-aviso" style="display:none"></div>
+    <p id="pd-msg" class="hint"></p>
+    <div id="pd-nuevos"></div>
+    <div id="pd-atrasados"></div>
+    <div id="pd-avisos" style="display:none"></div>
   </div>
 </div>
 
@@ -1084,7 +1133,7 @@ var MODO_PRUEBA = (typeof window!=='undefined' && window.location && /[?&]test=1
 // Se detecta por el nombre del archivo: en dev, el aviso real a GHL pide confirmación explícita
 // (para no etiquetar clientes reales por accidente). También viaja en el aviso como "fuente".
 var ES_DEV = (typeof window!=='undefined' && window.location && /dev\.html?$/i.test(window.location.pathname||''));
-var VERSION_PAGINA = 'dev 2026-11-23 rectificado de frenos con precio fijo automatico (gratis con balatas delanteras y traseras; por pieza con un solo eje; tarjeta en Config solo administrador); dev 2026-11-19 Chavitar como 4o proveedor de llantas (1,464 llantas; equivalentes con Servillantas/VEGA; comprar en CHAV/SERV/VEGA); dev 2026-11-13 buscador de medidas: ignora la P inicial y ZR=R; frenos con dos opciones de balatas (Opción 1 alto rendimiento (cerámica) / Opción 2 convencionales (semi metálicas)); candado de No. de parte; catalogo Servillantas 24-sep-2026, VEGA 21-oct-2026, AYALA noviembre 2026';
+var VERSION_PAGINA = 'dev 2026-11-23 pestana Pendientes de WhatsApp (solo lectura; lee de Firestore pendientes_prueba/actual; numerito y semaforo en la pestana; aviso de lista vieja a los 20 min); dev 2026-11-23 rectificado de frenos con precio fijo automatico (gratis con balatas delanteras y traseras; por pieza con un solo eje; tarjeta en Config solo administrador); dev 2026-11-19 Chavitar como 4o proveedor de llantas (1,464 llantas; equivalentes con Servillantas/VEGA; comprar en CHAV/SERV/VEGA); dev 2026-11-13 buscador de medidas: ignora la P inicial y ZR=R; frenos con dos opciones de balatas (Opción 1 alto rendimiento (cerámica) / Opción 2 convencionales (semi metálicas)); candado de No. de parte; catalogo Servillantas 24-sep-2026, VEGA 21-oct-2026, AYALA noviembre 2026';
 
 var RIN = {
   'a': {mon:85,  bal:80,  piv:20, h:'Montaje $85 - Balanceo $80 - Pivote $20 por llanta'},
@@ -1357,6 +1406,7 @@ function setTab(tabId) {
   if (btn) btn.classList.add('on');
   if (panel) panel.classList.add('on');
   if(tabId === 'config'){ renderConfigTarifas(); provRenderAdmin(); margenRenderAdmin(); }
+  if(tabId === 'pendientes'){ try{ pendRefrescar(); }catch(e){} }
 }
 
 function setPago(p) {
@@ -2532,6 +2582,261 @@ function rectConectar(api, perfil){
     }catch(e){ rectRecibir(null); }
   } else { rectRecibir(null); }
 }
+// ════ PENDIENTES DE WHATSAPP ═══════════════════════════════════════════════
+// Pestaña de SOLO LECTURA. n8n calcula la lista y la escribe en Firestore (pendientes/actual; en dev
+// y con ?test=1: pendientes_prueba/actual); aquí solo se lee y se pinta. Nada de esto escribe en ningún lado.
+var ATRASADO_HORAS = 48;       // de aquí en adelante la fila pasa a "Atrasados" (no cuenta en numerito ni semáforo)
+var SEMAFORO_AMARILLO = 5;     // N de "nuevos y de hoy" desde el que el semáforo pasa a amarillo
+var SEMAFORO_ROJO = 10;        // N desde el que pasa a rojo (también es rojo si alguno ya venció)
+var PEND_INTERVALO_MS = 30000; // cada cuánto se recalculan las esperas (sin volver a pedir datos)
+var LISTA_VIEJA_MIN = 20;      // minutos sin que n8n actualice la lista (en horario de atención) para mostrar el aviso amarillo
+var PEND_API=null, PEND_PERFIL=null, PEND_STOP=null, PEND_TIMER=null;
+var PEND_ESTADO='cargando';    // cargando | sin-sesion | sin-doc | error | error-filas | ok
+var PEND_ERROR='';
+var PEND_DOC=null;             // { actualizado, actualizadoMs, filas:[...] }
+var PEND_ATRASADOS_ABIERTO=false;
+// Solo en dev: ?ahora=2026-11-23T10:00:00-06:00 simula la hora para probar los colores y el semáforo
+var PEND_AHORA_OFFSET=(function(){
+  try{
+    if(!ES_DEV) return 0;
+    var m=/[?&]ahora=([^&]+)/.exec(window.location.search||''); if(!m) return 0;
+    var t=Date.parse(decodeURIComponent(m[1]));
+    return isNaN(t)?0:(t-Date.now());
+  }catch(e){ return 0; }
+})();
+function pendAhora(){ return Date.now()+PEND_AHORA_OFFSET; }
+function pendDocId(){ return 'actual'; }
+function pendCol(){ return (MODO_PRUEBA||ES_DEV)?'pendientes_prueba':'pendientes'; }
+function pendEsc(s){
+  return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function pendTxt(v,max){
+  if(v==null||typeof v==='object') return '';
+  var s=String(v); max=max||600;
+  return s.length>max?s.slice(0,max):s;
+}
+function pendNum(v){
+  if(v===null||v===undefined||v===''||typeof v==='boolean') return null;
+  var n=Number(v);
+  return (isNaN(n)||!isFinite(n))?null:n;
+}
+function pendP2(n){ return (n<10?'0':'')+n; }
+function pendLocal(ms){ return new Date(ms-6*3600000); }   // Chihuahua = UTC-6 fijo; se leen con getUTC*
+function pendHora(ms){ var d=pendLocal(ms); return pendP2(d.getUTCHours())+':'+pendP2(d.getUTCMinutes()); }
+function pendFechaHora(ms){
+  var d=pendLocal(ms), h=d.getUTCHours(), h12=h%12; if(h12===0) h12=12;
+  return pendP2(d.getUTCDate())+'/'+pendP2(d.getUTCMonth()+1)+' '+pendP2(h12)+':'+pendP2(d.getUTCMinutes())+' '+(h>=12?'p. m.':'a. m.');
+}
+// Horario de atención: L-V 9:00-18:00, sábado 9:00-14:00, domingo cerrado. Devuelve null si ahora está cerrado.
+function pendEnHorario(ms){
+  var d=pendLocal(ms), w=d.getUTCDay();
+  if(w===0) return null;
+  var abre=540, cierra=(w===6)?840:1080, m=d.getUTCHours()*60+d.getUTCMinutes();
+  return (m>=abre&&m<cierra)?{abre:abre,min:m}:null;
+}
+function pendWaValido(u){ return /^https:\/\/wa\.me\/[A-Za-z0-9?=&%._+-]*$/.test(u||''); }
+// Toma una fila del documento y deja solo los campos que conoce (los demás se ignoran sin error)
+function pendNormalizar(r){
+  if(!r||typeof r!=='object'||Array.isArray(r)) return null;
+  var fh=(r.fh===true||r.fh==='true');
+  var esc_=pendNum(r.escribioMs), des=pendNum(r.desdeMs);
+  if(des==null) des=esc_;
+  var lim=pendNum(r.limiteMin); if(lim==null||lim<=0) lim=fh?20:45;
+  var wa=pendTxt(r.wa,200);
+  return {
+    id:pendTxt(r.id,80), nombre:pendTxt(r.nombre,120), telefono:pendTxt(r.telefono,40),
+    wa:pendWaValido(wa)?wa:'',
+    escribioMs:esc_, desdeMs:des, limiteMin:lim, fh:fh,
+    tipo:(r.tipo==='seguimiento')?'seguimiento':'sin_atender',
+    cotizada:pendTxt(r.cotizada,10), diasCot:pendNum(r.diasCot),
+    volvio:(r.volvio===true||r.volvio==='true'),
+    pidio:pendTxt(r.pidio), respondido:pendTxt(r.respondido), falta:pendTxt(r.falta), anuncio:pendTxt(r.anuncio,120)
+  };
+}
+function pendCalc(f,now){
+  var futuro=(f.desdeMs!=null&&now<f.desdeMs);
+  var min=(f.desdeMs==null||futuro)?0:Math.max(0,Math.floor((now-f.desdeMs)/60000));
+  var vencido=(!futuro&&f.desdeMs!=null&&min>=f.limiteMin);
+  var naranja=(!futuro&&!vencido&&f.desdeMs!=null&&min>=f.limiteMin/2);
+  var atrasado=(f.desdeMs!=null&&((now-f.desdeMs)/3600000)>=ATRASADO_HORAS);
+  return {futuro:futuro,min:min,vencido:vencido,naranja:naranja,atrasado:atrasado};
+}
+// Separa en "nuevos y de hoy" y "atrasados" y saca los totales. Es lo que alimenta lista, numerito y semáforo.
+function pendResumen(now){
+  if(PEND_ESTADO!=='ok'||!PEND_DOC) return null;
+  var nuevos=[], atras=[];
+  PEND_DOC.filas.forEach(function(f){
+    var c=pendCalc(f,now), it={f:f,c:c};
+    (c.atrasado?atras:nuevos).push(it);
+  });
+  function ord(a,b){
+    if(a.f.fh!==b.f.fh) return a.f.fh?-1:1;
+    var x=(a.f.desdeMs==null?Infinity:a.f.desdeMs), y=(b.f.desdeMs==null?Infinity:b.f.desdeMs);
+    return x-y;
+  }
+  nuevos.sort(ord);
+  atras.sort(function(a,b){ return (a.f.desdeMs||0)-(b.f.desdeMs||0); });
+  return {
+    nuevos:nuevos, atrasados:atras, total:nuevos.length,
+    vencidos:nuevos.filter(function(i){return i.c.vencido;}).length,
+    fh:nuevos.filter(function(i){return i.f.fh;}).length,
+    seguimientos:nuevos.filter(function(i){return i.f.tipo==='seguimiento';}).length
+  };
+}
+// Verde / amarillo / rojo. Gana el peor color; los atrasados no lo mueven.
+function pendSemaforo(res){
+  if(!res) return null;
+  if(res.total>=SEMAFORO_ROJO||res.vencidos>0) return 'rojo';
+  if(res.total>=SEMAFORO_AMARILLO) return 'amarillo';
+  return 'verde';
+}
+// Aviso amarillo de "lista vieja": solo en horario de atención, 30 min después de abrir y con más de 45 min sin actualizar
+function pendListaVieja(now){
+  if(PEND_ESTADO!=='ok'||!PEND_DOC||PEND_DOC.actualizadoMs==null) return '';
+  var h=pendEnHorario(now);
+  if(!h||(h.min-h.abre)<=30) return '';
+  if((now-PEND_DOC.actualizadoMs)<=LISTA_VIEJA_MIN*60000) return '';
+  return 'La lista no se actualiza desde las '+pendHora(PEND_DOC.actualizadoMs)+'. Avísale a Carlos';
+}
+function pendDur(m){
+  if(m<60) return m+' min';
+  var h=Math.floor(m/60);
+  if(h<24){ var r=m%60; return h+' h'+(r?' '+r+' min':''); }
+  var d=Math.floor(h/24), rh=h%24;
+  return d+' d'+(rh?' '+rh+' h':'');
+}
+function pendDeMsCot(f){
+  var m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(f.cotizada||'');
+  var t='🟡 Seguimiento';
+  if(m) t+=' · cotizada '+m[3]+'/'+m[2];
+  if(f.diasCot!=null) t+=' ('+(f.diasCot<=0?'hoy':'hace '+f.diasCot+(f.diasCot===1?' día':' días'))+')';
+  return t;
+}
+function pendFilaHtml(it){
+  var f=it.f, c=it.c;
+  var clase='pd-row'+(c.vencido?' pd-venc':(c.naranja?' pd-nar':''));
+  var cli='<b>'+pendEsc(f.nombre||'Sin nombre')+'</b>';
+  if(f.telefono) cli+=' <span class="pd-tel">'+pendEsc(f.telefono)+'</span>';
+  if(f.wa) cli+='<a class="pd-wa" href="'+pendEsc(f.wa)+'" target="_blank" rel="noopener" title="Abrir en WhatsApp">💬</a>';
+  var tags='';
+  if(f.tipo==='seguimiento') tags+='<span class="pd-tag seg">'+pendEsc(pendDeMsCot(f))+'</span>';
+  if(f.fh) tags+='<span class="pd-tag">🌙 fuera de horario</span>';
+  if(f.volvio) tags+='<span class="pd-tag">⚠️ Volvió a escribir</span>';
+  if(f.anuncio) tags+='<span class="pd-tag">'+pendEsc(f.anuncio)+'</span>';
+  var esp=c.futuro?('Abre a las '+pendHora(f.desdeMs)):(f.desdeMs==null?'—':pendDur(c.min));
+  function v(s){ return s?pendEsc(s):'—'; }
+  return '<div class="'+clase+'">'+
+    '<div class="pd-c pd-cli">'+cli+(tags?'<div>'+tags+'</div>':'')+'</div>'+
+    '<div class="pd-c" data-l="Escribió">'+(f.escribioMs!=null?pendEsc(pendFechaHora(f.escribioMs)):'—')+'</div>'+
+    '<div class="pd-c pd-esp" data-l="Espera">'+pendEsc(esp)+'</div>'+
+    '<div class="pd-c" data-l="Qué pidió">'+v(f.pidio)+'</div>'+
+    '<div class="pd-c" data-l="Ya se le respondió">'+v(f.respondido)+'</div>'+
+    '<div class="pd-c" data-l="Qué falta">'+v(f.falta)+'</div>'+
+  '</div>';
+}
+var PEND_ENCABEZADO='<div class="pd-head"><div>Cliente</div><div>Escribió</div><div>Espera</div><div>Qué pidió</div><div>Ya se le respondió</div><div>Qué falta</div></div>';
+// Una sección de renglones. Las secciones futuras (p. ej. "avisos" del bot) pueden usar esta misma función.
+function pendSeccionHtml(items){ return PEND_ENCABEZADO+items.map(pendFilaHtml).join(''); }
+function pendPintarBoton(res){
+  var b=document.getElementById('tab-pendientes'); if(!b) return;
+  var sem=pendSemaforo(res);
+  b.classList.remove('sem-verde','sem-amarillo','sem-rojo','pd-con');
+  var bad=document.getElementById('pd-badge');
+  if(sem){
+    b.classList.add('sem-'+sem);
+    if(res.total>0) b.classList.add('pd-con');
+    if(bad) bad.textContent=String(res.total);
+    b.setAttribute('aria-label','Pendientes: '+res.total+' · semáforo '+sem);
+    b.title='Pendientes: '+sem+' ('+res.total+')';
+  } else {
+    if(bad) bad.textContent='';
+    b.setAttribute('aria-label','Pendientes'); b.title='Pendientes';
+  }
+}
+function pendRefrescar(){
+  var now=pendAhora();
+  var res=pendResumen(now);
+  pendPintarBoton(res);
+  var cab=document.getElementById('pd-cab'), av=document.getElementById('pd-aviso'), msg=document.getElementById('pd-msg'),
+      nu=document.getElementById('pd-nuevos'), at=document.getElementById('pd-atrasados');
+  if(!cab||!av||!msg||!nu||!at) return;
+  var texto='', cabH='', secNu='', secAt='', aviso='';
+  if(PEND_ESTADO==='sin-sesion') texto='Inicia sesión (pestaña Historial) para ver los pendientes.';
+  else if(PEND_ESTADO==='cargando') texto='Cargando pendientes…';
+  else if(PEND_ESTADO==='sin-doc') texto='Todavía no hay datos de pendientes.';
+  else if(PEND_ESTADO==='error') texto='No se pudieron leer los pendientes: '+PEND_ERROR+' Avísale a Carlos.';
+  else if(PEND_ESTADO==='error-filas') texto='No se pudo leer la lista de pendientes (los datos llegaron en un formato que no se entiende). Avísale a Carlos.';
+  else if(res){
+    var d=PEND_DOC;
+    if(d.actualizadoMs!=null){
+      cabH+='<div class="pd-act">Actualizado hace '+pendEsc(pendDur(Math.max(0,Math.floor((now-d.actualizadoMs)/60000))))+' ('+pendEsc(pendHora(d.actualizadoMs))+')</div>';
+    } else if(d.actualizado){
+      cabH+='<div class="pd-act">Actualizado: '+pendEsc(d.actualizado)+'</div>';
+    }
+    cabH+='<div class="pd-resumen">'+res.total+' pendientes · '+res.vencidos+' vencidos · '+res.fh+' fuera de horario · '+res.seguimientos+' seguimientos</div>';
+    aviso=pendListaVieja(now);
+    if(res.total>0){
+      secNu='<p class="pd-tit">Nuevos y de hoy ('+res.total+')</p>'+pendSeccionHtml(res.nuevos);
+    } else {
+      texto=res.atrasados.length?'✅ No hay pendientes nuevos ni de hoy.':'✅ No hay pendientes';
+    }
+    if(res.atrasados.length){
+      secAt='<button type="button" class="pd-toggle" id="pd-toggle" aria-expanded="'+(PEND_ATRASADOS_ABIERTO?'true':'false')+'">'+(PEND_ATRASADOS_ABIERTO?'▾':'▸')+' Atrasados ('+res.atrasados.length+')</button>'+
+        (PEND_ATRASADOS_ABIERTO?pendSeccionHtml(res.atrasados):'');
+    }
+  }
+  cab.innerHTML=cabH;
+  av.style.display=aviso?'':'none'; av.textContent=aviso;
+  msg.textContent=texto; msg.style.display=texto?'':'none';
+  nu.innerHTML=secNu; at.innerHTML=secAt;
+}
+// Documento que llega de Firestore (o null si aún no existe). `filas` viene como TEXTO con un JSON dentro.
+function pendRecibir(data){
+  PEND_ERROR='';
+  if(!data||typeof data!=='object'){ PEND_ESTADO='sin-doc'; PEND_DOC=null; pendRefrescar(); return; }
+  var filas=data.filas, ok=true;
+  try{
+    if(typeof filas==='string') filas=JSON.parse(filas||'[]');
+    if(!Array.isArray(filas)) ok=false;
+  }catch(e){ ok=false; }
+  if(!ok){ PEND_ESTADO='error-filas'; PEND_DOC=null; pendRefrescar(); return; }
+  var ms=pendNum(data.actualizadoMs);
+  if(ms==null){ var t=Date.parse(pendTxt(data.actualizado,40)); ms=isNaN(t)?null:t; }
+  PEND_DOC={ actualizado:pendTxt(data.actualizado,40), actualizadoMs:ms, filas:filas.map(pendNormalizar).filter(Boolean) };
+  PEND_ESTADO='ok';
+  pendRefrescar();
+}
+// La conecta el módulo de Firebase cuando hay sesión con acceso: api = null si no hay sesión
+function pendConectar(api, perfil){
+  if(PEND_STOP){ try{PEND_STOP();}catch(e){} PEND_STOP=null; }
+  if(PEND_TIMER){ clearInterval(PEND_TIMER); PEND_TIMER=null; }
+  PEND_API=api||null; PEND_PERFIL=(api&&perfil)?perfil:null;
+  PEND_DOC=null; PEND_ERROR='';
+  if(PEND_API && PEND_PERFIL && PEND_API.pendEscuchar){
+    PEND_ESTADO='cargando'; pendRefrescar();
+    try{
+      PEND_STOP=PEND_API.pendEscuchar(pendCol(), pendDocId(), pendRecibir, function(msg){
+        PEND_ESTADO='error'; PEND_DOC=null; PEND_ERROR=String(msg||'error de conexión'); pendRefrescar();
+      });
+      PEND_TIMER=setInterval(pendRefrescar, PEND_INTERVALO_MS);
+    }catch(e){ PEND_ESTADO='error'; PEND_ERROR='no se pudo abrir la lectura'; pendRefrescar(); }
+  } else { PEND_ESTADO='sin-sesion'; pendRefrescar(); }
+}
+(function(){
+  // Un solo manejador para plegar/desplegar "Atrasados" (los renglones se vuelven a pintar cada 30 s)
+  function enganchar(){
+    var p=document.getElementById('p-pendientes');
+    if(!p||p.getAttribute('data-pd')) return;
+    p.setAttribute('data-pd','1');
+    p.addEventListener('click',function(ev){
+      var t=ev.target; while(t&&t!==p&&t.id!=='pd-toggle') t=t.parentNode;
+      if(t&&t.id==='pd-toggle'){ PEND_ATRASADOS_ABIERTO=!PEND_ATRASADOS_ABIERTO; pendRefrescar(); }
+    });
+    pendRefrescar();
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',enganchar); else enganchar();
+})();
+
 function rectRenderAdmin(){
   var card=document.getElementById('rect-admin'), cont=document.getElementById('rect-admin-campos');
   if(!card||!cont) return;
@@ -5166,6 +5471,7 @@ window.addEventListener('load',function(){
     try{ if(typeof provConectar==='function') provConectar(perfil?api:null, perfil); }catch(e){}
     try{ if(typeof margenConectar==='function') margenConectar(perfil?api:null, perfil); }catch(e){}
     try{ if(typeof rectConectar==='function') rectConectar(perfil?api:null, perfil); }catch(e){}
+    try{ if(typeof pendConectar==='function') pendConectar(perfil?api:null, perfil); }catch(e){}
     try{ if(typeof chavBalConectar==='function') chavBalConectar(perfil?api:null, perfil); }catch(e){}
     try{ if(typeof borrNubeConectar==='function') borrNubeConectar(perfil?api:null, perfil); }catch(e){}
     pintarEstado();
@@ -5291,6 +5597,10 @@ window.addEventListener('load',function(){
         },
         rectGuardar:function(id,valores,por){
           return fs.setDoc(fs.doc(db,COL_TARIFAS,id),Object.assign({},valores,{actualizado:fechaISOChihuahua(),por:por}));
+        },
+        // Pendientes de WhatsApp (solo lectura): colección "pendientes" ("pendientes_prueba" en dev y con ?test=1), documento "actual"
+        pendEscuchar:function(col,id,cb,errcb){
+          return fs.onSnapshot(fs.doc(db,col,id),function(sn){ cb(sn.exists()?sn.data():null); },function(e){ errcb(errorLegible(e)); });
         },
         // Borradores compartidos (colección "borradores"; "borradores_prueba" en dev con ?borradoresfb=1)
         borrEscuchar:function(col,cb,errcb){

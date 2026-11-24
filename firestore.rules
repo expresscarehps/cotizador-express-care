@@ -123,6 +123,17 @@ service cloud.firestore {
       allow delete: if esSuper();
     }
 
+    // Pendientes de WhatsApp: los escribe solo n8n (cuenta de servicio); el navegador solo lee.
+    // "pendientes" = producción, "pendientes_prueba" = dev y pruebas.
+    match /pendientes/{id} {
+      allow read: if esCotizador();
+      allow write: if false;
+    }
+    match /pendientes_prueba/{id} {
+      allow read: if esCotizador();
+      allow write: if false;
+    }
+
     // Todo lo demás (catalogo_llantas, conversaciones_bot, etc.) queda cerrado al navegador
     match /{document=**} {
       allow read, write: if false;
