@@ -67,7 +67,7 @@ const naranjas = w => g(w, 'pd-nuevos').querySelectorAll('.pd-row.pd-nar').lengt
     console.log('\n▶ 1. Pestaña, numerito y lista (61 filas)');
     {
       const w = abrir(AHORA_ISO);
-      ok('existe el botón Pendientes junto a Historial', btn(w) && btn(w).textContent.indexOf('Pendientes') >= 0 && btn(w).previousElementSibling && btn(w).previousElementSibling.id === 'tab-historial');
+      ok('existe el botón Pendientes justo a la derecha de WhatsApp', btn(w) && btn(w).textContent.indexOf('Pendientes') >= 0 && btn(w).previousElementSibling && btn(w).previousElementSibling.id === 'tab-whatsapp' && btn(w).nextElementSibling && btn(w).nextElementSibling.id === 'tab-historial');
       ok('existe el panel p-pendientes', !!g(w, 'p-pendientes'));
       ok('sin sesión: mensaje de iniciar sesión y sin numerito', (w.pendConectar(null, null), g(w, 'pd-msg').textContent.indexOf('Inicia sesión') >= 0 && badge(w) === '' && sem(w) === null));
       const filas = [];
@@ -255,7 +255,7 @@ const naranjas = w => g(w, 'pd-nuevos').querySelectorAll('.pd-row.pd-nar').lengt
     console.log('\n▶ 8. Las demás pestañas');
     {
       const w = abrir(AHORA_ISO);
-      const ids = ['llantas', 'servicios', 'taller', 'cotizacion', 'whatsapp', 'historial', 'pendientes', 'usuarios', 'config'];
+      const ids = ['llantas', 'servicios', 'taller', 'cotizacion', 'whatsapp', 'pendientes', 'historial', 'usuarios', 'config'];
       ok('todas las pestañas siguen existiendo, en su orden', JSON.stringify(Array.from(w.document.querySelectorAll('.tab')).map(b => b.getAttribute('data-t'))) === JSON.stringify(ids), Array.from(w.document.querySelectorAll('.tab')).map(b => b.getAttribute('data-t')));
       await wait(300);   // a que termine de cargar la página y se enganchen los clics de las pestañas
       let bien = true;
