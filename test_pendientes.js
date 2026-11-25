@@ -127,13 +127,14 @@ const naranjas = w => g(w, 'pd-nuevos').querySelectorAll('.pd-row.pd-nar').lengt
       w.pendRecibir(docDe([esperando(10), esperando(20), esperando(30)]));
       ok('"Nuevos y de hoy" viene desplegado y con el contador', filasPintadas(w, 'pd-nuevos') === 3 && /Nuevos y de hoy \(3\)/.test(g(w, 'pd-toggle-nuevos').textContent) && g(w, 'pd-toggle-nuevos').getAttribute('aria-expanded') === 'true');
       g(w, 'pd-toggle-nuevos').click();
-      ok('al tocarlo se pliegan los renglones pero queda el título con el contador', filasPintadas(w, 'pd-nuevos') === 0 && /Nuevos y de hoy \(3\)/.test(g(w, 'pd-toggle-nuevos').textContent) && g(w, 'pd-toggle-nuevos').getAttribute('aria-expanded') === 'false' && /▸/.test(g(w, 'pd-toggle-nuevos').textContent));
+      ok('al tocarlo se pliegan los renglones pero queda el título con el contador', filasPintadas(w, 'pd-nuevos') === 0 && /Nuevos y de hoy \(3\)/.test(g(w, 'pd-toggle-nuevos').textContent) && g(w, 'pd-toggle-nuevos').getAttribute('aria-expanded') === 'false' && /▼/.test(g(w, 'pd-toggle-nuevos').textContent));
+      ok('la flechita va al extremo derecho del renglón (título a la izquierda) en Nuevos y en Atrasados', (() => { const b = g(w, 'pd-toggle-nuevos'); const ok1 = b.children.length === 2 && b.children[1].classList.contains('pd-flecha') && /^Nuevos y de hoy \(3\)$/.test(b.children[0].textContent); const at = g(w, 'pd-toggle'); const ok2 = !at || (at.children.length === 2 && at.children[1].classList.contains('pd-flecha')); return ok1 && ok2; })());
       ok('plegar no cambia el numerito ni el resumen', badge(w) === '3' && /3 pendientes/.test(g(w, 'pd-cab').textContent));
       w.pendRefrescar(); w.pendRecibir(docDe([esperando(10), esperando(20), esperando(30), esperando(40)]));
       ok('sigue plegado después de recalcular o de que lleguen datos nuevos (y el contador se actualiza)', filasPintadas(w, 'pd-nuevos') === 0 && /Nuevos y de hoy \(4\)/.test(g(w, 'pd-toggle-nuevos').textContent));
       ok('plegar "Nuevos" no afecta a "Atrasados"', g(w, 'pd-toggle') === null || filasPintadas(w, 'pd-atrasados') === 0);
       g(w, 'pd-toggle-nuevos').click();
-      ok('al tocarlo otra vez se vuelven a ver los 4 renglones', filasPintadas(w, 'pd-nuevos') === 4 && /▾/.test(g(w, 'pd-toggle-nuevos').textContent));
+      ok('al tocarlo otra vez se vuelven a ver los 4 renglones', filasPintadas(w, 'pd-nuevos') === 4 && /▲/.test(g(w, 'pd-toggle-nuevos').textContent));
       // Botón de subir al inicio de la página
       {
         let sube = 0; w.scrollTo = function () { sube++; };

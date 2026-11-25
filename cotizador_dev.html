@@ -148,7 +148,8 @@ body{
 .pd-tit{font-weight:700;font-size:13px;margin:12px 0 6px;color:var(--val-dark-blue)}
 .pd-arriba{display:none;position:fixed;right:18px;bottom:18px;width:48px;height:48px;border-radius:50%;border:none;background:var(--val-dark-blue);color:#fff;font-size:24px;line-height:1;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.3);z-index:50}
 .pd-arriba.ver{display:block}
-.pd-toggle{display:block;width:100%;text-align:left;font-weight:700;font-size:13px;margin:14px 0 6px;padding:8px 10px;border:1px solid #d1d5db;border-radius:8px;background:#f9fafb;color:var(--val-dark-blue);cursor:pointer}
+.pd-flecha{color:#9ca3af;font-size:11px;flex:none}
+.pd-toggle{display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%;text-align:left;font-weight:700;font-size:13px;margin:14px 0 6px;padding:8px 10px;border:1px solid #d1d5db;border-radius:8px;background:#f9fafb;color:var(--val-dark-blue);cursor:pointer}
 .pd-head,.pd-row{display:grid;grid-template-columns:2.3fr 1fr .9fr 1.8fr 1.8fr 1.8fr;gap:8px;align-items:start}
 .pd-head{font-size:11px;font-weight:700;color:var(--val-dark-gray);padding:4px 8px;border-bottom:2px solid #e5e7eb}
 .pd-row{padding:8px;border-bottom:1px solid #eee;border-left:4px solid transparent;font-size:13px;overflow-wrap:anywhere}
@@ -2787,13 +2788,13 @@ function pendRefrescar(){
     cabH+='<div class="pd-resumen">'+res.total+' pendientes · '+res.vencidos+' vencidos · '+res.fh+' fuera de horario · '+res.seguimientos+' seguimientos</div>';
     aviso=pendListaVieja(now);
     if(res.total>0){
-      secNu='<button type="button" class="pd-toggle" id="pd-toggle-nuevos" aria-expanded="'+(PEND_NUEVOS_ABIERTO?'true':'false')+'">'+(PEND_NUEVOS_ABIERTO?'▾':'▸')+' Nuevos y de hoy ('+res.total+')</button>'+
+      secNu='<button type="button" class="pd-toggle" id="pd-toggle-nuevos" aria-expanded="'+(PEND_NUEVOS_ABIERTO?'true':'false')+'"><span>Nuevos y de hoy ('+res.total+')</span><span class="pd-flecha">'+(PEND_NUEVOS_ABIERTO?'▲':'▼')+'</span></button>'+
         (PEND_NUEVOS_ABIERTO?pendSeccionHtml(res.nuevos):'');
     } else {
       texto=res.atrasados.length?'✅ No hay pendientes nuevos ni de hoy.':'✅ No hay pendientes';
     }
     if(res.atrasados.length){
-      secAt='<button type="button" class="pd-toggle" id="pd-toggle" aria-expanded="'+(PEND_ATRASADOS_ABIERTO?'true':'false')+'">'+(PEND_ATRASADOS_ABIERTO?'▾':'▸')+' Atrasados ('+res.atrasados.length+')</button>'+
+      secAt='<button type="button" class="pd-toggle" id="pd-toggle" aria-expanded="'+(PEND_ATRASADOS_ABIERTO?'true':'false')+'"><span>Atrasados ('+res.atrasados.length+')</span><span class="pd-flecha">'+(PEND_ATRASADOS_ABIERTO?'▲':'▼')+'</span></button>'+
         (PEND_ATRASADOS_ABIERTO?pendSeccionHtml(res.atrasados):'');
     }
   }
