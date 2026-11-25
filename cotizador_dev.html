@@ -156,10 +156,11 @@ body{
 .pd-esp{font-weight:700}
 .pd-row.pd-venc .pd-esp{color:#b91c1c}
 .pd-row.pd-nar .pd-esp{color:#c2410c}
-.pd-tel{color:var(--val-dark-gray);font-size:12px}
+.pd-tel{font-weight:700}
 .pd-tag{display:inline-block;font-size:11px;background:#eef2ff;border-radius:6px;padding:1px 6px;margin:2px 4px 0 0}
 .pd-tag.seg{background:#fef9c3}
-.pd-wa{margin-left:6px;text-decoration:none}
+.pd-wa{color:var(--val-dark-blue);text-decoration:none}
+.pd-wa:hover{text-decoration:underline}
 @media (max-width:720px){
   .pd-head{display:none}
   .pd-row{display:block;border:1px solid #e5e7eb;border-left-width:4px;border-radius:8px;margin-bottom:8px}
@@ -2716,8 +2717,8 @@ function pendFilaHtml(it){
   var f=it.f, c=it.c;
   var clase='pd-row'+(c.vencido?' pd-venc':(c.naranja?' pd-nar':''));
   var cli='<b>'+pendEsc(f.nombre||'Sin nombre')+'</b>';
-  if(f.telefono) cli+=' <span class="pd-tel">'+pendEsc(f.telefono)+'</span>';
-  if(f.wa) cli+='<a class="pd-wa" href="'+pendEsc(f.wa)+'" target="_blank" rel="noopener" title="Abrir en WhatsApp">💬</a>';
+  if(f.telefono) cli+=' <b class="pd-tel">'+pendEsc(f.telefono)+'</b>';
+  if(f.wa) cli='<a class="pd-wa" href="'+pendEsc(f.wa)+'" target="_blank" rel="noopener" title="Abrir en WhatsApp">'+cli+'</a>';
   var tags='';
   if(f.tipo==='seguimiento') tags+='<span class="pd-tag seg">'+pendEsc(pendDeMsCot(f))+'</span>';
   if(f.fh) tags+='<span class="pd-tag">🌙 fuera de horario</span>';

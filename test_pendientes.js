@@ -84,6 +84,7 @@ const naranjas = w => g(w, 'pd-nuevos').querySelectorAll('.pd-row.pd-nar').lengt
       ok('15 marcas de fuera de horario', (g(w, 'pd-nuevos').textContent.match(/🌙 fuera de horario/g) || []).length === 15);
       ok('los fuera de horario van primero', Array.from(g(w, 'pd-nuevos').querySelectorAll('.pd-row')).slice(0, 15).every(r => /🌙/.test(r.textContent)) && !/🌙/.test(g(w, 'pd-nuevos').querySelectorAll('.pd-row')[15].textContent));
       ok('enlace de WhatsApp en pestaña nueva con rel=noopener', (() => { const a = g(w, 'pd-nuevos').querySelector('a.pd-wa'); return a && /^https:\/\/wa\.me\//.test(a.href) && a.target === '_blank' && a.rel === 'noopener'; })());
+      ok('nombre y teléfono van en negritas y son el enlace a WhatsApp (sin ícono)', (() => { const a = g(w, 'pd-nuevos').querySelector('a.pd-wa'); const r = a && a.closest('.pd-row'); return a && a.querySelectorAll('b').length === 2 && a.querySelector('b.pd-tel') && /^Cliente \d+$/.test(a.querySelector('b').textContent) && /^\+52161400\d+$/.test(a.querySelector('b.pd-tel').textContent) && g(w, 'pd-nuevos').textContent.indexOf('💬') < 0 && r.querySelectorAll('a.pd-wa').length === 1; })());
       ok('no hay botones ni campos que escriban dentro del panel (solo lectura)', g(w, 'p-pendientes').querySelectorAll('input,textarea,select,button:not(#pd-toggle)').length === 0);
       // formato de la fecha "Escribió"
       const unaFila = esperando(5, { escribioMs: Date.parse('2026-11-23T15:07:00-06:00'), desdeMs: NOW - 5 * MIN });
@@ -217,6 +218,7 @@ const naranjas = w => g(w, 'pd-nuevos').querySelectorAll('.pd-row.pd-nar').lengt
       ok('no se creó ningún <script>, <img> ni <svg> dentro del panel', panel.querySelectorAll('script,img,svg').length === 0);
       ok('el texto aparece tal cual', g(w, 'pd-nuevos').textContent.indexOf('<script>window.alert("x")</script>') >= 0);
       ok('comillas y apóstrofes se muestran bien', g(w, 'pd-nuevos').textContent.indexOf('Con "comillas" y \'apóstrofes\'') >= 0);
+      ok('sin enlace válido: nombre y teléfono siguen en negritas pero sin enlace', (() => { const rows = Array.from(panel.querySelectorAll('.pd-row')).filter(r => !r.querySelector('a.pd-wa')); return rows.length >= 1 && rows.every(r => r.querySelector('.pd-cli > b') && r.querySelector('b.pd-tel')); })());
       ok('un enlace que no es https://wa.me/ no se convierte en enlace', panel.querySelectorAll('a[href^="javascript"]').length === 0 && panel.querySelectorAll('a.pd-wa').length === 1);
       ok('sin atributos de eventos (onerror/onload) en el panel', !/\son(error|load|click)=/i.test(panel.innerHTML.replace(/&quot;/g, '')) || panel.querySelectorAll('[onerror],[onload]').length === 0);
       ok('no se disparó ninguna alerta', alertas === 0);
