@@ -85,7 +85,7 @@ const naranjas = w => g(w, 'pd-nuevos').querySelectorAll('.pd-row.pd-nar').lengt
       ok('los fuera de horario van primero', Array.from(g(w, 'pd-nuevos').querySelectorAll('.pd-row')).slice(0, 15).every(r => /🌙/.test(r.textContent)) && !/🌙/.test(g(w, 'pd-nuevos').querySelectorAll('.pd-row')[15].textContent));
       ok('enlace de WhatsApp en pestaña nueva con rel=noopener', (() => { const a = g(w, 'pd-nuevos').querySelector('a.pd-wa'); return a && /^https:\/\/wa\.me\//.test(a.href) && a.target === '_blank' && a.rel === 'noopener'; })());
       ok('nombre y teléfono van en negritas y son el enlace a WhatsApp (sin ícono)', (() => { const a = g(w, 'pd-nuevos').querySelector('a.pd-wa'); const r = a && a.closest('.pd-row'); return a && a.querySelectorAll('b').length === 2 && a.querySelector('b.pd-tel') && /^Cliente \d+$/.test(a.querySelector('b').textContent) && /^\+52161400\d+$/.test(a.querySelector('b.pd-tel').textContent) && g(w, 'pd-nuevos').textContent.indexOf('💬') < 0 && r.querySelectorAll('a.pd-wa').length === 1; })());
-      ok('no hay botones ni campos que escriban dentro del panel (solo lectura)', g(w, 'p-pendientes').querySelectorAll('input,textarea,select,button:not(#pd-toggle)').length === 0);
+      ok('no hay botones ni campos que escriban dentro del panel (solo lectura)', g(w, 'p-pendientes').querySelectorAll('input,textarea,select,button:not(#pd-toggle):not(#pd-toggle-nuevos):not(#pd-arriba)').length === 0);
       // formato de la fecha "Escribió"
       const unaFila = esperando(5, { escribioMs: Date.parse('2026-11-23T15:07:00-06:00'), desdeMs: NOW - 5 * MIN });
       w.pendRecibir(docDe([unaFila]));
@@ -123,6 +123,31 @@ const naranjas = w => g(w, 'pd-nuevos').querySelectorAll('.pd-row.pd-nar').lengt
       ok('al tocar "Atrasados" se despliegan sus 2 renglones', filasPintadas(w, 'pd-atrasados') === 2);
       g(w, 'pd-toggle').click();
       ok('y se vuelven a plegar', filasPintadas(w, 'pd-atrasados') === 0);
+      // "Nuevos y de hoy" también se pliega y se despliega; abierto por defecto
+      w.pendRecibir(docDe([esperando(10), esperando(20), esperando(30)]));
+      ok('"Nuevos y de hoy" viene desplegado y con el contador', filasPintadas(w, 'pd-nuevos') === 3 && /Nuevos y de hoy \(3\)/.test(g(w, 'pd-toggle-nuevos').textContent) && g(w, 'pd-toggle-nuevos').getAttribute('aria-expanded') === 'true');
+      g(w, 'pd-toggle-nuevos').click();
+      ok('al tocarlo se pliegan los renglones pero queda el título con el contador', filasPintadas(w, 'pd-nuevos') === 0 && /Nuevos y de hoy \(3\)/.test(g(w, 'pd-toggle-nuevos').textContent) && g(w, 'pd-toggle-nuevos').getAttribute('aria-expanded') === 'false' && /▸/.test(g(w, 'pd-toggle-nuevos').textContent));
+      ok('plegar no cambia el numerito ni el resumen', badge(w) === '3' && /3 pendientes/.test(g(w, 'pd-cab').textContent));
+      w.pendRefrescar(); w.pendRecibir(docDe([esperando(10), esperando(20), esperando(30), esperando(40)]));
+      ok('sigue plegado después de recalcular o de que lleguen datos nuevos (y el contador se actualiza)', filasPintadas(w, 'pd-nuevos') === 0 && /Nuevos y de hoy \(4\)/.test(g(w, 'pd-toggle-nuevos').textContent));
+      ok('plegar "Nuevos" no afecta a "Atrasados"', g(w, 'pd-toggle') === null || filasPintadas(w, 'pd-atrasados') === 0);
+      g(w, 'pd-toggle-nuevos').click();
+      ok('al tocarlo otra vez se vuelven a ver los 4 renglones', filasPintadas(w, 'pd-nuevos') === 4 && /▾/.test(g(w, 'pd-toggle-nuevos').textContent));
+      // Botón de subir al inicio de la página
+      {
+        let sube = 0; w.scrollTo = function () { sube++; };
+        const arriba = g(w, 'pd-arriba');
+        ok('existe el botón de subir y empieza oculto', !!arriba && !arriba.classList.contains('ver'));
+        Object.defineProperty(w, 'pageYOffset', { value: 900, configurable: true });
+        w.dispatchEvent(new w.Event('scroll'));
+        ok('al bajar la página el botón aparece', arriba.classList.contains('ver'));
+        arriba.click();
+        ok('al tocarlo sube al inicio', sube === 1);
+        Object.defineProperty(w, 'pageYOffset', { value: 0, configurable: true });
+        w.dispatchEvent(new w.Event('scroll'));
+        ok('al volver arriba el botón se oculta', !arriba.classList.contains('ver'));
+      }
       // El tiempo avanza solo (recalcula sin pedir datos): una fila de 40 min pasa a rojo 5 min después
       w.pendRecibir(docDe([esperando(40)]));
       ok('antes: a 40 min no está rojo', rojas(w) === 0);

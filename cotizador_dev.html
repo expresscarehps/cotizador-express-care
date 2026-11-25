@@ -146,6 +146,8 @@ body{
 .pd-act{font-size:12px;color:var(--val-dark-gray);margin:2px 0 6px}
 .pd-aviso{background:#fef9c3;border:1px solid #eab308;color:#713f12;border-radius:8px;padding:8px 10px;font-size:13px;font-weight:600;margin:8px 0}
 .pd-tit{font-weight:700;font-size:13px;margin:12px 0 6px;color:var(--val-dark-blue)}
+.pd-arriba{display:none;position:fixed;right:18px;bottom:18px;width:48px;height:48px;border-radius:50%;border:none;background:var(--val-dark-blue);color:#fff;font-size:24px;line-height:1;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.3);z-index:50}
+.pd-arriba.ver{display:block}
 .pd-toggle{display:block;width:100%;text-align:left;font-weight:700;font-size:13px;margin:14px 0 6px;padding:8px 10px;border:1px solid #d1d5db;border-radius:8px;background:#f9fafb;color:var(--val-dark-blue);cursor:pointer}
 .pd-head,.pd-row{display:grid;grid-template-columns:2.3fr 1fr .9fr 1.8fr 1.8fr 1.8fr;gap:8px;align-items:start}
 .pd-head{font-size:11px;font-weight:700;color:var(--val-dark-gray);padding:4px 8px;border-bottom:2px solid #e5e7eb}
@@ -774,6 +776,7 @@ label.chk-sin-nombre input:checked + span{color:var(--val-dark-blue);font-weight
     <div id="pd-nuevos"></div>
     <div id="pd-atrasados"></div>
     <div id="pd-avisos" style="display:none"></div>
+    <button type="button" class="pd-arriba" id="pd-arriba" title="Subir al inicio" aria-label="Subir al inicio">↑</button>
   </div>
 </div>
 
@@ -2596,6 +2599,7 @@ var PEND_ESTADO='cargando';    // cargando | sin-sesion | sin-doc | error | erro
 var PEND_ERROR='';
 var PEND_DOC=null;             // { actualizado, actualizadoMs, filas:[...] }
 var PEND_ATRASADOS_ABIERTO=false;
+var PEND_NUEVOS_ABIERTO=true;
 // Solo en dev: ?ahora=2026-11-23T10:00:00-06:00 simula la hora para probar los colores y el semáforo
 var PEND_AHORA_OFFSET=(function(){
   try{
@@ -2754,6 +2758,12 @@ function pendPintarBoton(res){
     b.setAttribute('aria-label','Pendientes'); b.title='Pendientes';
   }
 }
+// Botón redondo para volver al inicio de la página: solo aparece cuando ya se bajó un buen tramo
+function pendFlecha(){
+  var b=document.getElementById('pd-arriba'); if(!b) return;
+  var y=window.pageYOffset||(document.documentElement&&document.documentElement.scrollTop)||0;
+  if(y>300) b.classList.add('ver'); else b.classList.remove('ver');
+}
 function pendRefrescar(){
   var now=pendAhora();
   var res=pendResumen(now);
@@ -2777,7 +2787,8 @@ function pendRefrescar(){
     cabH+='<div class="pd-resumen">'+res.total+' pendientes · '+res.vencidos+' vencidos · '+res.fh+' fuera de horario · '+res.seguimientos+' seguimientos</div>';
     aviso=pendListaVieja(now);
     if(res.total>0){
-      secNu='<p class="pd-tit">Nuevos y de hoy ('+res.total+')</p>'+pendSeccionHtml(res.nuevos);
+      secNu='<button type="button" class="pd-toggle" id="pd-toggle-nuevos" aria-expanded="'+(PEND_NUEVOS_ABIERTO?'true':'false')+'">'+(PEND_NUEVOS_ABIERTO?'▾':'▸')+' Nuevos y de hoy ('+res.total+')</button>'+
+        (PEND_NUEVOS_ABIERTO?pendSeccionHtml(res.nuevos):'');
     } else {
       texto=res.atrasados.length?'✅ No hay pendientes nuevos ni de hoy.':'✅ No hay pendientes';
     }
@@ -2790,6 +2801,7 @@ function pendRefrescar(){
   av.style.display=aviso?'':'none'; av.textContent=aviso;
   msg.textContent=texto; msg.style.display=texto?'':'none';
   nu.innerHTML=secNu; at.innerHTML=secAt;
+  pendFlecha();
 }
 // Documento que llega de Firestore (o null si aún no existe). `filas` viene como TEXTO con un JSON dentro.
 function pendRecibir(data){
@@ -2824,15 +2836,19 @@ function pendConectar(api, perfil){
   } else { PEND_ESTADO='sin-sesion'; pendRefrescar(); }
 }
 (function(){
-  // Un solo manejador para plegar/desplegar "Atrasados" (los renglones se vuelven a pintar cada 30 s)
+  // Un solo manejador para plegar/desplegar "Nuevos y de hoy" y "Atrasados", y para el botón de subir (los renglones se vuelven a pintar cada 30 s)
   function enganchar(){
     var p=document.getElementById('p-pendientes');
     if(!p||p.getAttribute('data-pd')) return;
     p.setAttribute('data-pd','1');
     p.addEventListener('click',function(ev){
-      var t=ev.target; while(t&&t!==p&&t.id!=='pd-toggle') t=t.parentNode;
-      if(t&&t.id==='pd-toggle'){ PEND_ATRASADOS_ABIERTO=!PEND_ATRASADOS_ABIERTO; pendRefrescar(); }
+      var t=ev.target; while(t&&t!==p&&t.id!=='pd-toggle'&&t.id!=='pd-toggle-nuevos'&&t.id!=='pd-arriba') t=t.parentNode;
+      if(!t||t===p) return;
+      if(t.id==='pd-toggle'){ PEND_ATRASADOS_ABIERTO=!PEND_ATRASADOS_ABIERTO; pendRefrescar(); }
+      else if(t.id==='pd-toggle-nuevos'){ PEND_NUEVOS_ABIERTO=!PEND_NUEVOS_ABIERTO; pendRefrescar(); }
+      else if(t.id==='pd-arriba'){ try{ window.scrollTo({top:0,behavior:'smooth'}); }catch(e){ window.scrollTo(0,0); } }
     });
+    window.addEventListener('scroll',pendFlecha,{passive:true});
     pendRefrescar();
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',enganchar); else enganchar();
