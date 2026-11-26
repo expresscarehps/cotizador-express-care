@@ -41,13 +41,15 @@ const prov = row => { const s = Array.from(row.querySelectorAll('.rd span')).fin
 const precioFila = row => parseFloat(row.querySelector('.rp').textContent.replace(/[$,]/g, ''));
 const franja = row => { const f = row.querySelector('.franja-compra'); return f ? f.textContent : null; };
 const redondea = n => Math.round(n * 100) / 100;
+const kRowOf = x => x.querySelector('.badd').getAttribute('data-cve').split('@')[0];
 const num = t => parseFloat(String(t).replace(/[^0-9.\-]/g, ''));
 
 (async () => {
   const r = abrir(); await esperar(120);
   const w = r.w;
   const C = w.CHAVITAR;
-  const eqLive = c => (c.eq || []).map(([p, k]) => p === 'SERV' ? { p, k, costo: (w.DATA.find(d => d.cve === k) || {}).precio } : { p, k, costo: (w.VEGA.find(d => d.cve === k) || {}).costo }).filter(e => e.costo > 0);
+  const eqLive = c => (c.eq || []).map(([p, k]) => p === 'SERV' ? { p, k, costo: (w.DATA.find(d => d.cve === k) || {}).precio } : { p, k, costo: (w.VEGA.find(d => d.cve === k) || w.VEGA_REF.find(d => d.cve === k) || {}).costo, ref: !w.VEGA.find(d => d.cve === k) }).filter(e => e.costo > 0);
+  const eqReal = c => eqLive(c).filter(e => !e.ref); // los que salen como renglon (con existencia)
 
   console.log('\n=== CH-A. CATÁLOGO Y MARCAS ===');
   ok('A1 el catálogo trae las 1,464 llantas de auto/SUV/camioneta (sin camión, moto ni agrícola)', C.length === 1464, C.length);
@@ -55,7 +57,16 @@ const num = t => parseFloat(String(t).replace(/[^0-9.\-]/g, ''));
   ok('A3 ninguna medida de camión (R22.5 / R19.5 / R24.5 / R17.5)', !C.some(c => /R(22\.5|19\.5|24\.5|17\.5)/i.test(c.medida)), C.filter(c => /R(22\.5|19\.5|24\.5|17\.5)/i.test(c.medida)).slice(0, 3).map(c => c.cve));
   const linked = C.filter(c => c.eq && c.eq.length);
   ok('A4 205 llantas con equivalente y 1,259 solo-Chavitar', linked.length === 205 && C.length - linked.length === 1259, [linked.length, C.length - linked.length]);
-  ok('A5 todos los equivalentes existen hoy en Servillantas/VEGA', linked.every(c => eqLive(c).length === c.eq.length), linked.filter(c => eqLive(c).length !== c.eq.length).slice(0, 3).map(c => c.cve));
+  // Lista VEGA 24-nov-2026: 5 llantas de VEGA quedaron con existencia 0. Carlos (25-nov): VEGA/Servillantas sirven para medir precio y margen de Chavitar aunque no haya existencia.
+  // Las 4 con precio en la lista se guardan en VEGA_REF (solo referencia, no son renglon); las 2 que ya ni vienen en la lista no tienen referencia.
+  const SIN_RENGLON_VEGA = ['205/60R16BLA', '235/40R18BLA', '245/75R16BLA', '33X1250R18MUDBK'];
+  const EQ_PARCIAL = ['275/55R20ATBLA', '235/75R15ATNOV', '235/75R15MUDNO'];
+  const vivas = linked.filter(c => eqReal(c).length > 0);
+  ok('A5 los equivalentes tienen precio hoy (en el catálogo o como referencia VEGA_REF), salvo 2 gemelas que ya ni vienen en la lista VEGA 24-nov-2026', linked.filter(c => eqLive(c).length !== c.eq.length).map(c => c.cve).sort().join() === EQ_PARCIAL.slice().sort().join() && linked.filter(c => eqReal(c).length === 0).map(c => c.cve).sort().join() === SIN_RENGLON_VEGA.slice().sort().join(), linked.filter(c => eqLive(c).length !== c.eq.length).map(c => c.cve));
+  ok('A5a VEGA_REF: 4 llantas, ninguna está también en VEGA (no se duplican renglones)', w.VEGA_REF.length === 4 && w.VEGA_REF.every(r => !w.VEGA.some(v => v.cve === r.cve)), w.VEGA_REF.map(r => r.cve));
+  ok('A5b las 4 sin renglón VEGA salen con badge CHAV, precio = referencia VEGA sin existencia ÷ 0.875, nota amarilla para el asesor y SIN renglón de VEGA', SIN_RENGLON_VEGA.every(cv => { const c = C.find(o => o.cve === cv); const rows = buscar(r, c.medida, c.marca); const fila = rows.find(x => x.querySelector('.badd').getAttribute('data-cve') === c.cve + '@CHAV'); const refs = eqLive(c).map(e => e.costo / 0.875); const esperado = redondea(Math.min(...refs)); const hayVega = rows.some(x => prov(x) === 'VEGA' && c.eq.some(e => kRowOf(x) === e[1])); return fila && prov(fila) === 'CHAV' && Math.abs(precioFila(fila) - esperado) < 0.011 && /Confirma con Chavitar que la tenga/.test(fila.textContent) && !hayVega; }));
+  ok('A5c la nota NO sale en las Chavitar con equivalente con existencia ni en las solo-Chavitar', (() => { const x = C.find(o => eqReal(o).length > 0), s = C.find(o => !(o.eq && o.eq.length)); return [x, s].every(c => { const f = buscar(r, c.medida, c.marca).find(y => y.querySelector('.badd').getAttribute('data-cve') === c.cve + '@CHAV'); return f && !/Confirma con Chavitar que la tenga/.test(f.textContent); }); })());
+  ok('A5d la nota no viaja al carrito/WhatsApp (descripción limpia, sin nombre de proveedor)', SIN_RENGLON_VEGA.every(cv => { const c = C.find(o => o.cve === cv); const d = w.chavItemCarrito(c, 'x', c.cve + '@CHAV').desc; return !/Chavitar|VEGA|existencia|Confirma/i.test(d); }));
   const nuevas = ['ARDENT', 'ARDUZZA', 'CENTARA', 'DEXTERO', 'DOVROAD', 'HILO', 'JOYROAD', 'MASSIMO', 'MAXZEZ', 'MILEKING', 'MRF', 'TDI'];
   ok('A6 las 12 marcas nuevas tienen país y gama', nuevas.every(m => w.BRAND_DB[m] && w.BRAND_DB[m].gama && w.BRAND_DB[m].pais), nuevas.filter(m => !w.BRAND_DB[m]));
   ok('A7 todas las marcas de Chavitar tienen gama y demanda (❄️/🌡️/🔥)', C.every(c => w.BRAND_DB[c.marca] && w.BRAND_DB[c.marca].gama && w.ROTACION_DB[c.marca] && w.ROTACION_DB[c.marca].emoji), [...new Set(C.filter(c => !(w.BRAND_DB[c.marca] && w.ROTACION_DB[c.marca])).map(c => c.marca))]);
@@ -68,13 +79,13 @@ const num = t => parseFloat(String(t).replace(/[^0-9.\-]/g, ''));
   console.log('\n=== CH-B. BÚSQUEDA: AGRUPAR, ORDENAR POR COSTO, FRANJA ===');
   let nGrupos = 0, malOrden = [], malFranja = [], malPrecio = [], malMargen = [], conPesos = [], nChavMasBarata = 0, nChavMasCara = 0, nEmpate = 0, malOtros = [], nCompartidos = 0;
   const nm = m => w.nbZR(String(m).toUpperCase().replace(/[\s\-]/g, ''));
-  const llaveEqs = c => (c.eq || []).map(e => e[0] + '|' + e[1]);
+  const llaveEqs = c => eqReal(c).map(e => e.p + '|' + e.k);
   const visto = new Set();
-  for (const c of linked) {
+  for (const c of vivas) {
     if (visto.has(c.cve)) continue;
     // conjunto conectado (Chavitar que comparten equivalente van en el mismo grupo)
     const comp = [c]; visto.add(c.cve); const claves = new Set(llaveEqs(c));
-    for (let ch = true; ch;) { ch = false; for (const o of linked) { if (!visto.has(o.cve) && o.marca === c.marca && nm(o.medida) === nm(c.medida) && llaveEqs(o).some(k => claves.has(k))) { comp.push(o); visto.add(o.cve); llaveEqs(o).forEach(k => claves.add(k)); ch = true; } } }
+    for (let ch = true; ch;) { ch = false; for (const o of vivas) { if (!visto.has(o.cve) && o.marca === c.marca && nm(o.medida) === nm(c.medida) && llaveEqs(o).some(k => claves.has(k))) { comp.push(o); visto.add(o.cve); llaveEqs(o).forEach(k => claves.add(k)); ch = true; } } }
     if (comp.length > 1) nCompartidos++;
     const rows = buscar(r, c.medida, c.marca);
     const kRow = x => x.querySelector('.badd').getAttribute('data-cve');
@@ -107,7 +118,7 @@ const num = t => parseFloat(String(t).replace(/[^0-9.\-]/g, ''));
     }
     for (const k of claves) { const [p, kk] = k.split('|'); const fe = filasEq.find(x => prov(x) === p && kRow(x).split('@')[0] === kk); const base = p === 'SERV' ? w.DATA.find(d => d.cve === kk).precio : w.VEGA.find(d => d.cve === kk).costo; if (Math.abs(precioFila(fe) - redondea(base / 0.875)) > 0.011) malOtros.push([c.cve, kk, precioFila(fe), base / 0.875]); }
   }
-  ok('B1 las 205 llantas con equivalente salen junto a su equivalente (incluye los grupos donde dos Chavitar comparten equivalente)', nGrupos === 205 && nCompartidos > 0, [nGrupos, nCompartidos, malOrden.slice(0, 3)]);
+  ok('B1 las 201 llantas con equivalente vivo (205 menos las 4 sin renglón de VEGA, que solo tienen referencia de precio) salen junto a su equivalente (incluye los grupos donde dos Chavitar comparten equivalente)', nGrupos === 201 && nGrupos === vivas.length && nCompartidos > 0, [nGrupos, nCompartidos, malOrden.slice(0, 3)]);
   ok('B2 cada grupo va ordenado por costo para nosotros (más barata arriba; Chavitar primero si empata)', malOrden.length === 0, malOrden.slice(0, 3));
   ok('B3 hay casos de los tres tipos (Chavitar más barata, más cara, empate) — la prueba es válida', nChavMasBarata > 0 && nChavMasCara > 0, { nChavMasBarata, nChavMasCara, nEmpate });
   ok('B4 una sola franja "✅ COMPRAR EN …" por grupo, en la más barata; las otras solo "Margen X%"', malFranja.length === 0, malFranja.slice(0, 3));

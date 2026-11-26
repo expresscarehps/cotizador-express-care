@@ -39,7 +39,7 @@ function test(name,fn){
 console.log('\n=== 1. CATÁLOGOS ===');
 test('DATA Servillantas 1200+',   ()=>DATA.length>=1200);
 test('AYALA 4037+',               ()=>AYALA.length>=4037);
-test('VEGA 1358 (lista 21 oct 2026, solo con existencia y precio)', ()=>VEGA.length===1358);
+test('VEGA 1370 (lista 24 nov 2026, solo con existencia y precio)', ()=>VEGA.length===1370);
 test('SVC 18+',                   ()=>SVC.length>=18);
 test('RIN a/b/c',                 ()=>!!(RIN?.a&&RIN?.b&&RIN?.c));
 test('BRAND_DB 100+ marcas',      ()=>typeof BRAND_DB!=='undefined'&&Object.keys(BRAND_DB).length>=100);
@@ -112,11 +112,12 @@ test('Recordatorio de margen presente en el buscador', ()=>html.includes('id="mg
 test('Fila de otro proveedor: ayuda Yokohama 12.5 / Sunfull 12.5', ()=>appJS.includes('otro-margen-ayuda') && appJS.includes("MARGEN_PROV_LIBRE.YOKOHAMA") && appJS.includes("MARGEN_PROV_LIBRE.SUNFULL") && appJS.includes('list="otro-marcas"'));
 test('Hoja1: margen aplicado por marca (AYALA de lista 25%/20% sin cambio; las de la lista MTO llevan el margen de su marca)', ()=>appJS.includes("(margenLlanta(l.marca)+'%')") && appJS.includes("(l.isAyala && !l.isMto) ? (pago==='meses'?'20%':'25%')"));
 test('AYALA sin cambio: contado x0.75x1.16 / meses x0.80x1.16', ()=>{pago='contado';const a=pvpAyala(1000);pago='meses';const b=pvpAyala(1000);pago='contado';return Math.abs(a-870)<0.001&&Math.abs(b-928)<0.001;});
-test('Bujías 28%',                  ()=>appJS.includes("concepto:'Bujías (especificar tipo)',           costo:'', margen:28"));
-test('Filtro de aceite (afinación) 32%', ()=>appJS.includes("concepto:'Filtro de aceite',                    costo:'', margen:32, mo:false, pend:false},"));
-test('Filtro de aire (afinación) 32%',   ()=>appJS.includes("concepto:'Filtro de aire',                      costo:'', margen:32, mo:false, pend:false},"));
-test('Filtro de cabina (afinación) 32%', ()=>appJS.includes("concepto:'Filtro de cabina',                    costo:'', margen:32, mo:false, pend:false, opcional:true},"));
-test('Filtro de aceite (cambio aceite) 32%', ()=>appJS.includes("concepto:'Filtro de aceite',                    costo:'', margen:32, mo:false, pend:false, qty:0},"));
+test('Bujías 25%',                  ()=>appJS.includes("concepto:'Bujías (especificar tipo)',           costo:'', margen:25"));
+test('Filtro de aceite (afinación) 30%', ()=>appJS.includes("concepto:'Filtro de aceite',                    costo:'', margen:30, mo:false, pend:false},"));
+test('Filtro de aire (afinación) 30%',   ()=>appJS.includes("concepto:'Filtro de aire',                      costo:'', margen:30, mo:false, pend:false},"));
+test('Filtro de cabina (afinación) 30%', ()=>appJS.includes("concepto:'Filtro de cabina',                    costo:'', margen:30, mo:false, pend:false, opcional:true},"));
+test('Filtros de aire y cabina (cambio aceite) 30%', ()=>appJS.includes("concepto:'Filtro de aire',                      costo:'', margen:30, mo:false, pend:false, opcional:true, qty:0},") && appJS.includes("concepto:'Filtro de cabina',                    costo:'', margen:30, mo:false, pend:false, opcional:true, qty:0}"));
+test('Filtro de aceite (cambio aceite) 30%', ()=>appJS.includes("concepto:'Filtro de aceite',                    costo:'', margen:30, mo:false, pend:false, qty:0},"));
 test('Balatas delanteras 30%',    ()=>appJS.includes("concepto:'Balatas delanteras',                  costo:'', margen:30,") && !appJS.includes("concepto:'Balatas delanteras',                  costo:'', margen:32.5"));
 test('Balatas/zapatas traseras 30%', ()=>appJS.includes("concepto:'Balatas / zapatas traseras',          costo:'', margen:30,") && !appJS.includes("concepto:'Balatas / zapatas traseras',          costo:'', margen:32.5"));
 test('Amortiguador delantero 32%',  ()=>appJS.includes("concepto:'Amortiguador delantero',              costo:'', margen:32"));

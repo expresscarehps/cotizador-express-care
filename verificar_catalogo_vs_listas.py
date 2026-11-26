@@ -65,5 +65,15 @@ if a.vega:
     reporta('precio distinto', [f"{k} cotizador {cat[k]['costo']} lista {todas[k][3]}" for k in cat if k in todas and num(todas[k][3]) and abs(cat[k]['costo'] - todas[k][3]) > 0.005])
     reporta('con existencia pero SIN precio numérico (no se pueden cargar; avisar a Carlos)', [f'{k} {r[1]} = {r[3]} ({r[4]} pzas)' for k, r in todas.items() if (r[4] or 0) > 0 and not num(r[3])], grave=False)
 
+    # Referencias de precio para Chavitar: VEGA sin existencia pero con precio en la lista (25-nov-2026, Carlos: VEGA/Servillantas miden precio y margen de Chavitar aunque no haya existencia)
+    ref = {x['cve'].strip(): x for x in (arreglo('VEGA_REF') if 'var VEGA_REF=' in h else [])}
+    usadas = {e[1] for c in arreglo('CHAVITAR') for e in c.get('eq', []) if e[0] == 'VEGA'}
+    print('  referencias VEGA_REF (solo para precio de Chavitar):', len(ref))
+    reporta('VEGA_REF que también están como renglón en VEGA (duplicadas)', [k for k in ref if k in cat])
+    reporta('VEGA_REF con precio distinto al de la lista', [f"{k} cotizador {ref[k]['costo']} lista {todas[k][3]}" for k in ref if k in todas and num(todas[k][3]) and abs(ref[k]['costo'] - todas[k][3]) > 0.005])
+    reporta('VEGA_REF que ya no vienen en la lista (quitar)', [k for k in ref if k not in todas])
+    reporta('Chavitar apunta a una VEGA sin existencia pero con precio en la lista y FALTA en VEGA_REF', [k for k in usadas if k not in cat and k not in ref and k in todas and num(todas[k][3])])
+    reporta('Chavitar apunta a una VEGA que ya no viene en la lista (sin referencia de precio; revisar con Carlos)', sorted(k for k in usadas if k not in cat and k not in ref and k not in todas), grave=False)
+
 print('\nRESULTADO:', 'TODO COINCIDE' if problemas == 0 else f'{problemas} revisión(es) con diferencias')
 sys.exit(1 if problemas else 0)

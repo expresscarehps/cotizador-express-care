@@ -37,9 +37,9 @@ const r2 = x => Math.round(x * 100) / 100;
     if (d.proveedor === 'AYALA' && d.tipo_precio === 'lista') { c = d.base_precio * 0.75 * 1.16; m = d.base_precio * 0.80 * 1.16; }
     else if (d.proveedor === 'CHAV') {   // Chavitar: lista SIN IVA. Con equivalente = el precio más bajo de los equivalentes; sin equivalente = pv propio
       const ch = w.CHAVITAR.find(x => x.cve === d.clave);
-      const pvEq = (ch.eq || []).map(e => { const f = e[0] === 'SERV' ? w.DATA.find(x => x.cve === e[1]) : w.VEGA.find(x => x.cve === e[1]); return f ? (e[0] === 'SERV' ? f.precio : f.costo) / (1 - margenIndep(f.marca) / 100) : null; }).filter(x => x);
+      const pvEq = (ch.eq || []).map(e => { const f = e[0] === 'SERV' ? w.DATA.find(x => x.cve === e[1]) : w.VEGA.find(x => x.cve === e[1]) || w.VEGA_REF.find(x => x.cve === e[1]); return f ? (e[0] === 'SERV' ? f.precio : f.costo) / (1 - margenIndep(f.marca) / 100) : null; }).filter(x => x);
       c = pvEq.length ? Math.min(...pvEq) : ch.pv; m = c * 1.05;
-      if (Math.abs(d.base_precio - ch.costo * 1.16) > 1e-9 || d.margen !== Math.round((1 - ch.costo * 1.16 / c) * 1000) / 10 || d.precio_origen !== (pvEq.length ? 'equivalente' : 'propio')) malMg.push(d.id);
+      if (Math.abs(d.base_precio - ch.costo * 1.16) > 1e-9 || d.margen !== Math.round((1 - ch.costo * 1.16 / c) * 1000) / 10 || d.precio_origen !== (pvEq.length ? ((ch.eq || []).some(e => (e[0] === 'SERV' ? w.DATA : w.VEGA).some(x => x.cve === e[1])) ? 'equivalente' : 'referencia_vega') : 'propio')) malMg.push(d.id);
     }
     else if (d.proveedor === 'AYALA') { c = d.base_precio / (1 - margenIndep(d.marca) / 100) * 1.16; m = c * 1.05; if (d.margen !== margenIndep(d.marca)) malMg.push(d.id); }   // lista MTO: costo antes de IVA
     else { c = d.base_precio / (1 - margenIndep(d.marca) / 100); m = c * 1.05; if (d.margen !== margenIndep(d.marca)) malMg.push(d.id); }

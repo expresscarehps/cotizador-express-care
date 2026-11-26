@@ -54,7 +54,9 @@ w.CHAVITAR.forEach(d => {
   if (!(d.medida && d.desc)) { omitidas.chavitar_sin_medida_o_desc.push('CHAV:' + d.cve); return; }
   const eq = w.chavEquivs(d);
   const doc = agrega('CHAV', Object.assign({}, d, { desc: w.chavDesc(d) }), 'costo', w.chavCostoIVA(d), () => w.chavPvp(d), w.chavMargenPct(d));
-  if (doc) { doc.precio_origen = eq.length ? 'equivalente' : 'propio'; if (eq.length) doc.equivalentes = eq.map(e => e.cve + '__' + e.prov); }
+  // eq incluye las referencias VEGA sin existencia (VEGA_REF: miden el precio pero NO son documento del bot). Solo las que tienen existencia van en `equivalentes`.
+  const eqReal = eq.filter(e => !e.ref);
+  if (doc) { doc.precio_origen = eqReal.length ? 'equivalente' : eq.length ? 'referencia_vega' : 'propio'; if (eqReal.length) doc.equivalentes = eqReal.map(e => e.cve + '__' + e.prov); }
 });
 // Grupos de equivalentes = componentes conectados (Chavitar + sus equivalentes que existen en el catálogo del bot)
 const porId = new Map(docs.map(d => [d.id, d])), padre = new Map();
@@ -120,6 +122,7 @@ const reglas = {
     proveedor: 'CHAV (Chavitar Llantas). Su lista viene SIN IVA: base_precio ya es costo x 1.16.',
     alcance: 'Solo auto/SUV y camioneta/LT. No hay camion, moto ni agricola.',
     precio_con_equivalente: 'Si la llanta tiene equivalente en Servillantas/VEGA, el precio al cliente es el del equivalente (el mas bajo si hay en los dos): precio_origen=equivalente. El margen real puede ser mayor a 12.5%.',
+    precio_con_referencia_vega: 'precio_origen=referencia_vega: el precio se midio contra una llanta de VEGA que hoy NO tiene existencia (solo se usa su precio de la lista como referencia). El precio ya viene calculado; avisar al asesor que confirme con Chavitar que la tenga.',
     precio_solo_chavitar: 'Si no tiene equivalente: margen base 30%; con 3 o mas comparables de la misma medida (Economica y Muy Economica juntas) el precio se limita entre el percentil 25 y 75 de los precios de esos comparables, sin subir el margen de 35%, piso 25%; sin comparables 30%. precio_origen=propio. Ya viene calculado en precio_contado.',
     meses: 'precio_meses = precio_contado x 1.05, igual que los demas proveedores.',
     descripcion: 'desc ya es la homologa: si hay equivalente se usa la descripcion del equivalente mas barato (Servillantas si empatan).'
