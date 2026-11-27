@@ -1140,7 +1140,7 @@ var MODO_PRUEBA = (typeof window!=='undefined' && window.location && /[?&]test=1
 // Se detecta por el nombre del archivo: en dev, el aviso real a GHL pide confirmación explícita
 // (para no etiquetar clientes reales por accidente). También viaja en el aviso como "fuente".
 var ES_DEV = (typeof window!=='undefined' && window.location && /dev\.html?$/i.test(window.location.pathname||''));
-var VERSION_PAGINA = 'dev 2026-11-25 Afinación con dos opciones de bujías (total por opción); márgenes: filtros 30% y bujías 25%; dev 2026-11-25 lista de precios VEGA 24-nov-2026 (1,370 llantas; demanda por marca recalculada; VEGA sin existencia sigue como referencia de precio de Chavitar con nota al asesor); dev 2026-11-23 pestana Pendientes de WhatsApp (solo lectura; lee de Firestore pendientes_prueba/actual; numerito y semaforo en la pestana; aviso de lista vieja a los 20 min); dev 2026-11-23 rectificado de frenos con precio fijo automatico (gratis con balatas delanteras y traseras; por pieza con un solo eje; tarjeta en Config solo administrador); dev 2026-11-19 Chavitar como 4o proveedor de llantas (1,464 llantas; equivalentes con Servillantas/VEGA; comprar en CHAV/SERV/VEGA); dev 2026-11-13 buscador de medidas: ignora la P inicial y ZR=R; frenos con dos opciones de balatas (Opción 1 alto rendimiento (cerámica) / Opción 2 convencionales (semi metálicas)); candado de No. de parte; catalogo Servillantas 24-sep-2026, VEGA 24-nov-2026, AYALA noviembre 2026';
+var VERSION_PAGINA = 'dev 2026-11-27 Suspensión: 5% de descuento automático en la mano de obra de amortiguadores cuando la cotización lleva exactamente 2 delanteros y 2 traseros (con leyenda en WhatsApp y PDF); dev 2026-11-25 Afinación con dos opciones de bujías (total por opción); márgenes: filtros 30% y bujías 25%; dev 2026-11-25 lista de precios VEGA 24-nov-2026 (1,370 llantas; demanda por marca recalculada; VEGA sin existencia sigue como referencia de precio de Chavitar con nota al asesor); dev 2026-11-23 pestana Pendientes de WhatsApp (solo lectura; lee de Firestore pendientes_prueba/actual; numerito y semaforo en la pestana; aviso de lista vieja a los 20 min); dev 2026-11-23 rectificado de frenos con precio fijo automatico (gratis con balatas delanteras y traseras; por pieza con un solo eje; tarjeta en Config solo administrador); dev 2026-11-19 Chavitar como 4o proveedor de llantas (1,464 llantas; equivalentes con Servillantas/VEGA; comprar en CHAV/SERV/VEGA); dev 2026-11-13 buscador de medidas: ignora la P inicial y ZR=R; frenos con dos opciones de balatas (Opción 1 alto rendimiento (cerámica) / Opción 2 convencionales (semi metálicas)); candado de No. de parte; catalogo Servillantas 24-sep-2026, VEGA 24-nov-2026, AYALA noviembre 2026';
 
 var RIN = {
   'a': {mon:85,  bal:80,  piv:20, h:'Montaje $85 - Balanceo $80 - Pivote $20 por llanta'},
@@ -2582,6 +2582,61 @@ function rectSincronizar(){
 function rectSincronizarTodo(){
   if(rectSincronizar()){ try{ renderTallerItems(); renderCarrito(); updateBadge(); generarWA(); }catch(e){} }
 }
+
+// ── DESCUENTO AUTOMÁTICO EN LA MANO DE OBRA DE AMORTIGUADORES (27-nov-2026) ──────────────────────────────────
+// Regla de Carlos: si la cotización lleva EXACTAMENTE 2 amortiguadores delanteros y 2 traseros, la mano de obra de los
+// amortiguadores (delantero y trasero) lleva 5% de descuento, y el cliente lo ve con una leyenda en WhatsApp y PDF.
+// Usa el mismo campo "Desc %" que ya existía en la mano de obra. El 5% es fijo (no se edita en Configuración).
+// Si la asesora escribe su propio Desc %, se respeta el suyo. Si deja de cumplirse 2+2, el descuento automático se quita solo.
+// Cuentan las piezas con cantidad (aunque su precio siga pendiente) y que no sean opcionales.
+var SUSP_DESC_PCT = 5;
+function suspEsParteAmort(it){ return !!it && it.tipo==='suspension' && !it.mo && /^\s*amortiguador(es)?\s+(delantero|trasero)/i.test(it.concepto||''); }
+function suspEsMOAmort(it){ return !!it && it.tipo==='suspension' && !!it.mo && /^\s*mano de obra amortiguador\s+(delantero|trasero)/i.test(it.concepto||''); }
+function suspAmortCuenta(){
+  var del=0, tras=0;
+  for(var i=0;i<tallerItems.length;i++){
+    var it=tallerItems[i];
+    if(!suspEsParteAmort(it) || it.opcional) continue;
+    var q=parseFloat(it.qty)||0; if(q<=0) continue;
+    if(/delantero/i.test(it.concepto)) del+=q; else tras+=q;
+  }
+  return {del:del, tras:tras};
+}
+function suspDescActivo(){ var c=suspAmortCuenta(); return c.del===2 && c.tras===2; }
+// Pone o quita el 5% en la mano de obra de amortiguadores. Devuelve true si algo cambió.
+function suspDescSincronizar(){
+  var act=suspDescActivo(), cambio=false;
+  for(var i=0;i<tallerItems.length;i++){
+    var it=tallerItems[i];
+    if(!suspEsMOAmort(it)) continue;
+    var base=parseFloat(it.precioSugerido)||0, d=parseFloat(it.descuento)||0;
+    if(act){
+      if(it.descManual) continue;                    // la asesora escribió su propio Desc %: se respeta
+      if(!it.descAuto && d>0) continue;              // ya traía un descuento puesto a mano: se respeta
+      if(base<=0) continue;                          // sin tarifa no hay sobre qué descontar (igual que un Desc % manual)
+      if(!it.descAuto || d!==SUSP_DESC_PCT){
+        it.descuento=SUSP_DESC_PCT; it.descAuto=true;
+        it.precio=Math.round(base*(1-SUSP_DESC_PCT/100)*100)/100;
+        cambio=true;
+      }
+    } else {
+      if(it.descAuto){
+        it.descuento=0; it.descAuto=false;
+        if(base>0) it.precio=base;
+        cambio=true;
+      }
+      if(it.descManual) it.descManual=false;         // ya no aplica la regla: la próxima vez que se cumpla vuelve a ser automático
+    }
+  }
+  return cambio;
+}
+// Leyenda para el cliente: solo si en estos renglones hay mano de obra de amortiguadores con el descuento automático puesto
+function suspLeyendaCliente(items, conEmoji){
+  var hay=(items||[]).some(function(it){ return suspEsMOAmort(it) && it.descAuto && !it.opcional && parseFloat(it.precio)>0 && parseFloat(it.qty)>0; });
+  if(!hay) return '';
+  return conEmoji ? '🎁 *'+SUSP_DESC_PCT+'% de descuento en la instalación* por cambiar tus 4 amortiguadores (ya está aplicado en la mano de obra).'
+                  : SUSP_DESC_PCT+'% de descuento en instalación por el cambio de 4 amortiguadores (ya aplicado en la mano de obra).';
+}
 function rectValidar(r){
   var e=[];
   Object.keys(RECT_BASE).forEach(function(k){
@@ -3126,6 +3181,7 @@ function setTallerSvc(s, el) {
     tallerItems = tallerItems.concat(nuevos);
   }
   try{ rectSincronizar(); }catch(e){}
+  try{ suspDescSincronizar(); }catch(e){}
   renderTallerItems();
 }
 
@@ -3166,6 +3222,7 @@ function addTallerItem() {
 function removeTallerItem(id) {
   tallerItems=tallerItems.filter(function(i){return i.id!==id;});
   try{ rectSincronizar(); }catch(e){}
+  try{ suspDescSincronizar(); }catch(e){}
   renderTallerItems(); renderCarrito(); updateBadge(); generarWA();
 }
 
@@ -3212,6 +3269,7 @@ function updTallerField(id, field, val) {
       else if(field==='descuento') tallerItems[i].descuento=parseFloat(val)||0;
       else tallerItems[i][field]=val;
       if(field==='precio' && rectEsItem(tallerItems[i])){ tallerItems[i].rectManual=true; tallerItems[i].rectAuto=false; tallerItems[i].gratis=false; }   // precio escrito a mano: se respeta
+      if(field==='descuento' && suspEsMOAmort(tallerItems[i])){ tallerItems[i].descManual=true; tallerItems[i].descAuto=false; }   // Desc % escrito a mano: se respeta
       if(field==='costo'||field==='margen'||field==='precio'||field==='qty'||field==='descuento') calcTallerPVP(id);
       break;
     }
@@ -3219,6 +3277,7 @@ function updTallerField(id, field, val) {
   if(field==='noParte') provSincronizarErrores();
   for(var _k=0;_k<tallerItems.length;_k++){ if(tallerItems[_k].id===id){ var _ti=tallerItems[_k]; if(_ti.eje && (_ti.opc1||_ti.opc2)){ try{ if(dritekAlEditar(_ti,field)) renderTallerItemsConFoco(); }catch(e){ try{console.warn('Dritek:',e);}catch(x){} } } break; } }
   try{ if(rectSincronizar()) renderTallerItemsConFoco(); }catch(e){ try{console.warn('Rectificado:',e);}catch(x){} }
+  try{ if(suspDescSincronizar()) renderTallerItemsConFoco(); }catch(e){ try{console.warn('Descuento amortiguadores:',e);}catch(x){} }
   renderCarrito(); updateBadge(); generarWA();
 }
 
@@ -3237,6 +3296,7 @@ function renderTallerItems() {
     if(item.opc2) pend+='<div style="font-size:10px;color:#1a56db;margin-top:2px">'+(item.tipo==='afinacion'?'Opción 2 · alternativa de bujías (no se suma a las de la Opción 1; solo sale si también llenas la Opción 1)':'Opción 2 · alternativa de calidad estándar (no se suma a las balatas de la Opción 1)')+'</div>';
     else if(item.opc1 && item.tipo==='afinacion') pend+='<div style="font-size:10px;color:#1a56db;margin-top:2px">Opción 1 · si llenas también el renglón de Opción 2, el cliente verá el total de cada opción</div>';
 
+    if(suspEsMOAmort(item) && item.descAuto) pend+='<div style="font-size:10px;color:#166534;margin-top:2px">'+SUSP_DESC_PCT+'% de descuento automático: la cotización lleva 2 amortiguadores delanteros y 2 traseros · si escribes otro Desc %, se respeta el tuyo</div>';
     if(item.mo) {
       // Mano de obra: concepto + precio editable (sin costo ni margen)
       div.innerHTML=
@@ -3618,6 +3678,7 @@ function generarWA() {
         }
         txt+='* '+lineaTxt+'\n';
       }
+      if(tipo==='suspension'){ var _sl=suspLeyendaCliente(itemsTipo,true); if(_sl) txt+=_sl+'\n'; }
       if(subtotalTipo>0 && !frOpcWA) txt+='*Subtotal '+(tipoLabels[tipo]||tipo)+': '+fmt(subtotalTipo)+'*\n';
       var _bq=bloqueWAServicio(tipo); if(_bq) txt+='\n'+_bq;
     }
@@ -4569,8 +4630,10 @@ function construirYDescargarPDF(folio, cl, tel, vh, asesor, fechaStr, llantas, a
 
     // Cierre y firma — mismo tamaño de letra (9) que el resto del documento.
     // Si no cabe antes de la zona segura inferior, se agrega página nueva con el membrete.
-    finalY=asegurarEspacio(finalY, 62); // ~alto total del bloque de cierre + firma
+    var _leySusp=suspLeyendaCliente(tallerCart,false);   // leyenda del 5% en instalación de amortiguadores (solo si aplica)
+    finalY=asegurarEspacio(finalY, 62+(_leySusp?8:0)); // ~alto total del bloque de cierre + firma
     doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(60,60,60);
+    if(_leySusp){ doc.text(_leySusp, 10, finalY); finalY+=8; }
     doc.text('Precios de contado y sujetos a disponibilidad. Pueden variar sin previo aviso.', 10, finalY); finalY+=8;
     doc.text('Quedamos atentos a sus amables comentarios y nos reiteramos a sus órdenes.', 10, finalY); finalY+=10;
     doc.text('Atentamente,', 10, finalY); finalY+=14;
@@ -5112,6 +5175,7 @@ window.addEventListener('load',function(){
           }
         }
         try{ rectSincronizar(); }catch(e){}
+        try{ suspDescSincronizar(); }catch(e){}
         renderTallerItems();
         renderCarrito();
         updateBadge();
